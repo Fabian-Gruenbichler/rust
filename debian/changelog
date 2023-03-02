@@ -1,3 +1,13 @@
+rustc (1.65.0+dfsg1-1~exp2) experimental; urgency=medium
+
+  [ Fabian Grünbichler ]
+  * d/control: add myself to Uploaders
+  * cherry-pick fix for failing backtrace test
+  * bump mipsel test failure allowance to work around broken gdb 13.1
+  * drop duplicate lintian override
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sat, 11 Mar 2023 18:50:19 +0100
+
 rustc (1.65.0+dfsg1-1~exp1) experimental; urgency=medium
 
   [ Fabian Grünbichler ]
