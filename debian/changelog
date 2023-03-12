@@ -1,3 +1,9 @@
+rustc (1.65.0+dfsg1-1~exp3) experimental; urgency=medium
+
+  * d/rules: fix typo in mipsel workaround
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 12 Mar 2023 08:54:15 +0100
+
 rustc (1.65.0+dfsg1-1~exp2) experimental; urgency=medium
 
   [ Fabian Grünbichler ]
