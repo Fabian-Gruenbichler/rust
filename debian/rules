@@ -284,7 +284,7 @@ endif
 # workaround broken gdb 13.1 - revert to 24 once fixed
 # #1031946 / #1032785
 ifneq (,$(filter $(DEB_BUILD_ARCH), mipsel))
-  FAILURED_ALLOWED = 25
+  FAILURES_ALLOWED = 25
 endif
 ifneq (,$(filter $(DEB_BUILD_ARCH), ppc64 s390x))
   FAILURES_ALLOWED = 40
