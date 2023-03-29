@@ -1,3 +1,9 @@
+rustc (1.66.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream version 1.66.0+dfsg1.
+
+ -- Blair Noctis <n@sail.ng>  Wed, 29 Mar 2023 18:45:15 +0000
+
 rustc (1.65.0+dfsg1-1~exp3) experimental; urgency=medium
 
   * d/rules: fix typo in mipsel workaround
