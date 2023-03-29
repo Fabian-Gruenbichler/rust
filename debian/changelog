@@ -1,7 +1,8 @@
 rustc (1.66.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
 
-  * New upstream version 1.66.0+dfsg1.
+  * New upstream version 1.66.0+dfsg1
   * Drop outdated patches
+  * Work around incorrect config handling (picking up initial rustc) when running tests
 
  -- Blair Noctis <n@sail.ng>  Wed, 29 Mar 2023 18:45:15 +0000
 
