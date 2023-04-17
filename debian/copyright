@@ -259,6 +259,7 @@ Files: C*.md
        configure
        config.toml.example
        git-commit-hash
+       git-commit-info
        library/*
        src/README.md
        src/bootstrap/*
@@ -571,10 +572,10 @@ License: MIT or Apache-2.0
 Comment: see https://github.com/chronotope/chrono
 
 Files: 
- vendor/clap/*
+ vendor/clap-3.*/*
  vendor/clap_complete/*
  vendor/clap_derive/*
- vendor/clap_lex/*
+ vendor/clap_lex-0.*/*
 Copyright: 2015-2022 Kevin K. <kbknapp@gmail.com>
 License: MIT
 Comment: see https://github.com/clap-rs/clap
@@ -922,11 +923,6 @@ Copyright: 2019-2019 Eliza Weisman <eliza@buoyant.io>
 License: MIT
 Comment: see https://github.com/hawkw/matchers
 
-Files: vendor/matches/*
-Copyright: 2014-2017 Simon Sapin <simon.sapin@exyr.org>
-License: MIT
-Comment: see https://github.com/SimonSapin
-
 Files: vendor/mdbook/*
 Copyright: 2015-2017 Mathieu David <mathieudavid@mathieudavid.org>
 License: MPL-2.0
@@ -1192,8 +1188,13 @@ Comment: see https://github.com/rust-analyzer/rowan
 
 Files: vendor/rustc-ap-rustc_lexer/*
 Copyright: 2010-2022 The Rust Project Developers
-License: MIT  or  Apache-2.0
+License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust
+
+Files: vendor/rustc_tools_util/*
+Copyright: 2014-2022 The Rust Project Developers
+License: MIT or Apache-2.0
+Comment: see https://github.com/rust-lang/rust-clippy/tree/master/rustc_tools_util
 
 Files: vendor/rustc-semver/*
 Copyright: 2020-2020 flip1995 <hello@philkrones.com>
@@ -1399,7 +1400,7 @@ Files:
  vendor/tracing-attributes/*
  vendor/tracing-core/*
  vendor/tracing-log/*
- vendor/tracing-subscriber/*
+ vendor/tracing-subscriber-0.*/*
 Copyright:
  2018-2020 Eliza Weisman <eliza@buoyant.io>
  2018-2020 Tokio Contributors <team@tokio.rs>
