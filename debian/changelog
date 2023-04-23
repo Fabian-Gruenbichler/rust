@@ -1,10 +1,12 @@
-rustc (1.66.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.66.0+dfsg1-1~exp1) experimental; urgency=medium
 
+  [ Blair Noctis ]
   * New upstream version 1.66.0+dfsg1
   * Drop outdated patches
-  * Work around incorrect config handling (picking up initial rustc) when running tests
+  * Work around incorrect config handling (picking up initial rustc) when
+    running tests
 
- -- Blair Noctis <n@sail.ng>  Wed, 29 Mar 2023 18:45:15 +0000
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 23 Apr 2023 20:45:41 +0200
 
 rustc (1.65.0+dfsg1-1~exp3) experimental; urgency=medium
 
