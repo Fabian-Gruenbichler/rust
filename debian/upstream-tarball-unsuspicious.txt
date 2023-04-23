@@ -161,7 +161,6 @@ src/doc/embedded-book/src/assets/f3.jpg
 src/doc/embedded-book/src/assets/verify.jpeg
 src/doc/nomicon/src/img/safeandunsafe.svg
 src/doc/rustc-dev-guide/src/img/*.png
-src/doc/rustc-dev-guide/src/img/rustc_stages.svg
 src/doc/rustc-dev-guide/src/queries/example-0.png
 src/doc/rustc/src/images/*.png
 src/etc/installer/gfx/
@@ -208,7 +207,6 @@ src/test/mir-opt/*/*.mir
 src/test/run-make/*-sgx-lvi/enclave/*.c
 src/test/run-make/*-sgx-lvi/enclave/*/*/*.c
 src/test/rustdoc/*.html
-src/test/rustdoc/tuples.link2_i32.html
 src/test/ui/macros/not-utf8.bin
 src/tools/*/tests/*/*.stderr
 src/tools/clippy/tests/ui-toml/*/*.stderr
