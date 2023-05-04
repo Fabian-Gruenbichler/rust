@@ -336,8 +336,7 @@ Files:
  vendor/bitflags/*
  vendor/cc/*
  vendor/cmake/*
- vendor/env_logger-0*/*
- vendor/env_logger/*
+ vendor/env_logger-0.*/*
  vendor/getopts/*
  vendor/glob/*
  vendor/libc/*
@@ -434,7 +433,6 @@ Comment: see https://github.com/messense/rustc-test
 
 Files:
  vendor/addr2line/*
- vendor/addr2line-0*/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2021 Philip Craig <philipjcraig@gmail.com>
@@ -445,7 +443,6 @@ Comment: see https://github.com/gimli-rs/addr2line
 
 Files: 
  vendor/adler/*
- vendor/adler-0.2.3/*
 Copyright: 2020-2021 Jonas Schievink <jonasschievink@gmail.com>
 License: 0BSD or MIT or Apache-2.0
 Comment: see https://github.com/jonas-schievink/adler.git
@@ -515,7 +512,7 @@ Comment:
  see https://github.com/RustCrypto/traits
  see https://github.com/RustCrypto/utils
 
-Files: vendor/bstr/*
+Files: vendor/bstr-0.*/*
 Copyright: 2018-2020 Andrew Gallant <jamslam@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/BurntSushi/bstr
@@ -570,10 +567,10 @@ License: MIT or Apache-2.0
 Comment: see https://github.com/cryptocorrosion/cryptocorrosion
 
 Files:
- vendor/chalk-derive-0.80.0/*
+ vendor/chalk-derive0/*
  vendor/chalk-engine/*
- vendor/chalk-ir-0.80.0/*
- vendor/chalk-solve-0.80.0/*
+ vendor/chalk-ir/*
+ vendor/chalk-solve/*
 Copyright:
  2015-2022 Rust Compiler Team
  2015-2022 Chalk developers
@@ -788,7 +785,6 @@ License: MIT
 Comment: see https://github.com/fizyk20/generic-array.git
 
 Files:
- vendor/gimli-0*/*
  vendor/gimli/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
@@ -969,7 +965,6 @@ Comment:
 
 Files:
  vendor/miniz_oxide/*
- vendor/miniz_oxide-0.4.0/*
 Copyright: 2017-2020 Frommi <daniil.liferenko@gmail.com>
 License: MIT
 Comment: see https://github.com/Frommi/miniz_oxide
@@ -998,7 +993,6 @@ License: MIT
 Comment: see https://github.com/seanmonstar/num_cpus
 
 Files:
-    vendor/object-0*/*
     vendor/object/*
 Copyright:
  2016-2020 Nick Fitzgerald <fitzgen@gmail.com>
@@ -1614,18 +1608,14 @@ License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/bytecodealliance/wasi
 
 Files:
+ vendor/windows-sys/*
+ vendor/windows_aarch64_gnullvm/*
  vendor/windows_aarch64_msvc/*
  vendor/windows_i686_gnu/*
  vendor/windows_i686_msvc/*
- vendor/windows-sys/*
  vendor/windows_x86_64_gnu/*
+ vendor/windows_x86_64_gnullvm/*
  vendor/windows_x86_64_msvc/*
- vendor/windows_aarch64_msvc-0.28.0/*
- vendor/windows_i686_gnu-0.28.0/*
- vendor/windows_i686_msvc-0.28.0/*
- vendor/windows-sys-0.28.0/*
- vendor/windows_x86_64_gnu-0.28.0/*
- vendor/windows_x86_64_msvc-0.28.0/*
 Copyright: 2019-2022 Microsoft Corporation
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
@@ -1648,6 +1638,11 @@ Files:
 Copyright: 2020-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/matklad/xshell
+
+Files: vendor/zerovec/*
+Copyright: 1999-2022 Unicode, Inc.
+License: Unicode Data Files and Software License
+Comment: See https://github.com/unicode-org/icu4x/tree/main/utils/zerovec
 
 Files: debian/*
 Copyright: 2013-2018 Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>
@@ -2365,3 +2360,51 @@ License: Zlib
  2. Altered source versions must be plainly marked as such, and must not be
     misrepresented as being the original software.
  3. This notice may not be removed or altered from any source distribution.
+
+License: Unicode Data Files and Software License
+ UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE
+ .
+ See Terms of Use <https://www.unicode.org/copyright.html>
+ for definitions of Unicode Inc.’s Data Files and Software.
+ .
+ NOTICE TO USER: Carefully read the following legal agreement.
+ BY DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING UNICODE INC.'S
+ DATA FILES ("DATA FILES"), AND/OR SOFTWARE ("SOFTWARE"),
+ YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+ TERMS AND CONDITIONS OF THIS AGREEMENT.
+ IF YOU DO NOT AGREE, DO NOT DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE
+ THE DATA FILES OR SOFTWARE.
+ .
+ COPYRIGHT AND PERMISSION NOTICE
+ .
+ Copyright © 1991-2022 Unicode, Inc. All rights reserved.
+ Distributed under the Terms of Use in https://www.unicode.org/copyright.html.
+ .
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of the Unicode data files and any associated documentation
+ (the "Data Files") or Unicode software and any associated documentation
+ (the "Software") to deal in the Data Files or Software
+ without restriction, including without limitation the rights to use,
+ copy, modify, merge, publish, distribute, and/or sell copies of
+ the Data Files or Software, and to permit persons to whom the Data Files
+ or Software are furnished to do so, provided that either
+ (a) this copyright and permission notice appear with all copies
+ of the Data Files or Software, or
+ (b) this copyright and permission notice appear in associated
+ Documentation.
+ .
+ THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF
+ ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+ WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ NONINFRINGEMENT OF THIRD PARTY RIGHTS.
+ IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS
+ NOTICE BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL
+ DAMAGES, OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+ DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ PERFORMANCE OF THE DATA FILES OR SOFTWARE.
+ .
+ Except as contained in this notice, the name of a copyright holder
+ shall not be used in advertising or otherwise to promote the sale,
+ use or other dealings in these Data Files or Software without prior
+ written authorization of the copyright holder.
