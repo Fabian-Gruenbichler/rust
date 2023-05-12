@@ -26,11 +26,11 @@ Index: rust/Cargo.toml
 -  "src/tools/remote-test-server",
    "src/tools/rust-installer",
    "src/tools/rust-demangler",
--  "src/tools/cargo",
--  "src/tools/cargo/crates/credential/cargo-credential-1password",
--  "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
--  "src/tools/cargo/crates/credential/cargo-credential-wincred",
--  "src/tools/cargo/crates/mdman",
+   "src/tools/cargo",
+   "src/tools/cargo/crates/credential/cargo-credential-1password",
+   "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
+   "src/tools/cargo/crates/credential/cargo-credential-wincred",
+   "src/tools/cargo/crates/mdman",
 -  # "src/tools/cargo/crates/resolver-tests",
    "src/tools/rustdoc",
 -  "src/tools/rls",
@@ -163,12 +163,12 @@ Index: rust/src/bootstrap/builder.rs
                  test::Clippy,
                  test::RustDemangler,
                  test::CompiletestTest,
-@@ -767,11 +748,8 @@ impl<'a> Builder<'a> {
+@@ -767,11 +748,10 @@ impl<'a> Builder<'a> {
                  doc::RustdocBook,
                  doc::RustByExample,
                  doc::RustcBook,
--                doc::Cargo,
--                doc::CargoBook,
+                 doc::Cargo,
+                 doc::CargoBook,
                  doc::Clippy,
                  doc::ClippyBook,
 -                doc::Miri,
@@ -222,18 +222,6 @@ Index: rust/src/bootstrap/builder.rs
              cargo.arg("--frozen");
          }
  
-Index: rust/src/bootstrap/doc.rs
-===================================================================
---- rust.orig/src/bootstrap/doc.rs
-+++ rust/src/bootstrap/doc.rs
-@@ -76,7 +76,6 @@ macro_rules! book {
- // FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
- // and checking against it?).
- book!(
--    CargoBook, "src/tools/cargo/src/doc", "cargo", submodule = "src/tools/cargo";
-     ClippyBook, "src/tools/clippy/book", "clippy";
-     EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
-     EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
 Index: rust/src/bootstrap/test.rs
 ===================================================================
 --- rust.orig/src/bootstrap/test.rs
@@ -309,25 +297,6 @@ Index: rust/src/tools/rustfmt/Cargo.toml
  # Rustc dependencies are loaded from the sysroot, Cargo doesn't know about them.
  
  [package.metadata.rust-analyzer]
-Index: rust/src/tools/tidy/src/deps.rs
-===================================================================
---- rust.orig/src/tools/tidy/src/deps.rs
-+++ rust/src/tools/tidy/src/deps.rs
-@@ -337,7 +337,7 @@ const FORBIDDEN_TO_HAVE_DUPLICATES: &[&s
-     // This crate takes quite a long time to build, so don't allow two versions of them
-     // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
-     // under control.
--    "cargo",
-+    //"cargo",
- ];
- 
- /// Dependency checks.
-@@ -613,6 +613,8 @@ fn direct_deps_of<'a>(metadata: &'a Meta
- }
- 
- fn check_rustfix(metadata: &Metadata, bad: &mut bool) {
-+    // Debian: we don't build cargo here, so this function doens't function.
-+    return;
-     let cargo = pkg_from_name(metadata, "cargo");
-     let compiletest = pkg_from_name(metadata, "compiletest");
-     let cargo_deps = direct_deps_of(metadata, &cargo.id);
+-- 
+2.39.2
+
