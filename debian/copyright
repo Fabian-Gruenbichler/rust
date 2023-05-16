@@ -37,7 +37,6 @@ Files-Excluded:
  vendor/libssh2-sys/libssh2
  vendor/curl-sys/curl
  vendor/libz-sys/src/zlib*
- vendor/libnghttp2-sys/nghttp2
 # Embedded binary blobs
  vendor/jsonpath_lib/docs
  vendor/mdbook/src/theme/playground_editor
@@ -128,6 +127,7 @@ Files-Excluded:
  vendor/libffi-sys
  vendor/libloading-0.7.1
  vendor/libmimalloc-sys
+ vendor/libnghttp2-sys
  vendor/linked-hash-map
  vendor/lock_api-0.4.7
  vendor/log-0.4.14
@@ -175,6 +175,8 @@ Files-Excluded:
  vendor/salsa
  vendor/salsa-macros
  vendor/scip
+ vendor/security-framework
+ vendor/security-framework-sys
  vendor/semver-1.0.12
  vendor/serde-1.0.137
  vendor/serde-1.0.152
