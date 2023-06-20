@@ -1,3 +1,9 @@
+rustc (1.65.0+dfsg1-1) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 20 Jun 2023 20:16:50 +0200
+
 rustc (1.65.0+dfsg1-1~exp3) experimental; urgency=medium
 
   * d/rules: fix typo in mipsel workaround
