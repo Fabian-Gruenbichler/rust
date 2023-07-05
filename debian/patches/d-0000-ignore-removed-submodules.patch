@@ -243,3 +243,12 @@ index 296db9d..0369861 100644
  ];
  
  /// Dependency checks.
+@@ -629,6 +629,8 @@
+ }
+
+ fn check_rustfix(metadata: &Metadata, bad: &mut bool) {
++    // Debian: we don't build cargo here, so this function doens't function.
++    return;
+     let cargo = pkg_from_name(metadata, "cargo");
+     let compiletest = pkg_from_name(metadata, "compiletest");
+     let cargo_deps = deps_of(metadata, &cargo.id);
