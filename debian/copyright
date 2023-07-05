@@ -327,6 +327,13 @@ Copyright: 2019-2022 Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/tkaitchuck/ahash
 
+Files: vendor/ar_archive_writer/*
+Copyright: 2003-2017 University of Illinois at Urbana-Champaign.
+License: Apache-2.0 with LLVM exception
+Comment:
+ see https://github.com/rust-lang/ar_archive_writer
+ derived from LLVM code
+
 Files: vendor/askama*/*
 Copyright: 2016-2022 Dirkjan Ochtman
 License: MIT OR Apache-2.0
@@ -567,7 +574,7 @@ License: MIT or Apache-2.0
 Comment: see https://github.com/cryptocorrosion/cryptocorrosion
 
 Files:
- vendor/chalk-derive0/*
+ vendor/chalk-derive/*
  vendor/chalk-engine/*
  vendor/chalk-ir/*
  vendor/chalk-solve/*
@@ -595,6 +602,11 @@ Files: vendor/colored/*
 Copyright: 2016-2020 Thomas Wickham <mackwic@gmail.com>
 License: MPL-2.0
 Comment: see https://github.com/mackwic/colored
+
+Files: vendor/convert_case/*
+Copyright: 2020-2022 David Purdum <purdum41@gmail.com>
+License: MIT
+Comment: see https://github.com/rutrum/convert-case
 
 Files: vendor/countme/*
 Copyright: 2021-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
@@ -644,6 +656,11 @@ Copyright:
  2018 Datafrog Developers
 License: Apache-2.0 or MIT
 Comment: see https://github.com/rust-lang-nursery/datafrog
+
+Files: vendor/derive_more/*
+Copyright: 2016-2023 Jelte Fennema <github-tech@jeltef.nl>
+License: MIT
+Comment: see https://github.com/JelteF/derive_more
 
 Files: vendor/derive-new/*
 Copyright: 2016-2020 Nick Cameron <ncameron@mozilla.com>
@@ -706,6 +723,11 @@ Copyright: 2017-2021 The @xdg-rs members
 License: MIT OR Apache-2.0
 Comment: see https://github.com/xdg-rs/dirs
 
+Files: vendor/displaydoc/*
+Copyright: 2019-2023 Jane Lusby <jlusby@yaah.dev>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/yaahc/displaydoc
+
 Files: vendor/drop_bomb/*
 Copyright: 2018-2020 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
@@ -740,6 +762,11 @@ Files: vendor/fallible-iterator/*
 Copyright: 2016-2019 Steven Fackler <sfackler@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/sfackler/rust-fallible-iterator
+
+Files: vendor/fastrand/*
+Copyright: 2020-2023 Stjepan Glavina <stjepang@gmail.com>
+License: Apache-2.0 OR MIT
+Comment: see https://github.com/smol-rs/fastrand
 
 Files: vendor/fd-lock/*
 Copyright: 2019-2022 Yoshua Wuyts <yoshuawuyts@gmail.com>
@@ -952,7 +979,9 @@ Copyright: 2015-2021 Dan Burkert <dan@danburkert.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/RazrFalcon/memmap2-rs
 
-Files: vendor/memoffset/*
+Files:
+ vendor/memoffset/*
+ vendor/memoffset-0.6.5/*
 Copyright: 2017-2019 Gilad Naaman <gilad.naaman@gmail.com>
 License: MIT
 Comment: see https://github.com/Gilnaa/memoffset
@@ -1172,7 +1201,9 @@ License: MIT
 Comment:
  see https://github.com/redox-os/syscall
 
-Files: vendor/regex-automata/*
+Files:
+ vendor/regex-automata/*
+ vendor/regex-automata-0.1.10/*
 Copyright: 2018-2020 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense or MIT
 Comment: see https://github.com/BurntSushi/regex-automata
@@ -1208,6 +1239,12 @@ Files: vendor/rustc-semver/*
 Copyright: 2020-2020 flip1995 <hello@philkrones.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/flip1995/rustc-semver
+
+Files: vendor/rustc_version/*
+Copyright: 2015-2021 Dirkjan Ochtman <dirkjan@ochtman.nl>
+           2015-2021 Marvin Löbel <loebel.marvin@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/Kimundi/rustc-version-rs
 
 Files: vendor/rustfix/*
 Copyright:
@@ -1300,6 +1337,15 @@ Copyright: 2016-2020 Andrew Gallant <jamslam@gmail.com>
 License: BSD-3-Clause
 Comment: see https://github.com/BurntSushi/rust-snappy
 
+Files:
+ vendor/spdx-expression/*
+ vendor/spdx-rs/*
+Copyright: 2021-2022 Mikko Murto <mikko.murto@hhpartners.fi>
+License: MIT
+Comment:
+ see https://github.com/doubleopen-project/spdx-expression
+ see https://github.com/doubleopen-project/spdx-rs
+
 Files: vendor/stable_deref_trait/*
 Copyright: 2017-2017 Robert Grosse <n210241048576@gmail.com>
 License: MIT or Apache-2.0
@@ -1315,6 +1361,13 @@ Files: vendor/strsim/*
 Copyright: 2015-2021 Danny Guo <dannyguo91@gmail.com>
 License: MIT
 Comment: see https://github.com/dguo/strsim-rs
+
+Files:
+ vendor/strum/*
+ vendor/strum_macros/*
+Copyright: 2017-2023 Peter Glotfelty <peter.glotfelty@microsoft.com>
+License: MIT
+Comment: see https://github.com/Peternator7/strum
 
 Files: vendor/synstructure/*
 Copyright:
@@ -1506,6 +1559,14 @@ Copyright: 2015-2018 Simon Sapin <simon.sapin@exyr.org>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/SimonSapin/rust-utf8
 
+Files: vendor/uuid/*
+Copyright: 2014-2023 Ashley Mannix<ashleymannix@live.com.au>
+           2014-2023 Christopher Armstrong
+           2014-2023 Dylan DPC<dylan.dpc@gmail.com>
+           2014-2023 Hunar Roop Kahlon<hunar.roop@gmail.com>
+License: Apache-2.0 OR MIT
+Comment: see https://github.com/uuid-rs/uuid
+
 Files: vendor/wasi/*
 Copyright: 2019-2020 The Cranelift Project Developers
 License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
@@ -1527,6 +1588,11 @@ Files: vendor/xattr/*
 Copyright: 2015-2017 Steven Allen <steven@stebalien.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Stebalien/xattr
+
+Files: vendor/yansi/*
+Copyright: 2017-2022 Sergio Benitez <sb@sergio.bz>
+License: MIT or Apache-2.0
+Comment: see https://github.com/SergioBenitez/yansi
 
 Files: vendor/yansi-term/*
 Copyright: 2014-2020 ogham@bsago.me
@@ -1639,10 +1705,23 @@ Copyright: 2020-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/matklad/xshell
 
-Files: vendor/zerovec/*
+Files:
+ vendor/icu_list/*
+ vendor/icu_locid/*
+ vendor/icu_provider/*
+ vendor/icu_provider_adapters/*
+ vendor/icu_provider_macros/*
+ vendor/litemap/*
+ vendor/yoke/*
+ vendor/yoke-derive/*
+ vendor/writeable/*
+ vendor/zerofrom/*
+ vendor/zerofrom-derive/*
+ vendor/zerovec/*
+ vendor/zerovec-derive/*
 Copyright: 1999-2022 Unicode, Inc.
-License: Unicode Data Files and Software License
-Comment: See https://github.com/unicode-org/icu4x/tree/main/utils/zerovec
+License: Unicode-Data-Files-and-Software-License
+Comment: See https://github.com/unicode-org/icu4x
 
 Files: debian/*
 Copyright: 2013-2018 Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>
@@ -2361,7 +2440,7 @@ License: Zlib
     misrepresented as being the original software.
  3. This notice may not be removed or altered from any source distribution.
 
-License: Unicode Data Files and Software License
+License: Unicode-Data-Files-and-Software-License
  UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE
  .
  See Terms of Use <https://www.unicode.org/copyright.html>
