@@ -6,7 +6,7 @@ Description: Fix sysroot detection which would result in /usr/lib/lib/rustlib
 Bug: https://github.com/rust-lang/rust/issues/109994
 --- a/compiler/rustc_session/src/filesearch.rs
 +++ b/compiler/rustc_session/src/filesearch.rs
-@@ -180,18 +180,29 @@
+@@ -179,7 +179,7 @@
          ))?;
  
          // if `dir` points target's dir, move up to the sysroot
@@ -14,15 +14,17 @@ Bug: https://github.com/rust-lang/rust/issues/109994
 +        let mut sysroot_dir = if dir.ends_with(crate::config::host_triple()) {
              dir.parent() // chop off `$target`
                  .and_then(|p| p.parent()) // chop off `rustlib`
-                 .and_then(|p| p.parent()) // chop off `lib`
+                 .and_then(|p| {
+@@ -194,13 +194,25 @@
+                     }
+                 })
                  .map(|s| s.to_owned())
 -                .ok_or(format!(
--                    "Could not move 3 levels upper using `parent()` on {}",
--                    dir.display()
++                .ok_or_else(|| format!(
+                     "Could not move 3 levels upper using `parent()` on {}",
+                     dir.display()
 -                ))
-+                .ok_or_else(|| {
-+                    format!("Could not move 3 levels upper using `parent()` on {}", dir.display())
-+                })?
++                ))?
          } else {
 -            Ok(dir.to_owned())
 +            dir.to_owned()
