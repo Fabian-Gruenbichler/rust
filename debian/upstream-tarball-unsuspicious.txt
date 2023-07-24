@@ -10,6 +10,7 @@ src/doc/reference/src/crates-and-source-files.md
 src/doc/reference/src/items/extern-crates.md
 src/doc/reference/src/items/modules.md
 src/doc/reference/src/types-redirect.html
+src/tools/clippy/book/src/lint_configuration.md
 vendor/chalk-solve-0.87.0/src/infer/test.rs
 vendor/itertools*/examples/iris.data
 vendor/minifier/src/js/tools.rs
@@ -23,7 +24,7 @@ CONTRIBUTING.md
 RELEASES.md
 compiler/rustc_codegen_cranelift/docs/dwarf.md
 compiler/rustc_codegen_gcc/Readme.md
-compiler/rustc_error_messages/locales/en-US/codegen_ssa.ftl
+compiler/rustc_codegen_ssa/locales/en-US.ftl
 library/core/src/ffi/c_*.md
 library/portable-simd/*.md
 library/stdarch/CONTRIBUTING.md
@@ -67,6 +68,7 @@ tests/mir-opt/inline/inline_generator.main.Inline.diff
 tests/rustdoc/inline_cross/assoc_item_trait_bounds.out*.html
 tests/rustdoc-ui/z-help.stdout
 tests/ui/lint/redundant-semicolon/redundant-semi-proc-macro.stderr
+tests/ui/parser/raw/too-many-hash.stderr
 vendor/ahash-0.7.6/FAQ.md
 vendor/ahash/FAQ.md
 vendor/ammonia/src/lib.rs
@@ -86,7 +88,7 @@ vendor/*/LICENSE
 vendor/*/LICENSE-MIT
 vendor/maplit/README.rst
 vendor/mdbook/CONTRIBUTING.md
-vendor/miniz_oxide/Readme.md
+vendor/miniz_oxide*/Readme.md
 vendor/pulldown-cmark/tests/suite/footnotes.rs
 vendor/*/README.md
 vendor/rustc-demangle/src/legacy.rs
@@ -98,7 +100,7 @@ vendor/spdx-rs/src/models/other_licensing_information_detected.rs
 vendor/spdx-rs/src/models/package_information.rs
 vendor/stable_deref_trait/src/lib.rs
 vendor/tinyvec/LICENSE-*.md
-vendor/tracing-subscriber-*/src/fmt/format/json.rs
+vendor/tracing-subscriber/src/fmt/format/json.rs
 vendor/unicase/src/lib.rs
 vendor/unicode-normalization/src/stream_safe.rs
 vendor/winapi/src/lib.rs
@@ -145,6 +147,7 @@ vendor/stacker/src/arch/windows.c
 
 # False-positive, misc
 src/doc/rustc-dev-guide/src/queries/example-0.counts.txt
+src/etc/vscode_settings.json
 src/stage0.json
 src/tools/clippy/.remarkrc
 vendor/elasticlunr-rs/src/lang/*.rs
@@ -173,6 +176,7 @@ src/librustdoc/html/static/images/*.svg
 src/tools/rust-analyzer/assets/logo-*.svg
 vendor/mdbook/src/theme/favicon.png
 vendor/mdbook/src/theme/favicon.svg
+vendor/overload/logo.png
 vendor/pretty_assertions/examples/*.png
 
 # Example code
@@ -237,7 +241,7 @@ vendor/elasticlunr-rs/tests/searchindex_fixture_*.json
 vendor/flate2/tests/corrupt-gz-file.bin
 vendor/flate2/tests/*.gz
 vendor/fluent-syntax/benches/parser.rs
-vendor/gimli/fixtures/self/*
+vendor/gimli*/fixtures/self/*
 vendor/gsgdt/tests/*.json
 vendor/handlebars/tests/helper_with_space.rs
 vendor/html5ever/data/bench/*.html
@@ -342,18 +346,18 @@ vendor/flate2/src/mem.rs
 vendor/flate2/src/zio.rs
 vendor/futures-macro/src/lib.rs
 vendor/futures-macro/src/select.rs
-vendor/gimli/src/read/aranges.rs
-vendor/gimli/src/read/line.rs
-vendor/gimli/src/read/loclists.rs
-vendor/gimli/src/read/lookup.rs
-vendor/gimli/src/read/rnglists.rs
-vendor/gimli/src/read/unit.rs
+vendor/gimli*/src/read/aranges.rs
+vendor/gimli*/src/read/line.rs
+vendor/gimli*/src/read/loclists.rs
+vendor/gimli*/src/read/lookup.rs
+vendor/gimli*/src/read/rnglists.rs
+vendor/gimli*/src/read/unit.rs
 vendor/icu_locid/tests/langid.rs
 vendor/icu_locid/tests/locale.rs
 vendor/indoc/src/lib.rs
 vendor/libm/src/math/atan.rs
-vendor/miniz_oxide/src/deflate/mod.rs
-vendor/miniz_oxide/src/inflate/mod.rs
+vendor/miniz_oxide*/src/deflate/mod.rs
+vendor/miniz_oxide*/src/inflate/mod.rs
 vendor/nom/src/bits/complete.rs
 vendor/nom/src/bits/mod.rs
 vendor/nom/src/bits/streaming.rs
