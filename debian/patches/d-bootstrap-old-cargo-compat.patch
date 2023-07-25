@@ -17,7 +17,7 @@ Subject: Backwards-compat for cargo 0.47
 
 --- a/src/bootstrap/doc.rs
 +++ b/src/bootstrap/doc.rs
-@@ -598,7 +598,6 @@
+@@ -612,7 +612,6 @@
              .arg(&*target_dir.to_string_lossy())
              .arg("-p")
              .arg(package)
@@ -25,15 +25,15 @@ Subject: Backwards-compat for cargo 0.47
              .arg("--")
              .arg("-Z")
              .arg("unstable-options")
-@@ -695,7 +694,6 @@
+@@ -712,7 +711,6 @@
          cargo.rustdocflag("--generate-link-to-definition");
-         compile::rustc_cargo(builder, &mut cargo, target);
+         compile::rustc_cargo(builder, &mut cargo, target, compiler.stage);
          cargo.arg("-Zunstable-options");
 -        cargo.arg("-Zskip-rustdoc-fingerprint");
  
          // Only include compiler crates, no dependencies of those, such as `libc`.
          // Do link to dependencies on `docs.rs` however using `rustdoc-map`.
-@@ -811,7 +809,6 @@
+@@ -845,7 +843,6 @@
                      &[],
                  );
  
