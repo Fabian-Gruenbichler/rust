@@ -81,8 +81,8 @@ pub use crate::{
     highlight_related::{HighlightRelatedConfig, HighlightedRange},
     hover::{HoverAction, HoverConfig, HoverDocFormat, HoverGotoTypeData, HoverResult},
     inlay_hints::{
-        ClosureReturnTypeHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
-        InlayTooltip, LifetimeElisionHints, ReborrowHints,
+        AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints, InlayHint,
+        InlayHintLabel, InlayHintsConfig, InlayKind, InlayTooltip, LifetimeElisionHints,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -236,6 +236,7 @@ impl Analysis {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
+            None,
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);
@@ -367,7 +368,7 @@ impl Analysis {
         &self,
         config: &InlayHintsConfig,
         file_id: FileId,
-        range: Option<FileRange>,
+        range: Option<TextRange>,
     ) -> Cancellable<Vec<InlayHint>> {
         self.with_db(|db| inlay_hints::inlay_hints(db, file_id, range, config))
     }

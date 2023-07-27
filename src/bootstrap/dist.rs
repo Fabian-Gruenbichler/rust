@@ -10,15 +10,21 @@
 
 use std::collections::HashSet;
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+use object::read::archive::ArchiveFile;
+use object::BinaryFormat;
 
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
+use crate::doc::DocumentationFormat;
+use crate::native;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, output, t, timeit};
@@ -97,7 +103,11 @@ impl Step for JsonDocs {
     /// Builds the `rust-docs-json` installer component.
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let host = self.host;
-        builder.ensure(crate::doc::JsonStd { stage: builder.top_stage, target: host });
+        builder.ensure(crate::doc::Std {
+            stage: builder.top_stage,
+            target: host,
+            format: DocumentationFormat::JSON,
+        });
 
         let dest = "share/doc/rust/json";
 
@@ -550,6 +560,39 @@ fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
     }
 }
 
+/// Check that all objects in rlibs for UEFI targets are COFF. This
+/// ensures that the C compiler isn't producing ELF objects, which would
+/// not link correctly with the COFF objects.
+fn verify_uefi_rlib_format(builder: &Builder<'_>, target: TargetSelection, stamp: &Path) {
+    if !target.ends_with("-uefi") {
+        return;
+    }
+
+    for (path, _) in builder.read_stamp_file(stamp) {
+        if path.extension() != Some(OsStr::new("rlib")) {
+            continue;
+        }
+
+        let data = t!(fs::read(&path));
+        let data = data.as_slice();
+        let archive = t!(ArchiveFile::parse(data));
+        for member in archive.members() {
+            let member = t!(member);
+            let member_data = t!(member.data(data));
+
+            let is_coff = match object::File::parse(member_data) {
+                Ok(member_file) => member_file.format() == BinaryFormat::Coff,
+                Err(_) => false,
+            };
+
+            if !is_coff {
+                let member_name = String::from_utf8_lossy(member.name());
+                panic!("member {} in {} is not COFF", member_name, path.display());
+            }
+        }
+    }
+}
+
 /// Copy stamped files into an image's `target/lib` directory.
 fn copy_target_libs(builder: &Builder<'_>, target: TargetSelection, image: &Path, stamp: &Path) {
     let dst = image.join("lib/rustlib").join(target.triple).join("lib");
@@ -605,6 +648,7 @@ impl Step for Std {
 
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         let stamp = compile::libstd_stamp(builder, compiler_to_use, target);
+        verify_uefi_rlib_format(builder, target, &stamp);
         copy_target_libs(builder, target, &tarball.image_dir(), &stamp);
 
         Some(tarball.generate())
@@ -908,7 +952,7 @@ impl Step for PlainSourceTarball {
             "Cargo.toml",
             "Cargo.lock",
         ];
-        let src_dirs = ["src", "compiler", "library"];
+        let src_dirs = ["src", "compiler", "library", "tests"];
 
         copy_src_dirs(builder, &builder.src, &src_dirs, &[], &plain_dst_src);
 
@@ -919,13 +963,13 @@ impl Step for PlainSourceTarball {
 
         // Create the version file
         builder.create(&plain_dst_src.join("version"), &builder.rust_version());
-        if let Some(info) = builder.rust_info.info() {
+        if let Some(info) = builder.rust_info().info() {
             channel::write_commit_hash_file(&plain_dst_src, &info.sha);
             channel::write_commit_info_file(&plain_dst_src, info);
         }
 
         // If we're building from git sources, we need to vendor a complete distribution.
-        if builder.rust_info.is_managed_git_subrepository() {
+        if builder.rust_info().is_managed_git_subrepository() {
             // Ensure we have the submodules checked out.
             builder.update_submodule(Path::new("src/tools/rust-analyzer"));
 
@@ -940,7 +984,7 @@ impl Step for PlainSourceTarball {
                 .arg(builder.src.join("./src/bootstrap/Cargo.toml"))
                 .current_dir(&plain_dst_src);
 
-            let config = if !builder.config.dry_run {
+            let config = if !builder.config.dry_run() {
                 t!(String::from_utf8(t!(cmd.output()).stdout))
             } else {
                 String::new()
@@ -1085,12 +1129,6 @@ impl Step for RustAnalyzer {
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
-
-        if target.contains("riscv64") {
-            // riscv64 currently has an LLVM bug that makes rust-analyzer unable
-            // to build. See #74813 for details.
-            return None;
-        }
 
         let rust_analyzer = builder
             .ensure(tool::RustAnalyzer { compiler, target })
@@ -1381,7 +1419,7 @@ impl Step for Extended {
         let etc = builder.src.join("src/etc/installer");
 
         // Avoid producing tarballs during a dry run.
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
 
@@ -1819,7 +1857,7 @@ impl Step for Extended {
             let _time = timeit(builder);
             builder.run(&mut cmd);
 
-            if !builder.config.dry_run {
+            if !builder.config.dry_run() {
                 t!(fs::rename(exe.join(&filename), distdir(builder).join(&filename)));
             }
         }
@@ -1853,21 +1891,23 @@ fn add_env(builder: &Builder<'_>, cmd: &mut Command, target: TargetSelection) {
 ///
 /// Returns whether the files were actually copied.
 fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir: &Path) -> bool {
-    if !builder.is_rust_llvm(target) {
-        // If the LLVM was externally provided, then we don't currently copy
-        // artifacts into the sysroot. This is not necessarily the right
-        // choice (in particular, it will require the LLVM dylib to be in
-        // the linker's load path at runtime), but the common use case for
-        // external LLVMs is distribution provided LLVMs, and in that case
-        // they're usually in the standard search path (e.g., /usr/lib) and
-        // copying them here is going to cause problems as we may end up
-        // with the wrong files and isn't what distributions want.
-        //
-        // This behavior may be revisited in the future though.
-        //
-        // If the LLVM is coming from ourselves (just from CI) though, we
-        // still want to install it, as it otherwise won't be available.
-        return false;
+    if let Some(config) = builder.config.target_config.get(&target) {
+        if config.llvm_config.is_some() && !builder.config.llvm_from_ci {
+            // If the LLVM was externally provided, then we don't currently copy
+            // artifacts into the sysroot. This is not necessarily the right
+            // choice (in particular, it will require the LLVM dylib to be in
+            // the linker's load path at runtime), but the common use case for
+            // external LLVMs is distribution provided LLVMs, and in that case
+            // they're usually in the standard search path (e.g., /usr/lib) and
+            // copying them here is going to cause problems as we may end up
+            // with the wrong files and isn't what distributions want.
+            //
+            // This behavior may be revisited in the future though.
+            //
+            // If the LLVM is coming from ourselves (just from CI) though, we
+            // still want to install it, as it otherwise won't be available.
+            return false;
+        }
     }
 
     // On macOS, rustc (and LLVM tools) link to an unversioned libLLVM.dylib
@@ -1881,12 +1921,14 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
-        !builder.config.dry_run
-    } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
+        !builder.config.dry_run()
+    } else if let Ok(native::LlvmResult { llvm_config, .. }) =
+        native::prebuilt_llvm_config(builder, target)
+    {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(&format!("running {:?}", cmd));
-        let files = if builder.config.dry_run { "".into() } else { output(&mut cmd) };
+        let files = if builder.config.dry_run() { "".into() } else { output(&mut cmd) };
         let build_llvm_out = &builder.llvm_out(builder.config.build);
         let target_llvm_out = &builder.llvm_out(target);
         for file in files.trim_end().split(' ') {
@@ -1898,7 +1940,7 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             };
             builder.install(&file, dst_libdir, 0o644);
         }
-        !builder.config.dry_run
+        !builder.config.dry_run()
     } else {
         false
     }
@@ -2019,6 +2061,9 @@ impl Step for RustDev {
 
         builder.ensure(crate::native::Llvm { target });
 
+        // We want to package `lld` to use it with `download-ci-llvm`.
+        builder.ensure(crate::native::Lld { target });
+
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
@@ -2092,7 +2137,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "llvm-config-wrapper", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 

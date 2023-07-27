@@ -119,6 +119,10 @@ pub fn filter_assoc_items(
                 (default_methods, def.body()),
                 (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
             ),
+            ast::AssocItem::Const(def) => matches!(
+                (default_methods, def.body()),
+                (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
+            ),
             _ => default_methods == DefaultMethods::No,
         })
         .collect::<Vec<_>>()
@@ -189,8 +193,8 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
     let mut placeholder = cursor.node().to_string();
     escape(&mut placeholder);
     let tab_stop = match cursor {
-        Cursor::Replace(placeholder) => format!("${{0:{}}}", placeholder),
-        Cursor::Before(placeholder) => format!("$0{}", placeholder),
+        Cursor::Replace(placeholder) => format!("${{0:{placeholder}}}"),
+        Cursor::Before(placeholder) => format!("$0{placeholder}"),
     };
 
     let mut buf = node.to_string();
@@ -202,6 +206,23 @@ pub(crate) fn render_snippet(_cap: SnippetCap, node: &SyntaxNode, cursor: Cursor
         stdx::replace(buf, '}', r"\}");
         stdx::replace(buf, '$', r"\$");
     }
+}
+
+/// Escapes text that should be rendered as-is, typically those that we're copy-pasting what the
+/// users wrote.
+///
+/// This function should only be used when the text doesn't contain snippet **AND** the text
+/// wouldn't be included in a snippet.
+pub(crate) fn escape_non_snippet(text: &mut String) {
+    // While we *can* escape `}`, we don't really have to in this specific case. We only need to
+    // escape it inside `${}` to disambiguate it from the ending token of the syntax, but after we
+    // escape every occurrence of `$`, we wouldn't have `${}` in the first place.
+    //
+    // This will break if the text contains snippet or it will be included in a snippet (hence doc
+    // comment). Compare `fn escape(buf)` in `render_snippet()` above, where the escaped text is
+    // included in a snippet.
+    stdx::replace(text, '\\', r"\\");
+    stdx::replace(text, '$', r"\$");
 }
 
 pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
@@ -413,35 +434,67 @@ pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Opti
     Some(end)
 }
 
-// Generates the surrounding `impl Type { <code> }` including type and lifetime
-// parameters
+/// Generates the surrounding `impl Type { <code> }` including type and lifetime
+/// parameters.
 pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
-    generate_impl_text_inner(adt, None, code)
+    generate_impl_text_inner(adt, None, true, code)
 }
 
-// Generates the surrounding `impl <trait> for Type { <code> }` including type
-// and lifetime parameters
+/// Generates the surrounding `impl <trait> for Type { <code> }` including type
+/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
+///
+/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), code)
+    generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
 
-fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
+/// Generates the surrounding `impl <trait> for Type { <code> }` including type
+/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
+///
+/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+pub(crate) fn generate_trait_impl_text_intransitive(
+    adt: &ast::Adt,
+    trait_text: &str,
+    code: &str,
+) -> String {
+    generate_impl_text_inner(adt, Some(trait_text), false, code)
+}
+
+fn generate_impl_text_inner(
+    adt: &ast::Adt,
+    trait_text: Option<&str>,
+    trait_is_transitive: bool,
+    code: &str,
+) -> String {
     // Ensure lifetime params are before type & const params
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
-            // remove defaults since they can't be specified in impls
+        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
             match param {
                 ast::TypeOrConstParam::Type(param) => {
                     let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
                     param.remove_default();
-                    Some(ast::GenericParam::TypeParam(param))
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
+                    if let Some(trait_) = trait_text {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
+                            bounds.push(make::type_bound(trait_));
+                        }
+                    };
+                    // `{ty_param}: {bounds}`
+                    let param =
+                        make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
+                    ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
                     let param = param.clone_for_update();
+                    // remove defaults since they can't be specified in impls
                     param.remove_default();
-                    Some(ast::GenericParam::ConstParam(param))
+                    ast::GenericParam::ConstParam(param)
                 }
             }
         });
@@ -539,17 +592,17 @@ impl ReferenceConversion {
             ReferenceConversionType::AsRefSlice => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("&[{}]", type_argument_name)
+                format!("&[{type_argument_name}]")
             }
             ReferenceConversionType::Dereferenced => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("&{}", type_argument_name)
+                format!("&{type_argument_name}")
             }
             ReferenceConversionType::Option => {
                 let type_argument_name =
                     self.ty.type_arguments().next().unwrap().display(db).to_string();
-                format!("Option<&{}>", type_argument_name)
+                format!("Option<&{type_argument_name}>")
             }
             ReferenceConversionType::Result => {
                 let mut type_arguments = self.ty.type_arguments();
@@ -557,19 +610,19 @@ impl ReferenceConversion {
                     type_arguments.next().unwrap().display(db).to_string();
                 let second_type_argument_name =
                     type_arguments.next().unwrap().display(db).to_string();
-                format!("Result<&{}, &{}>", first_type_argument_name, second_type_argument_name)
+                format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
         }
     }
 
     pub(crate) fn getter(&self, field_name: String) -> String {
         match self.conversion {
-            ReferenceConversionType::Copy => format!("self.{}", field_name),
+            ReferenceConversionType::Copy => format!("self.{field_name}"),
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
-            | ReferenceConversionType::Result => format!("self.{}.as_ref()", field_name),
+            | ReferenceConversionType::Result => format!("self.{field_name}.as_ref()"),
         }
     }
 }
@@ -592,7 +645,7 @@ pub(crate) fn convert_reference_type(
 }
 
 fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversionType> {
-    ty.is_copy(db).then(|| ReferenceConversionType::Copy)
+    ty.is_copy(db).then_some(ReferenceConversionType::Copy)
 }
 
 fn handle_as_ref_str(
@@ -603,7 +656,7 @@ fn handle_as_ref_str(
     let str_type = hir::BuiltinType::str().ty(db);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
-        .then(|| ReferenceConversionType::AsRefStr)
+        .then_some(ReferenceConversionType::AsRefStr)
 }
 
 fn handle_as_ref_slice(
@@ -615,7 +668,7 @@ fn handle_as_ref_slice(
     let slice_type = hir::Type::new_slice(type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
-        .then(|| ReferenceConversionType::AsRefSlice)
+        .then_some(ReferenceConversionType::AsRefSlice)
 }
 
 fn handle_dereferenced(
@@ -626,7 +679,7 @@ fn handle_dereferenced(
     let type_argument = ty.type_arguments().next()?;
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument])
-        .then(|| ReferenceConversionType::Dereferenced)
+        .then_some(ReferenceConversionType::Dereferenced)
 }
 
 fn handle_option_as_ref(

@@ -205,7 +205,12 @@ enum class LLVMRustCodeModel {
   None,
 };
 
-static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
+#if LLVM_VERSION_LT(16, 0)
+static Optional<CodeModel::Model>
+#else
+static std::optional<CodeModel::Model>
+#endif
+fromRust(LLVMRustCodeModel Model) {
   switch (Model) {
   case LLVMRustCodeModel::Tiny:
     return CodeModel::Tiny;
@@ -218,7 +223,11 @@ static Optional<CodeModel::Model> fromRust(LLVMRustCodeModel Model) {
   case LLVMRustCodeModel::Large:
     return CodeModel::Large;
   case LLVMRustCodeModel::None:
+#if LLVM_VERSION_LT(16, 0)
     return None;
+#else
+    return std::nullopt;
+#endif
   default:
     report_fatal_error("Bad CodeModel.");
   }
@@ -452,7 +461,7 @@ extern "C" void LLVMRustAddLibraryInfo(LLVMPassManagerRef PMR, LLVMModuleRef M,
 
 extern "C" void LLVMRustSetLLVMOptions(int Argc, char **Argv) {
   // Initializing the command-line options more than once is not allowed. So,
-  // check if they've already been initialized.  (This could happen if we're
+  // check if they've already been initialized. (This could happen if we're
   // being called from rustpkg, for example). If the arguments change, then
   // that's just kinda unfortunate.
   static bool Initialized = false;
@@ -627,14 +636,22 @@ LLVMRustOptimize(
   bool DebugPassManager = false;
 
   PassInstrumentationCallbacks PIC;
+#if LLVM_VERSION_LT(16, 0)
   StandardInstrumentations SI(DebugPassManager);
+#else
+  StandardInstrumentations SI(TheModule->getContext(), DebugPassManager);
+#endif
   SI.registerCallbacks(PIC);
 
   if (LlvmSelfProfiler){
     LLVMSelfProfileInitializeCallbacks(PIC,LlvmSelfProfiler,BeforePassCallback,AfterPassCallback);
   }
 
+#if LLVM_VERSION_LT(16, 0)
   Optional<PGOOptions> PGOOpt;
+#else
+  std::optional<PGOOptions> PGOOpt;
+#endif
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
     PGOOpt = PGOOptions(PGOGenPath, "", "", PGOOptions::IRInstr,
@@ -800,7 +817,7 @@ LLVMRustOptimize(
       auto Plugin = PassPlugin::Load(PluginPath.str());
       if (!Plugin) {
         LLVMRustSetLastError(("Failed to load pass plugin" + PluginPath.str()).c_str());
-        continue;
+        return LLVMRustResult::Failure;
       }
       Plugin->registerPassBuilderCallbacks(PB);
     }
@@ -1411,7 +1428,7 @@ LLVMRustThinLTOBufferLen(const LLVMRustThinLTOBuffer *Buffer) {
 }
 
 // This is what we used to parse upstream bitcode for actual ThinLTO
-// processing.  We'll call this once per module optimized through ThinLTO, and
+// processing. We'll call this once per module optimized through ThinLTO, and
 // it'll be called concurrently on many threads.
 extern "C" LLVMModuleRef
 LLVMRustParseBitcodeForLTO(LLVMContextRef Context,

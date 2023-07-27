@@ -41,7 +41,7 @@ pub(crate) struct IncorrectMetaItem {
     pub span: Span,
 }
 
-// Error code: E0541
+/// Error code: E0541
 pub(crate) struct UnknownMetaItem<'a> {
     pub span: Span,
     pub item: String,
@@ -51,7 +51,7 @@ pub(crate) struct UnknownMetaItem<'a> {
 // Manual implementation to be able to format `expected` items correctly.
 impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let expected = self.expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
+        let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
         let mut diag = handler.struct_span_err_with_code(
             self.span,
             fluent::attr_unknown_meta_item,
@@ -200,7 +200,7 @@ pub(crate) struct InvalidReprHintNoValue {
     pub name: String,
 }
 
-// Error code: E0565
+/// Error code: E0565
 pub(crate) struct UnsupportedLiteral {
     pub span: Span,
     pub reason: UnsupportedLiteralReason,

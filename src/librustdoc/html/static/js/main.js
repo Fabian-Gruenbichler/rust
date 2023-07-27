@@ -47,10 +47,8 @@ function blurHandler(event, parentElem, hideCallback) {
     }
 }
 
-(function() {
-    window.rootPath = getVar("root-path");
-    window.currentCrate = getVar("current-crate");
-}());
+window.rootPath = getVar("root-path");
+window.currentCrate = getVar("current-crate");
 
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
@@ -183,10 +181,9 @@ function browserSupportsHistoryApi() {
 }
 
 // eslint-disable-next-line no-unused-vars
-function loadCss(cssFileName) {
+function loadCss(cssUrl) {
     const link = document.createElement("link");
-    link.href = resourcePath(cssFileName, ".css");
-    link.type = "text/css";
+    link.href = cssUrl;
     link.rel = "stylesheet";
     document.getElementsByTagName("head")[0].appendChild(link);
 }
@@ -204,12 +201,13 @@ function loadCss(cssFileName) {
         if (event.ctrlKey || event.altKey || event.metaKey) {
             return;
         }
+        window.hideAllModals(false);
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
-        loadCss("settings");
-        loadScript(resourcePath("settings", ".js"));
+        loadCss(getVar("static-root-path") + getVar("settings-css"));
+        loadScript(getVar("static-root-path") + getVar("settings-js"));
     };
 
     window.searchState = {
@@ -286,7 +284,7 @@ function loadCss(cssFileName) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(resourcePath("search", ".js"));
+                    loadScript(getVar("static-root-path") + getVar("search-js"));
                     loadScript(resourcePath("search-index", ".js"));
                 }
             }
@@ -303,12 +301,14 @@ function loadCss(cssFileName) {
 
             const params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                const search = searchState.outputElement();
-                search.innerHTML = "<h3 class=\"search-loading\">" +
-                    searchState.loadingText + "</h3>";
-                searchState.showResults(search);
+                searchState.setLoadingSearch();
                 loadSearch();
             }
+        },
+        setLoadingSearch: () => {
+            const search = searchState.outputElement();
+            search.innerHTML = "<h3 class=\"search-loading\">" + searchState.loadingText + "</h3>";
+            searchState.showResults(search);
         },
     };
 
@@ -379,7 +379,7 @@ function loadCss(cssFileName) {
         }
         ev.preventDefault();
         searchState.defocus();
-        window.hidePopoverMenus();
+        window.hideAllModals(true); // true = reset focus for notable traits
     }
 
     function handleShortcut(ev) {
@@ -390,7 +390,8 @@ function loadCss(cssFileName) {
         }
 
         if (document.activeElement.tagName === "INPUT" &&
-            document.activeElement.type !== "checkbox") {
+            document.activeElement.type !== "checkbox" &&
+            document.activeElement.type !== "radio") {
             switch (getVirtualKey(ev)) {
             case "Escape":
                 handleEscape(ev);
@@ -526,7 +527,7 @@ function loadCss(cssFileName) {
         }
 
         let currentNbImpls = implementors.getElementsByClassName("impl").length;
-        const traitName = document.querySelector("h1.fqn > .trait").textContent;
+        const traitName = document.querySelector(".main-heading h1 > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
         // We don't want to include impls from this JS file, when the HTML already has them.
@@ -563,7 +564,7 @@ function loadCss(cssFileName) {
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
-                    if (href && href.indexOf("http") !== 0) {
+                    if (href && !/^(?:[a-z+]+:)?\/\//.test(href)) {
                         elem.setAttribute("href", window.rootPath + href);
                     }
                 });
@@ -620,8 +621,8 @@ function loadCss(cssFileName) {
     function expandAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         removeClass(innerToggle, "will-expand");
-        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-            if (!hasClass(e, "type-contents-toggle")) {
+        onEachLazy(document.getElementsByClassName("toggle"), e => {
+            if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
                 e.open = true;
             }
         });
@@ -632,7 +633,7 @@ function loadCss(cssFileName) {
     function collapseAllDocs() {
         const innerToggle = document.getElementById(toggleAllDocsId);
         addClass(innerToggle, "will-expand");
-        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+        onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (e.parentNode.id !== "implementations-list" ||
                 (!hasClass(e, "implementors-toggle") &&
                  !hasClass(e, "type-contents-toggle"))
@@ -680,7 +681,7 @@ function loadCss(cssFileName) {
             setImplementorsTogglesOpen("blanket-implementations-list", false);
         }
 
-        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+        onEachLazy(document.getElementsByClassName("toggle"), e => {
             if (!hideLargeItemContents && hasClass(e, "type-contents-toggle")) {
                 e.open = true;
             }
@@ -725,12 +726,9 @@ function loadCss(cssFileName) {
         });
     };
 
-    (function() {
-        // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        if (getSettingValue("line-numbers") === "true") {
-            window.rustdoc_add_line_numbers_to_examples();
-        }
-    }());
+    if (getSettingValue("line-numbers") === "true") {
+        window.rustdoc_add_line_numbers_to_examples();
+    }
 
     let oldSidebarScrollPosition = null;
 
@@ -772,6 +770,7 @@ function loadCss(cssFileName) {
     };
 
     function showSidebar() {
+        window.hideAllModals(false);
         window.rustdocMobileScrollLock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         addClass(sidebar, "shown");
@@ -790,31 +789,37 @@ function loadCss(cssFileName) {
             // we need to switch away from mobile mode and make the main content area scrollable.
             hideSidebar();
         }
-    });
-
-    function handleClick(id, f) {
-        const elem = document.getElementById(id);
-        if (elem) {
-            elem.addEventListener("click", f);
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            // As a workaround to the behavior of `contains: layout` used in doc togglers, the
+            // notable traits popup is positioned using javascript.
+            //
+            // This means when the window is resized, we need to redo the layout.
+            const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
+            const force_visible = base.NOTABLE_FORCE_VISIBLE;
+            hideNotable(false);
+            if (force_visible) {
+                showNotable(base);
+                base.NOTABLE_FORCE_VISIBLE = true;
+            }
         }
-    }
-    handleClick(MAIN_ID, () => {
-        hideSidebar();
     });
 
-    onEachLazy(document.getElementsByTagName("a"), el => {
+    const mainElem = document.getElementById(MAIN_ID);
+    if (mainElem) {
+        mainElem.addEventListener("click", hideSidebar);
+    }
+
+    onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
         // the height of the document so we wind up scrolled to the wrong place.
-        if (el.hash) {
-            el.addEventListener("click", () => {
-                expandSection(el.hash.slice(1));
-                hideSidebar();
-            });
-        }
+        el.addEventListener("click", () => {
+            expandSection(el.hash.slice(1));
+            hideSidebar();
+        });
     });
 
-    onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), el => {
+    onEachLazy(document.querySelectorAll(".toggle > summary:not(.hideme)"), el => {
         el.addEventListener("click", e => {
             if (e.target.tagName !== "SUMMARY" && e.target.tagName !== "A") {
                 e.preventDefault();
@@ -822,10 +827,123 @@ function loadCss(cssFileName) {
         });
     });
 
+    function showNotable(e) {
+        if (!window.NOTABLE_TRAITS) {
+            const data = document.getElementById("notable-traits-data");
+            if (data) {
+                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+            } else {
+                throw new Error("showNotable() called on page without any notable traits!");
+            }
+        }
+        if (window.CURRENT_NOTABLE_ELEMENT && window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE === e) {
+            // Make this function idempotent.
+            return;
+        }
+        window.hideAllModals(false);
+        const ty = e.getAttribute("data-ty");
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = "<div class=\"content\">" + window.NOTABLE_TRAITS[ty] + "</div>";
+        wrapper.className = "notable popover";
+        const focusCatcher = document.createElement("div");
+        focusCatcher.setAttribute("tabindex", "0");
+        focusCatcher.onfocus = hideNotable;
+        wrapper.appendChild(focusCatcher);
+        const pos = e.getBoundingClientRect();
+        // 5px overlap so that the mouse can easily travel from place to place
+        wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+        wrapper.style.left = 0;
+        wrapper.style.right = "auto";
+        wrapper.style.visibility = "hidden";
+        const body = document.getElementsByTagName("body")[0];
+        body.appendChild(wrapper);
+        const wrapperPos = wrapper.getBoundingClientRect();
+        // offset so that the arrow points at the center of the "(i)"
+        const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
+        if (finalPos > 0) {
+            wrapper.style.left = finalPos + "px";
+        } else {
+            wrapper.style.setProperty(
+                "--popover-arrow-offset",
+                (wrapperPos.right - pos.right + 4) + "px"
+            );
+        }
+        wrapper.style.visibility = "";
+        window.CURRENT_NOTABLE_ELEMENT = wrapper;
+        window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
+        wrapper.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
+                hideNotable(true);
+            }
+        };
+    }
+
+    function notableBlurHandler(event) {
+        if (window.CURRENT_NOTABLE_ELEMENT &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE)
+        ) {
+            // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
+            // When I click the button on an already-opened notable trait popover, Safari
+            // hides the popover and then immediately shows it again, while everyone else hides it
+            // and it stays hidden.
+            //
+            // To work around this, make sure the click finishes being dispatched before
+            // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
+            // consistently with the other two.
+            setTimeout(() => hideNotable(false), 0);
+        }
+    }
+
+    function hideNotable(focus) {
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
+                if (focus) {
+                    window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
+                }
+                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
+            }
+            const body = document.getElementsByTagName("body")[0];
+            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
+            window.CURRENT_NOTABLE_ELEMENT = null;
+        }
+    }
+
     onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName("notable-traits-tooltiptext")[0]
-                .classList.toggle("force-tooltip");
+            this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
+                hideNotable(true);
+            } else {
+                showNotable(this);
+                window.CURRENT_NOTABLE_ELEMENT.setAttribute("tabindex", "0");
+                window.CURRENT_NOTABLE_ELEMENT.focus();
+                window.CURRENT_NOTABLE_ELEMENT.onblur = notableBlurHandler;
+            }
+            return false;
+        };
+        e.onpointerenter = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            showNotable(this);
+        };
+        e.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!this.NOTABLE_FORCE_VISIBLE &&
+                !elemIsInParent(ev.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                hideNotable(true);
+            }
         };
     });
 
@@ -918,15 +1036,23 @@ function loadCss(cssFileName) {
             help_button.appendChild(container);
 
             container.onblur = helpBlurHandler;
-            container.onclick = event => {
-                event.preventDefault();
-            };
             help_button.onblur = helpBlurHandler;
             help_button.children[0].onblur = helpBlurHandler;
         }
 
         return container;
     }
+
+    /**
+     * Hide popover menus, notable trait tooltips, and the sidebar (if applicable).
+     *
+     * Pass "true" to reset focus for notable traits.
+     */
+    window.hideAllModals = function(switchFocus) {
+        hideSidebar();
+        window.hidePopoverMenus();
+        hideNotable(switchFocus);
+    };
 
     /**
      * Hide all the popover menus.
@@ -957,9 +1083,12 @@ function loadCss(cssFileName) {
      * Show the help popup menu.
      */
     function showHelp() {
+        // Prevent `blur` events from being dispatched as a result of closing
+        // other modals.
+        getHelpButton().querySelector("a").focus();
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
-            window.hidePopoverMenus();
+            window.hideAllModals();
             menu.style.display = "";
         }
     }

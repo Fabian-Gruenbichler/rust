@@ -59,7 +59,7 @@ impl DebugContext {
 
         let producer = format!(
             "cg_clif (rustc {}, cranelift {})",
-            rustc_interface::util::version_str().unwrap_or("unknown version"),
+            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
             cranelift_codegen::VERSION,
         );
         let comp_dir = tcx
@@ -68,7 +68,7 @@ impl DebugContext {
             .working_dir
             .to_string_lossy(FileNameDisplayPreference::Remapped)
             .into_owned();
-        let (name, file_info) = match tcx.sess.local_crate_source_file.clone() {
+        let (name, file_info) = match tcx.sess.local_crate_source_file() {
             Some(path) => {
                 let name = path.to_string_lossy().into_owned();
                 (name, None)

@@ -226,7 +226,7 @@ fn analyze(
             find_node_at_offset(&file_with_fake_ident, offset)
         {
             let parent = name_ref.syntax().parent()?;
-            let (mut nameref_ctx, _) = classify_name_ref(&sema, &original_file, name_ref, parent)?;
+            let (mut nameref_ctx, _) = classify_name_ref(sema, &original_file, name_ref, parent)?;
             if let NameRefKind::Path(path_ctx) = &mut nameref_ctx.kind {
                 path_ctx.kind = PathKind::Derive {
                     existing_derives: sema
@@ -277,7 +277,7 @@ fn analyze(
             return Some((analysis, (None, None), QualifierCtx::default()));
         }
     };
-    let expected = expected_type_and_name(sema, &self_token, &name_like);
+    let expected = expected_type_and_name(sema, self_token, &name_like);
     let mut qual_ctx = QualifierCtx::default();
     let analysis = match name_like {
         ast::NameLike::Lifetime(lifetime) => {
@@ -286,7 +286,7 @@ fn analyze(
         ast::NameLike::NameRef(name_ref) => {
             let parent = name_ref.syntax().parent()?;
             let (nameref_ctx, qualifier_ctx) =
-                classify_name_ref(sema, &original_file, name_ref, parent.clone())?;
+                classify_name_ref(sema, &original_file, name_ref, parent)?;
             qual_ctx = qualifier_ctx;
             CompletionAnalysis::NameRef(nameref_ctx)
         }
@@ -374,7 +374,7 @@ fn expected_type_and_name(
                 ast::ArgList(_) => {
                     cov_mark::hit!(expected_type_fn_param);
                     ActiveParameter::at_token(
-                        &sema,
+                        sema,
                        token.clone(),
                     ).map(|ap| {
                         let name = ap.ident().map(NameOrNameRef::Name);
@@ -507,7 +507,7 @@ fn classify_lifetime(
             _ => LifetimeKind::Lifetime,
         }
     };
-    let lifetime = find_node_at_offset(&original_file, lifetime.syntax().text_range().start());
+    let lifetime = find_node_at_offset(original_file, lifetime.syntax().text_range().start());
 
     Some(LifetimeContext { lifetime, kind })
 }
@@ -548,7 +548,7 @@ fn classify_name(
             _ => return None,
         }
     };
-    let name = find_node_at_offset(&original_file, name.syntax().text_range().start());
+    let name = find_node_at_offset(original_file, name.syntax().text_range().start());
     Some(NameContext { name, kind })
 }
 
@@ -558,7 +558,7 @@ fn classify_name_ref(
     name_ref: ast::NameRef,
     parent: SyntaxNode,
 ) -> Option<(NameRefContext, QualifierCtx)> {
-    let nameref = find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
+    let nameref = find_node_at_offset(original_file, name_ref.syntax().text_range().start());
 
     let make_res = |kind| (NameRefContext { nameref: nameref.clone(), kind }, Default::default());
 
@@ -585,11 +585,7 @@ fn classify_name_ref(
                 original_file,
                 &record_field.parent_record_pat(),
             ),
-            ..pattern_context_for(
-                sema,
-                original_file,
-                record_field.parent_record_pat().clone().into(),
-            )
+            ..pattern_context_for(sema, original_file, record_field.parent_record_pat().into())
         });
         return Some(make_res(kind));
     }
@@ -681,9 +677,13 @@ fn classify_name_ref(
                     ast::Item::ExternBlock(it) => it.extern_item_list().is_none(),
                     ast::Item::Fn(it) => it.body().is_none(),
                     ast::Item::Impl(it) => it.assoc_item_list().is_none(),
-                    ast::Item::Module(it) => it.item_list().is_none(),
+                    ast::Item::Module(it) => {
+                        it.item_list().is_none() && it.semicolon_token().is_none()
+                    }
                     ast::Item::Static(it) => it.body().is_none(),
-                    ast::Item::Struct(it) => it.field_list().is_none(),
+                    ast::Item::Struct(it) => {
+                        it.field_list().is_none() && it.semicolon_token().is_none()
+                    }
                     ast::Item::Trait(it) => it.assoc_item_list().is_none(),
                     ast::Item::TypeAlias(it) => it.ty().is_none(),
                     ast::Item::Union(it) => it.record_field_list().is_none(),

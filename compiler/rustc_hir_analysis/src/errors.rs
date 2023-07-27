@@ -43,8 +43,23 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
     pub span: Span,
     #[label(generics_label)]
     pub generics_span: Option<Span>,
+    #[label(where_label)]
+    pub where_span: Option<Span>,
+    #[label(bounds_label)]
+    pub bounds_span: Vec<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_async_trait_impl_should_be_async)]
+pub struct AsyncTraitImplShouldBeAsync {
+    #[primary_span]
+    // #[label]
+    pub span: Span,
+    #[label(trait_item_label)]
+    pub trait_item_span: Option<Span>,
+    pub method_name: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -120,7 +135,7 @@ pub struct TypeofReservedKeywordUsed<'tcx> {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion_verbose(code = "{ty}")]
+    #[suggestion(style = "verbose", code = "{ty}")]
     pub opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -156,6 +171,7 @@ pub struct MissingTypeParams {
 
 // Manual implementation of `IntoDiagnostic` to be able to call `span_to_snippet`.
 impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
+    #[track_caller]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut err = handler.struct_span_err_with_code(
             self.span,
@@ -238,17 +254,14 @@ pub struct UnusedExternCrate {
 #[derive(LintDiagnostic)]
 #[diag(hir_analysis_extern_crate_not_idiomatic)]
 pub struct ExternCrateNotIdiomatic {
-    #[suggestion_short(applicability = "machine-applicable", code = "{suggestion_code}")]
+    #[suggestion(
+        style = "short",
+        applicability = "machine-applicable",
+        code = "{suggestion_code}"
+    )]
     pub span: Span,
     pub msg_code: String,
     pub suggestion_code: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_expected_used_symbol)]
-pub struct ExpectedUsedSymbol {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -279,4 +292,23 @@ pub struct SelfInImplSelf {
     pub span: MultiSpan,
     #[note]
     pub note: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_linkage_type, code = "E0791")]
+pub(crate) struct LinkageType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[help]
+#[diag(hir_analysis_auto_deref_reached_recursion_limit, code = "E0055")]
+pub struct AutoDerefReachedRecursionLimit<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub ty: Ty<'a>,
+    pub suggested_limit: rustc_session::Limit,
+    pub crate_name: Symbol,
 }

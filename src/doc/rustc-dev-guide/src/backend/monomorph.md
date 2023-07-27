@@ -10,7 +10,7 @@ execute.
 Different languages handle this problem differently. For example, in some
 languages, such as Java, we may not know the most precise type of value until
 runtime. In the case of Java, this is ok because (almost) all variables are
-reference values anyway (i.e. pointers to a stack allocated object). This
+reference values anyway (i.e. pointers to a heap allocated object). This
 flexibility comes at the cost of performance, since all accesses to an object
 must dereference a pointer.
 
@@ -70,7 +70,7 @@ or more modules in Crate B.
 | Crate A function | Behavior |
 | - | - |
 | Non-generic function | Crate A function doesn't appear in any codegen units of Crate B |
-| Non-generic `#[inline]` function |  Crate A function appears with in a single CGU  of Crate B, and exists even after post-inlining stage|
+| Non-generic `#[inline]` function |  Crate A function appears within a single CGU  of Crate B, and exists even after post-inlining stage|
 | Generic function |  Regardless of inlining, all monomorphized (specialized) functions <br> from Crate A appear within a single codegen unit for Crate B. <br> The codegen unit exists even after the post inlining stage.|
 | Generic `#[inline]` function |   - same - |
 

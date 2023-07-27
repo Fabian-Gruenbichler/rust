@@ -100,7 +100,7 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<Vec<anyhow::Result<ProjectWorkspace>>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
     pub(crate) fetch_build_data_queue:
         OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
 
@@ -134,7 +134,7 @@ impl GlobalState {
 
         let task_pool = {
             let (sender, receiver) = unbounded();
-            let handle = TaskPool::new(sender);
+            let handle = TaskPool::new_with_threads(sender, config.main_loop_num_threads());
             Handle { handle, receiver }
         };
 
@@ -383,7 +383,7 @@ impl GlobalStateSnapshot {
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
         let endings = self.vfs.read().1[&file_id];
         let index = self.analysis.file_line_index(file_id)?;
-        let res = LineIndex { index, endings, encoding: self.config.offset_encoding() };
+        let res = LineIndex { index, endings, encoding: self.config.position_encoding() };
         Ok(res)
     }
 
@@ -429,6 +429,6 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
 
 pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> Result<FileId> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {}", path))?;
+    let res = vfs.file_id(&path).ok_or_else(|| format!("file not found: {path}"))?;
     Ok(res)
 }

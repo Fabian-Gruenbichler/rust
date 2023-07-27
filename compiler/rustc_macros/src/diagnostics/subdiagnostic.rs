@@ -29,7 +29,7 @@ impl SubdiagnosticDeriveBuilder {
         Self { diag, f }
     }
 
-    pub(crate) fn into_tokens<'a>(self, mut structure: Structure<'a>) -> TokenStream {
+    pub(crate) fn into_tokens(self, mut structure: Structure<'_>) -> TokenStream {
         let implementation = {
             let ast = structure.ast();
             let span = ast.span().unwrap();
@@ -198,8 +198,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 throw_span_err!(
                     attr.span().unwrap(),
                     &format!(
-                        "diagnostic slug must be first argument of a `#[{}(...)]` attribute",
-                        name
+                        "diagnostic slug must be first argument of a `#[{name}(...)]` attribute"
                     )
                 );
             };
@@ -409,7 +408,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 let mut code = None;
                 for nested_attr in list.nested.iter() {
                     let NestedMeta::Meta(ref meta) = nested_attr else {
-                        throw_invalid_nested_attr!(attr, &nested_attr);
+                        throw_invalid_nested_attr!(attr, nested_attr);
                     };
 
                     let span = meta.span().unwrap();
@@ -427,7 +426,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                             );
                             code.set_once((code_field, formatting_init), span);
                         }
-                        _ => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+                        _ => throw_invalid_nested_attr!(attr, nested_attr, |diag| {
                             diag.help("`code` is the only valid nested attribute")
                         }),
                     }

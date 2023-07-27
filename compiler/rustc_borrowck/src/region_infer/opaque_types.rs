@@ -1,18 +1,18 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::infer::{DefiningAnchor, InferCtxt};
-use rustc_infer::traits::{Obligation, ObligationCause, TraitEngine};
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, ToPredicate, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::TraitEngineExt as _;
+use rustc_trait_selection::traits::ObligationCtxt;
+
+use crate::session_diagnostics::NonGenericOpaqueTypeParam;
 
 use super::RegionInferenceContext;
 
@@ -63,17 +63,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
     ) -> VecMap<LocalDefId, OpaqueHiddenType<'tcx>> {
         let mut result: VecMap<LocalDefId, OpaqueHiddenType<'tcx>> = VecMap::new();
+
+        let member_constraints: FxHashMap<_, _> = self
+            .member_constraints
+            .all_indices()
+            .map(|ci| (self.member_constraints[ci].key, ci))
+            .collect();
+        debug!(?member_constraints);
+
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
 
             let mut subst_regions = vec![self.universal_regions.fr_static];
-            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
-                if let ty::RePlaceholder(..) = region.kind() {
-                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
-                    return region;
-                }
-                let vid = self.to_region_vid(region);
+
+            let to_universal_region = |vid, subst_regions: &mut Vec<_>| {
                 trace!(?vid);
                 let scc = self.constraint_sccs.scc(vid);
                 trace!(?scc);
@@ -94,10 +98,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         infcx.tcx.lifetimes.re_static
                     }
                 }
-            });
+            };
 
-            subst_regions.sort();
-            subst_regions.dedup();
+            // Start by inserting universal regions from the member_constraint choice regions.
+            // This will ensure they get precedence when folding the regions in the concrete type.
+            if let Some(&ci) = member_constraints.get(&opaque_type_key) {
+                for &vid in self.member_constraints.choice_regions(ci) {
+                    to_universal_region(vid, &mut subst_regions);
+                }
+            }
+            debug!(?subst_regions);
+
+            // Next, insert universal regions from substs, so we can translate regions that appear
+            // in them but are not subject to member constraints, for instance closure substs.
+            let universal_substs = infcx.tcx.fold_regions(substs, |region, _| {
+                if let ty::RePlaceholder(..) = region.kind() {
+                    // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                    return region;
+                }
+                let vid = self.to_region_vid(region);
+                to_universal_region(vid, &mut subst_regions)
+            });
+            debug!(?universal_substs);
+            debug!(?subst_regions);
+
+            // Deduplicate the set of regions while keeping the chosen order.
+            let subst_regions = subst_regions.into_iter().collect::<FxIndexSet<_>>();
+            debug!(?subst_regions);
 
             let universal_concrete_type =
                 infcx.tcx.fold_regions(concrete_type, |region, _| match *region {
@@ -108,8 +135,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         .unwrap_or(infcx.tcx.lifetimes.re_erased),
                     _ => region,
                 });
-
-            debug!(?universal_concrete_type, ?universal_substs);
+            debug!(?universal_concrete_type);
 
             let opaque_type_key =
                 OpaqueTypeKey { def_id: opaque_type_key.def_id, substs: universal_substs };
@@ -211,7 +237,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// # Parameters
     ///
     /// - `def_id`, the `impl Trait` type
-    /// - `substs`, the substs  used to instantiate this opaque type
+    /// - `substs`, the substs used to instantiate this opaque type
     /// - `instantiated_ty`, the inferred type C1 -- fully resolved, lifted version of
     ///   `opaque_defn.concrete_ty`
     #[instrument(level = "debug", skip(self))]
@@ -221,12 +247,12 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         instantiated_ty: OpaqueHiddenType<'tcx>,
         origin: OpaqueTyOrigin,
     ) -> Ty<'tcx> {
-        if self.is_tainted_by_errors() {
-            return self.tcx.ty_error();
+        if let Some(e) = self.tainted_by_errors() {
+            return self.tcx.ty_error_with_guaranteed(e);
         }
 
         let definition_ty = instantiated_ty
-            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false, origin)
+            .remap_generic_params_to_declaration_params(opaque_type_key, self.tcx, false)
             .ty;
 
         if !check_opaque_type_parameter_valid(
@@ -238,7 +264,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             return self.tcx.ty_error();
         }
 
-        // Only check this for TAIT. RPIT already supports `src/test/ui/impl-trait/nested-return-type2.rs`
+        // Only check this for TAIT. RPIT already supports `tests/ui/impl-trait/nested-return-type2.rs`
         // on stable and we'd break that.
         let OpaqueTyOrigin::TyAlias = origin else {
             return definition_ty;
@@ -252,58 +278,55 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         // type-alias-impl-trait/issue-67844-nested-opaque.rs
         let infcx =
             self.tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bubble).build();
+        let ocx = ObligationCtxt::new(&infcx);
         // Require the hidden type to be well-formed with only the generics of the opaque type.
         // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
         // hidden type is well formed even without those bounds.
-        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()))
-            .to_predicate(infcx.tcx);
-        let mut fulfillment_cx = <dyn TraitEngine<'tcx>>::new(infcx.tcx);
+        let predicate = ty::Binder::dummy(ty::PredicateKind::WellFormed(definition_ty.into()));
 
         let id_substs = InternalSubsts::identity_for_item(self.tcx, def_id.to_def_id());
 
         // Require that the hidden type actually fulfills all the bounds of the opaque type, even without
         // the bounds that the function supplies.
         let opaque_ty = self.tcx.mk_opaque(def_id.to_def_id(), id_substs);
-        match infcx
-            .at(&ObligationCause::misc(instantiated_ty.span, body_id), param_env)
-            .eq(opaque_ty, definition_ty)
-        {
-            Ok(infer_ok) => {
-                for obligation in infer_ok.obligations {
-                    fulfillment_cx.register_predicate_obligation(&infcx, obligation);
-                }
-            }
-            Err(err) => {
-                infcx
-                    .err_ctxt()
-                    .report_mismatched_types(
-                        &ObligationCause::misc(instantiated_ty.span, body_id),
-                        opaque_ty,
-                        definition_ty,
-                        err,
-                    )
-                    .emit();
-            }
+        if let Err(err) = ocx.eq(
+            &ObligationCause::misc(instantiated_ty.span, body_id),
+            param_env,
+            opaque_ty,
+            definition_ty,
+        ) {
+            infcx
+                .err_ctxt()
+                .report_mismatched_types(
+                    &ObligationCause::misc(instantiated_ty.span, body_id),
+                    opaque_ty,
+                    definition_ty,
+                    err,
+                )
+                .emit();
         }
 
-        fulfillment_cx.register_predicate_obligation(
-            &infcx,
-            Obligation::misc(instantiated_ty.span, body_id, param_env, predicate),
-        );
+        ocx.register_obligation(Obligation::misc(
+            infcx.tcx,
+            instantiated_ty.span,
+            body_id,
+            param_env,
+            predicate,
+        ));
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        let errors = fulfillment_cx.select_all_or_error(&infcx);
+        let errors = ocx.select_all_or_error();
 
         // This is still required for many(half of the tests in ui/type-alias-impl-trait)
         // tests to pass
-        let _ = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        let _ = infcx.take_opaque_types();
 
         if errors.is_empty() {
             definition_ty
         } else {
-            infcx.err_ctxt().report_fulfillment_errors(&errors, None, false);
-            self.tcx.ty_error()
+            let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+            self.tcx.ty_error_with_guaranteed(reported)
         }
     }
 }
@@ -368,17 +391,13 @@ fn check_opaque_type_parameter_valid(
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
-            tcx.sess
-                .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(
-                    tcx.def_span(opaque_param.def_id),
-                    &format!(
-                        "used non-generic {} `{}` for generic parameter",
-                        opaque_param.kind.descr(),
-                        arg,
-                    ),
-                )
-                .emit();
+            let kind = opaque_param.kind.descr();
+            tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+                ty: arg,
+                kind,
+                span,
+                param_span: tcx.def_span(opaque_param.def_id),
+            });
             return false;
         }
     }

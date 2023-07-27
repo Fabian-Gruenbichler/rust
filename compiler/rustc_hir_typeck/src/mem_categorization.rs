@@ -133,7 +133,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     fn is_tainted_by_errors(&self) -> bool {
-        self.infcx.is_tainted_by_errors()
+        self.infcx.tainted_by_errors().is_some()
     }
 
     fn resolve_type_vars_or_error(
@@ -736,7 +736,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             }
 
             PatKind::Box(ref subpat) | PatKind::Ref(ref subpat, _) => {
-                // box p1, &p1, &mut p1.  we can ignore the mutability of
+                // box p1, &p1, &mut p1. we can ignore the mutability of
                 // PatKind::Ref since that information is already contained
                 // in the type.
                 let subplace = self.cat_deref(pat, place_with_id)?;

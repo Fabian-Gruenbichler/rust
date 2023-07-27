@@ -1,3 +1,4 @@
+use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
 use crate::{LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
 use rustc_errors::{fluent, Applicability};
@@ -5,7 +6,6 @@ use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_middle::ty::subst::InternalSubsts;
 use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::edition::Edition;
@@ -119,6 +119,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
         arg_span = expn.call_site;
     }
 
+    #[allow(rustc::diagnostic_outside_of_impl)]
     cx.struct_span_lint(NON_FMT_PANICS, arg_span, fluent::lint_non_fmt_panic, |lint| {
         lint.set_arg("name", symbol);
         lint.note(fluent::note);
@@ -148,22 +149,22 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
                 ty.ty_adt_def(),
-                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did()),
+                Some(ty_def) if Some(ty_def.did()) == cx.tcx.lang_items().string(),
             );
 
             let infcx = cx.tcx.infer_ctxt().build();
             let suggest_display = is_str
-                || cx.tcx.get_diagnostic_item(sym::Display).map(|t| {
-                    infcx
-                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                        .may_apply()
-                }) == Some(true);
+                || cx
+                    .tcx
+                    .get_diagnostic_item(sym::Display)
+                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
+                    == Some(true);
             let suggest_debug = !suggest_display
-                && cx.tcx.get_diagnostic_item(sym::Debug).map(|t| {
-                    infcx
-                        .type_implements_trait(t, ty, InternalSubsts::empty(), cx.param_env)
-                        .may_apply()
-                }) == Some(true);
+                && cx
+                    .tcx
+                    .get_diagnostic_item(sym::Debug)
+                    .map(|t| infcx.type_implements_trait(t, [ty], cx.param_env).may_apply())
+                    == Some(true);
 
             let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
 
@@ -254,25 +255,14 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.struct_span_lint(NON_FMT_PANICS, arg_spans, fluent::lint_non_fmt_panic_unused, |lint| {
-            lint.set_arg("count", n_arguments);
-            lint.note(fluent::note);
-            if is_arg_inside_call(arg.span, span) {
-                lint.span_suggestion(
-                    arg.span.shrink_to_hi(),
-                    fluent::add_args_suggestion,
-                    ", ...",
-                    Applicability::HasPlaceholders,
-                );
-                lint.span_suggestion(
-                    arg.span.shrink_to_lo(),
-                    fluent::add_fmt_suggestion,
-                    "\"{}\", ",
-                    Applicability::MachineApplicable,
-                );
-            }
-            lint
-        });
+        cx.emit_spanned_lint(
+            NON_FMT_PANICS,
+            arg_spans,
+            NonFmtPanicUnused {
+                count: n_arguments,
+                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
+            },
+        );
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {
@@ -282,22 +272,12 @@ fn check_panic_str<'tcx>(
                     .collect()
             });
         let count = brace_spans.as_ref().map(|v| v.len()).unwrap_or(/* any number >1 */ 2);
-        cx.struct_span_lint(
+        cx.emit_spanned_lint(
             NON_FMT_PANICS,
             brace_spans.unwrap_or_else(|| vec![span]),
-            fluent::lint_non_fmt_panic_braces,
-            |lint| {
-                lint.set_arg("count", count);
-                lint.note(fluent::note);
-                if is_arg_inside_call(arg.span, span) {
-                    lint.span_suggestion(
-                        arg.span.shrink_to_lo(),
-                        fluent::suggestion,
-                        "\"{}\", ",
-                        Applicability::MachineApplicable,
-                    );
-                }
-                lint
+            NonFmtPanicBraces {
+                count,
+                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span.shrink_to_lo()),
             },
         );
     }
@@ -305,7 +285,7 @@ fn check_panic_str<'tcx>(
 
 /// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
 /// and the type of (opening) delimiter used.
-fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Span, char)> {
+fn find_delimiters(cx: &LateContext<'_>, span: Span) -> Option<(Span, Span, char)> {
     let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
     let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
     let close = snippet.rfind(|c| ")]}".contains(c))?;

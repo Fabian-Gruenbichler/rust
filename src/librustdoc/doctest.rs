@@ -19,7 +19,7 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::{Target, TargetTriple};
 use tempfile::Builder as TempFileBuilder;
 
 use std::env;
@@ -95,7 +95,6 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         crate_cfg: interface::parse_cfgspecs(cfgs),
         crate_check_cfg: interface::parse_check_cfg(options.check_cfgs.clone()),
         input,
-        input_path: None,
         output_file: None,
         output_dir: None,
         file_loader: None,
@@ -115,9 +114,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let (tests, unused_extern_reports, compiling_test_count) =
         interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                let mut global_ctxt = queries.global_ctxt()?.take();
-
-                let collector = global_ctxt.enter(|tcx| {
+                let collector = queries.global_ctxt()?.enter(|tcx| {
                     let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
 
                     let opts = scrape_test_config(crate_attrs);
@@ -156,9 +153,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                 let unused_extern_reports = collector.unused_extern_reports.clone();
                 let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-                let ret: Result<_, ErrorGuaranteed> =
-                    Ok((collector.tests, unused_extern_reports, compiling_test_count));
-                ret
+                Ok((collector.tests, unused_extern_reports, compiling_test_count))
             })
         })?;
 
@@ -293,6 +288,16 @@ struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
+fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+    let exe_suffix = match target {
+        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTriple::TargetJson { contents, .. } => {
+            Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
+        }
+    };
+    input + &exe_suffix
+}
+
 fn run_test(
     test: &str,
     crate_name: &str,
@@ -313,7 +318,9 @@ fn run_test(
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
-    let output_file = outdir.path().join("rust_out");
+    // Make sure we emit well-formed executable names for our target.
+    let rust_out = add_exe_suffix("rust_out".to_owned(), &target);
+    let output_file = outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -551,6 +558,7 @@ pub(crate) fn make_test(
                 false,
                 Some(80),
                 false,
+                false,
             )
             .supports_color();
 
@@ -563,6 +571,7 @@ pub(crate) fn make_test(
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -747,6 +756,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -1210,7 +1220,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
     ) {
         let ast_attrs = self.tcx.hir().attrs(hir_id);
         if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
-            if !cfg.matches(&self.sess.parse_sess, Some(self.sess.features_untracked())) {
+            if !cfg.matches(&self.sess.parse_sess, Some(self.tcx.features())) {
                 return;
             }
         }
@@ -1290,7 +1300,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.hir_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }

@@ -1,5 +1,6 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
@@ -7,7 +8,7 @@ use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::DefId;
 use rustc_llvm::RustString;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -29,7 +30,7 @@ use std::ffi::CString;
 /// implementing this Rust version, and though the format documentation is very explicit and
 /// detailed, some undocumented details in Clang's implementation (that may or may not be important)
 /// were also replicated for Rust's Coverage Map.
-pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure the installed version of LLVM supports at least Coverage Map
@@ -37,7 +38,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -173,7 +174,7 @@ impl CoverageMapGenerator {
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-            let same_file = current_file_name.as_ref().map_or(false, |p| *p == file_name);
+            let same_file = current_file_name.map_or(false, |p| p == file_name);
             if !same_file {
                 if current_file_name.is_some() {
                     current_file_id += 1;
@@ -283,14 +284,14 @@ fn save_function_record(
 /// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
 /// code regions for the same function more than once which can lead to linker errors regarding
 /// duplicate symbols.
-fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let eligible_def_ids: DefIdSet = tcx
+    let eligible_def_ids: Vec<DefId> = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
@@ -316,7 +317,9 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+    for non_codegenned_def_id in
+        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
+    {
         let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
 
         // If a function is marked `#[no_coverage]`, then skip generating a

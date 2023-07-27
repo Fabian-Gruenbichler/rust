@@ -30,6 +30,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
         skip_glob_imports: true,
     },
     prefer_no_std: false,
+    assist_emit_must_use: false,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
@@ -170,7 +171,7 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult<'_>, assist_la
                     }
                     FileSystemEdit::MoveDir { src, src_id, dst } => {
                         // temporary placeholder for MoveDir since we are not using MoveDir in ide assists yet.
-                        (dst, format!("{:?}\n{:?}", src_id, src))
+                        (dst, format!("{src_id:?}\n{src:?}"))
                     }
                 };
                 let sr = db.file_source_root(dst.anchor);

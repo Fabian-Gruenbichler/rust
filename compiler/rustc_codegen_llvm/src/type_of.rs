@@ -140,7 +140,7 @@ fn struct_llfields<'a, 'tcx>(
         prev_effective_align = effective_field_align;
     }
     let padding_used = result.len() > field_count;
-    if !layout.is_unsized() && field_count > 0 {
+    if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
@@ -352,10 +352,10 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         let scalar = [a, b][index];
 
         // Make sure to return the same type `immediate_llvm_type` would when
-        // dealing with an immediate pair.  This means that `(bool, bool)` is
+        // dealing with an immediate pair. This means that `(bool, bool)` is
         // effectively represented as `{i8, i8}` in memory and two `i1`s as an
         // immediate, just like `bool` is typically `i8` in memory and only `i1`
-        // when immediate.  We need to load/store `bool` as `i8` to avoid
+        // when immediate. We need to load/store `bool` as `i8` to avoid
         // crippling LLVM optimizations or triggering other LLVM bugs with `i1`.
         if immediate && scalar.is_bool() {
             return cx.type_i1();

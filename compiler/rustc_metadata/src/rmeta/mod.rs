@@ -12,8 +12,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
-use rustc_hir::lang_items;
-use rustc_index::bit_set::{BitSet, FiniteBitSet};
+use rustc_hir::lang_items::LangItem;
+use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -22,7 +22,7 @@ use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
 use rustc_middle::mir;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, ReprOptions, Ty};
+use rustc_middle::ty::{self, ReprOptions, Ty, UnusedGenericParams};
 use rustc_middle::ty::{DeducedParamAttrs, GeneratorDiagnosticData, ParameterizedOverTcx, TyCtxt};
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::SymbolManglingVersion;
@@ -223,6 +223,7 @@ pub(crate) struct CrateRoot {
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
     has_global_allocator: bool,
+    has_alloc_error_handler: bool,
     has_panic_handler: bool,
     has_default_lib_allocator: bool,
 
@@ -230,8 +231,8 @@ pub(crate) struct CrateRoot {
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
     lib_features: LazyArray<(Symbol, Option<Symbol>)>,
     stability_implications: LazyArray<(Symbol, Symbol)>,
-    lang_items: LazyArray<(DefIndex, usize)>,
-    lang_items_missing: LazyArray<lang_items::LangItem>,
+    lang_items: LazyArray<(DefIndex, LangItem)>,
+    lang_items_missing: LazyArray<LangItem>,
     diagnostic_items: LazyArray<(Symbol, DefIndex)>,
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,
@@ -352,20 +353,20 @@ define_tables! {
     explicit_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     generics_of: Table<DefIndex, LazyValue<ty::Generics>>,
     // As an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Predicate<'static>, Span)>>,
+    inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     super_predicates_of: Table<DefIndex, LazyValue<ty::GenericPredicates<'static>>>,
     type_of: Table<DefIndex, LazyValue<Ty<'static>>>,
     variances_of: Table<DefIndex, LazyArray<ty::Variance>>,
     fn_sig: Table<DefIndex, LazyValue<ty::PolyFnSig<'static>>>,
     codegen_fn_attrs: Table<DefIndex, LazyValue<CodegenFnAttrs>>,
-    impl_trait_ref: Table<DefIndex, LazyValue<ty::TraitRef<'static>>>,
-    const_param_default: Table<DefIndex, LazyValue<rustc_middle::ty::Const<'static>>>,
+    impl_trait_ref: Table<DefIndex, LazyValue<ty::EarlyBinder<ty::TraitRef<'static>>>>,
+    const_param_default: Table<DefIndex, LazyValue<ty::EarlyBinder<rustc_middle::ty::Const<'static>>>>,
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
     // FIXME(compiler-errors): Why isn't this a LazyArray?
-    thir_abstract_const: Table<DefIndex, LazyValue<&'static [ty::abstract_const::Node<'static>]>>,
+    thir_abstract_const: Table<DefIndex, LazyValue<ty::Const<'static>>>,
     impl_parent: Table<DefIndex, RawDefId>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     constness: Table<DefIndex, hir::Constness>,
@@ -383,7 +384,7 @@ define_tables! {
     trait_item_def_id: Table<DefIndex, RawDefId>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
-    unused_generic_params: Table<DefIndex, LazyValue<FiniteBitSet<u32>>>,
+    unused_generic_params: Table<DefIndex, LazyValue<UnusedGenericParams>>,
     params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
@@ -399,26 +400,22 @@ define_tables! {
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     // Slot is full when macro is macro_rules.
     macro_rules: Table<DefIndex, ()>,
-    macro_definition: Table<DefIndex, LazyValue<ast::MacArgs>>,
+    macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
     proc_macro: Table<DefIndex, MacroKind>,
     module_reexports: Table<DefIndex, LazyArray<ModChild>>,
     deduced_param_attrs: Table<DefIndex, LazyArray<DeducedParamAttrs>>,
+    // Slot is full when opaque is TAIT.
+    is_type_alias_impl_trait: Table<DefIndex, ()>,
 
     trait_impl_trait_tys: Table<DefIndex, LazyValue<FxHashMap<DefId, Ty<'static>>>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
 struct VariantData {
-    ctor_kind: CtorKind,
     discr: ty::VariantDiscr,
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
-    ctor: Option<DefIndex>,
+    ctor: Option<(CtorKind, DefIndex)>,
     is_non_exhaustive: bool,
-}
-
-#[derive(TyEncodable, TyDecodable)]
-struct GeneratorData<'tcx> {
-    layout: mir::GeneratorLayout<'tcx>,
 }
 
 // Tags used for encoding Spans:

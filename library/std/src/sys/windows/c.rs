@@ -56,6 +56,7 @@ pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
 pub type LPSECURITY_ATTRIBUTES = *mut SECURITY_ATTRIBUTES;
 pub type LPSTARTUPINFO = *mut STARTUPINFO;
 pub type LPVOID = *mut c_void;
+pub type LPCVOID = *const c_void;
 pub type LPWCH = *mut WCHAR;
 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
 pub type LPWSADATA = *mut WSADATA;
@@ -294,8 +295,6 @@ pub fn nt_success(status: NTSTATUS) -> bool {
     status >= 0
 }
 
-// "RNG\0"
-pub const BCRYPT_RNG_ALGORITHM: &[u16] = &[b'R' as u16, b'N' as u16, b'G' as u16, 0];
 pub const BCRYPT_USE_SYSTEM_PREFERRED_RNG: DWORD = 0x00000002;
 
 #[repr(C)]
@@ -362,7 +361,7 @@ impl IO_STATUS_BLOCK {
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
     dwErrorCode: DWORD,
-    dwNumberOfBytesTransfered: DWORD,
+    dwNumberOfBytesTransferred: DWORD,
     lpOverlapped: *mut OVERLAPPED,
 );
 
@@ -773,6 +772,16 @@ pub struct timeval {
     pub tv_usec: c_long,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct CONSOLE_READCONSOLE_CONTROL {
+    pub nLength: ULONG,
+    pub nInitialChars: ULONG,
+    pub dwCtrlWakeupMask: ULONG,
+    pub dwControlKeyState: ULONG,
+}
+pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
+
 // Desktop specific functions & types
 cfg_if::cfg_if! {
 if #[cfg(not(target_vendor = "uwp"))] {
@@ -802,17 +811,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
         extern "system" fn(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG;
 
     #[repr(C)]
-    #[derive(Copy, Clone)]
-    pub struct CONSOLE_READCONSOLE_CONTROL {
-        pub nLength: ULONG,
-        pub nInitialChars: ULONG,
-        pub dwCtrlWakeupMask: ULONG,
-        pub dwControlKeyState: ULONG,
-    }
-
-    pub type PCONSOLE_READCONSOLE_CONTROL = *mut CONSOLE_READCONSOLE_CONTROL;
-
-    #[repr(C)]
     pub struct BY_HANDLE_FILE_INFORMATION {
         pub dwFileAttributes: DWORD,
         pub ftCreationTime: FILETIME,
@@ -827,7 +825,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
     }
 
     pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
-    pub type LPCVOID = *const c_void;
 
     pub const HANDLE_FLAG_INHERIT: DWORD = 0x00000001;
 
@@ -835,6 +832,10 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "advapi32")]
     extern "system" {
+        // Forbidden when targeting UWP
+        #[link_name = "SystemFunction036"]
+        pub fn RtlGenRandom(RandomBuffer: *mut u8, RandomBufferLength: ULONG) -> BOOLEAN;
+
         // Allowed but unused by UWP
         pub fn OpenProcessToken(
             ProcessHandle: HANDLE,
@@ -855,24 +856,6 @@ if #[cfg(not(target_vendor = "uwp"))] {
 
     #[link(name = "kernel32")]
     extern "system" {
-        // Functions forbidden when targeting UWP
-        pub fn ReadConsoleW(
-            hConsoleInput: HANDLE,
-            lpBuffer: LPVOID,
-            nNumberOfCharsToRead: DWORD,
-            lpNumberOfCharsRead: LPDWORD,
-            pInputControl: PCONSOLE_READCONSOLE_CONTROL,
-        ) -> BOOL;
-
-        pub fn WriteConsoleW(
-            hConsoleOutput: HANDLE,
-            lpBuffer: LPCVOID,
-            nNumberOfCharsToWrite: DWORD,
-            lpNumberOfCharsWritten: LPDWORD,
-            lpReserved: LPVOID,
-        ) -> BOOL;
-
-        pub fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
         // Allowed but unused by UWP
         pub fn GetFileInformationByHandle(
             hFile: HANDLE,
@@ -913,6 +896,22 @@ if #[cfg(target_vendor = "uwp")] {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn GetCurrentProcessId() -> DWORD;
+
+    pub fn ReadConsoleW(
+        hConsoleInput: HANDLE,
+        lpBuffer: LPVOID,
+        nNumberOfCharsToRead: DWORD,
+        lpNumberOfCharsRead: LPDWORD,
+        pInputControl: PCONSOLE_READCONSOLE_CONTROL,
+    ) -> BOOL;
+    pub fn WriteConsoleW(
+        hConsoleOutput: HANDLE,
+        lpBuffer: LPCVOID,
+        nNumberOfCharsToWrite: DWORD,
+        lpNumberOfCharsWritten: LPDWORD,
+        lpReserved: LPVOID,
+    ) -> BOOL;
+    pub fn GetConsoleMode(hConsoleHandle: HANDLE, lpMode: LPDWORD) -> BOOL;
 
     pub fn GetSystemDirectoryW(lpBuffer: LPWSTR, uSize: UINT) -> UINT;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
@@ -1261,13 +1260,6 @@ extern "system" {
         cbBuffer: ULONG,
         dwFlags: ULONG,
     ) -> NTSTATUS;
-    pub fn BCryptOpenAlgorithmProvider(
-        phalgorithm: *mut BCRYPT_ALG_HANDLE,
-        pszAlgId: LPCWSTR,
-        pszimplementation: LPCWSTR,
-        dwflags: ULONG,
-    ) -> NTSTATUS;
-    pub fn BCryptCloseAlgorithmProvider(hAlgorithm: BCRYPT_ALG_HANDLE, dwFlags: ULONG) -> NTSTATUS;
 }
 
 // Functions that aren't available on every version of Windows that we support,

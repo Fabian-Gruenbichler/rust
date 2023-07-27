@@ -5,6 +5,7 @@ use crate::back::write::{
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
 };
 use crate::common::{IntPredicate, RealPredicate, TypeKind};
+use crate::errors;
 use crate::meth;
 use crate::mir;
 use crate::mir::operand::OperandValue;
@@ -22,7 +23,6 @@ use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::weak_lang_items::WEAK_ITEMS_SYMBOLS;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -42,7 +42,6 @@ use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, Size, VariantIdx};
 
 use std::collections::BTreeSet;
-use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -154,9 +153,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (
             &ty::Dynamic(ref data_a, _, src_dyn_kind),
             &ty::Dynamic(ref data_b, _, target_dyn_kind),
-        ) => {
-            assert_eq!(src_dyn_kind, target_dyn_kind);
-
+        ) if src_dyn_kind == target_dyn_kind => {
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
@@ -453,10 +450,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            cx.sess()
-                .struct_span_err(span, "entry symbol `main` declared multiple times")
-                .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
-                .emit();
+            cx.sess().emit_err(errors::MultipleMainFunctions { span });
             cx.sess().abort_if_errors();
             bug!();
         };
@@ -597,8 +591,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 &metadata,
                 &exported_symbols::metadata_symbol_name(tcx),
             );
-            if let Err(err) = std::fs::write(&file_name, data) {
-                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+            if let Err(error) = std::fs::write(&file_name, data) {
+                tcx.sess.emit_fatal(errors::MetadataObjectFileWrite { error });
             }
             Some(CompiledModule {
                 name: metadata_cgu_name,
@@ -639,7 +633,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
         let module_llvm = tcx.sess.time("write_allocator_module", || {
-            backend.codegen_allocator(tcx, &llmod_id, kind, tcx.lang_items().oom().is_some())
+            backend.codegen_allocator(
+                tcx,
+                &llmod_id,
+                kind,
+                // If allocator_kind is Some then alloc_error_handler_kind must
+                // also be Some.
+                tcx.alloc_error_handler_kind(()).unwrap(),
+            )
         });
 
         Some(ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator })
@@ -676,7 +677,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     });
 
     let mut total_codegen_time = Duration::new(0, 0);
-    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
+    let start_rss = tcx.sess.opts.unstable_opts.time_passes.then(|| get_resident_set_size());
 
     // The non-parallel compiler can only translate codegen units to LLVM IR
     // on a single thread, leading to a staircase effect where the N LLVM
@@ -776,7 +777,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    if tcx.sess.time_passes() {
+    if tcx.sess.opts.unstable_opts.time_passes {
         let end_rss = get_resident_set_size();
 
         print_time_passes_entry(
@@ -810,11 +811,7 @@ impl CrateInfo {
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
-                tcx.sess.fatal(&format!(
-                    "invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                    subsystem
-                ));
+                tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
             }
             subsystem.to_string()
         });
@@ -827,20 +824,30 @@ impl CrateInfo {
         //
         // In order to get this left-to-right dependency ordering, we use the reverse
         // postorder of all crates putting the leaves at the right-most positions.
-        let used_crates = tcx
+        let mut compiler_builtins = None;
+        let mut used_crates: Vec<_> = tcx
             .postorder_cnums(())
             .iter()
             .rev()
             .copied()
-            .filter(|&cnum| !tcx.dep_kind(cnum).macros_only())
+            .filter(|&cnum| {
+                let link = !tcx.dep_kind(cnum).macros_only();
+                if link && tcx.is_compiler_builtins(cnum) {
+                    compiler_builtins = Some(cnum);
+                    return false;
+                }
+                link
+            })
             .collect();
+        // `compiler_builtins` are always placed last to ensure that they're linked correctly.
+        used_crates.extend(compiler_builtins);
 
         let mut info = CrateInfo {
             target_cpu,
             exported_symbols,
             linked_symbols,
             local_crate_name,
-            compiler_builtins: None,
+            compiler_builtins,
             profiler_runtime: None,
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
@@ -866,9 +873,6 @@ impl CrateInfo {
 
             let used_crate_source = tcx.used_crate_source(cnum);
             info.used_crate_source.insert(cnum, used_crate_source.clone());
-            if tcx.is_compiler_builtins(cnum) {
-                info.compiler_builtins = Some(cnum);
-            }
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
@@ -887,14 +891,14 @@ impl CrateInfo {
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
         if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxHashSet<&Symbol> = info
+            let missing_weak_lang_items: FxHashSet<Symbol> = info
                 .used_crates
                 .iter()
-                .flat_map(|cnum| {
-                    tcx.missing_lang_items(*cnum)
-                        .iter()
-                        .filter(|l| lang_items::required(tcx, **l))
-                        .filter_map(|item| WEAK_ITEMS_SYMBOLS.get(item))
+                .flat_map(|&cnum| tcx.missing_lang_items(cnum))
+                .filter(|l| l.is_weak())
+                .filter_map(|&l| {
+                    let name = l.link_name()?;
+                    lang_items::required(tcx, l).then_some(name)
                 })
                 .collect();
             let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
@@ -960,16 +964,19 @@ pub fn provide(providers: &mut Providers) {
         };
 
         let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
-        for id in &*defids {
+
+        let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {
-                attr::OptimizeAttr::None => continue,
-                attr::OptimizeAttr::Size => continue,
-                attr::OptimizeAttr::Speed => {
-                    return for_speed;
-                }
+                attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
+                attr::OptimizeAttr::Speed => true,
             }
+        });
+
+        if any_for_speed {
+            return for_speed;
         }
+
         tcx.sess.opts.optimize
     };
 }

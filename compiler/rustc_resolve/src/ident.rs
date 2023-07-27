@@ -19,7 +19,7 @@ use crate::late::{
 };
 use crate::macros::{sub_namespace_match, MacroRulesScope};
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
-use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{Import, ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
 use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
 
@@ -875,13 +875,12 @@ impl<'a> Resolver<'a> {
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
             // hack to avoid inconsistent resolution ICEs during import validation.
-            let binding = [resolution.binding, resolution.shadowed_glob]
-                .into_iter()
-                .filter_map(|binding| match (binding, ignore_binding) {
+            let binding = [resolution.binding, resolution.shadowed_glob].into_iter().find_map(
+                |binding| match (binding, ignore_binding) {
                     (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
                     _ => binding,
-                })
-                .next();
+                },
+            );
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };
@@ -915,7 +914,11 @@ impl<'a> Resolver<'a> {
             }
 
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Res(_, true) = binding.kind {
+                if let NameBindingKind::Import {
+                    import: Import { kind: ImportKind::MacroExport, .. },
+                    ..
+                } = binding.kind
+                {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }

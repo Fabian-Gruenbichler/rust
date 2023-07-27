@@ -36,7 +36,6 @@ use rustc_span::symbol::Ident;
 use rustc_span::*;
 
 use std::cell::Cell;
-use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;
@@ -94,8 +93,8 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
-    pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
+    /// Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
+    pub fn compilation_output(&self, crate_name: Symbol) -> PathBuf {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
@@ -112,7 +111,7 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // List external crates used by the current crate.
+    /// List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
@@ -319,7 +318,7 @@ impl<'tcx> SaveContext<'tcx> {
                     qualname,
                     value,
                     parent: None,
-                    children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
+                    children: def.variants.iter().map(|v| id_from_hir_id(v.hir_id, self)).collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
@@ -594,12 +593,14 @@ impl<'tcx> SaveContext<'tcx> {
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
-            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
+            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => {
+                path.res.get(0).copied().unwrap_or(Res::Err)
+            }
             Node::PathSegment(seg) => {
                 if seg.res != Res::Err {
                     seg.res
                 } else {
-                    let parent_node = self.tcx.hir().get_parent_node(hir_id);
+                    let parent_node = self.tcx.hir().parent_id(hir_id);
                     self.get_path_res(parent_node)
                 }
             }
@@ -892,8 +893,8 @@ pub struct DumpHandler<'a> {
 }
 
 impl<'a> DumpHandler<'a> {
-    pub fn new(odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
-        DumpHandler { odir, cratename: cratename.to_owned() }
+    pub fn new(odir: Option<&'a Path>, cratename: Symbol) -> DumpHandler<'a> {
+        DumpHandler { odir, cratename: cratename.to_string() }
     }
 
     fn output_file(&self, ctx: &SaveContext<'_>) -> (BufWriter<File>, PathBuf) {
@@ -956,10 +957,10 @@ impl SaveHandler for CallbackHandler<'_> {
     }
 }
 
-pub fn process_crate<'l, 'tcx, H: SaveHandler>(
-    tcx: TyCtxt<'tcx>,
-    cratename: &str,
-    input: &'l Input,
+pub fn process_crate<H: SaveHandler>(
+    tcx: TyCtxt<'_>,
+    cratename: Symbol,
+    input: &Input,
     config: Option<Config>,
     mut handler: H,
 ) {

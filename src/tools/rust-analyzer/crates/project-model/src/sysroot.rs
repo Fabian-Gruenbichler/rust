@@ -104,7 +104,7 @@ impl Sysroot {
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
-            let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
+            let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
                 .into_iter()
                 .map(|it| sysroot.src_root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())
@@ -128,14 +128,18 @@ impl Sysroot {
         }
 
         if let Some(alloc) = sysroot.by_name("alloc") {
-            if let Some(core) = sysroot.by_name("core") {
-                sysroot.crates[alloc].deps.push(core);
+            for dep in ALLOC_DEPS.trim().lines() {
+                if let Some(dep) = sysroot.by_name(dep) {
+                    sysroot.crates[alloc].deps.push(dep)
+                }
             }
         }
 
         if let Some(proc_macro) = sysroot.by_name("proc_macro") {
-            if let Some(std) = sysroot.by_name("std") {
-                sysroot.crates[proc_macro].deps.push(std);
+            for dep in PROC_MACRO_DEPS.trim().lines() {
+                if let Some(dep) = sysroot.by_name(dep) {
+                    sysroot.crates[proc_macro].deps.push(dep)
+                }
             }
         }
 
@@ -167,7 +171,7 @@ fn discover_sysroot_dir(
 ) -> Result<AbsPathBuf> {
     let mut rustc = Command::new(toolchain::rustc());
     rustc.envs(extra_env);
-    rustc.current_dir(current_dir).args(&["--print", "sysroot"]);
+    rustc.current_dir(current_dir).args(["--print", "sysroot"]);
     tracing::debug!("Discovering sysroot by {:?}", rustc);
     let stdout = utf8_stdout(rustc)?;
     Ok(AbsPathBuf::assert(PathBuf::from(stdout)))
@@ -199,7 +203,7 @@ fn discover_sysroot_src_dir_or_add_component(
         .or_else(|| {
             let mut rustup = Command::new(toolchain::rustup());
             rustup.envs(extra_env);
-            rustup.current_dir(current_dir).args(&["component", "add", "rust-src"]);
+            rustup.current_dir(current_dir).args(["component", "add", "rust-src"]);
             tracing::info!("adding rust-src component by {:?}", rustup);
             utf8_stdout(rustup).ok()?;
             get_rust_src(sysroot_path)
@@ -239,6 +243,7 @@ fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
 
 const SYSROOT_CRATES: &str = "
 alloc
+backtrace
 core
 panic_abort
 panic_unwind
@@ -246,17 +251,19 @@ proc_macro
 profiler_builtins
 std
 stdarch/crates/std_detect
-term
 test
 unwind";
 
+const ALLOC_DEPS: &str = "core";
+
 const STD_DEPS: &str = "
 alloc
-core
-panic_abort
 panic_unwind
+panic_abort
+core
 profiler_builtins
+unwind
 std_detect
-term
-test
-unwind";
+test";
+
+const PROC_MACRO_DEPS: &str = "std";

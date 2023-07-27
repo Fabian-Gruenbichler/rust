@@ -111,10 +111,8 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.save_ctxt.lookup_def_id(ref_id)
     }
 
-    pub fn dump_crate_info(&mut self, name: &str) {
-        let source_file = self.tcx.sess.local_crate_source_file.as_ref();
-        let crate_root = source_file.map(|source_file| {
-            let source_file = Path::new(source_file);
+    pub fn dump_crate_info(&mut self, name: Symbol) {
+        let crate_root = self.tcx.sess.local_crate_source_file().map(|source_file| {
             match source_file.file_name() {
                 Some(_) => source_file.parent().unwrap().display(),
                 None => source_file.display(),
@@ -124,7 +122,7 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         let data = CratePreludeData {
             crate_id: GlobalCrateId {
-                name: name.into(),
+                name: name.to_string(),
                 disambiguator: (self.tcx.sess.local_stable_crate_id().to_u64(), 0),
             },
             crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
@@ -135,7 +133,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         self.dumper.crate_prelude(data);
     }
 
-    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: &str) {
+    pub fn dump_compilation_options(&mut self, input: &Input, crate_name: Symbol) {
         // Apply possible `remap-path-prefix` remapping to the input source file
         // (and don't include remapping args anymore)
         let (program, arguments) = {
@@ -157,10 +155,14 @@ impl<'tcx> DumpVisitor<'tcx> {
                 .enumerate()
                 .filter(|(i, _)| !remap_arg_indices.contains(i))
                 .map(|(_, arg)| match input {
-                    Input::File(ref path) if path == Path::new(&arg) => {
-                        let mapped = &self.tcx.sess.local_crate_source_file;
-                        mapped.as_ref().unwrap().to_string_lossy().into()
-                    }
+                    Input::File(ref path) if path == Path::new(&arg) => self
+                        .tcx
+                        .sess
+                        .local_crate_source_file()
+                        .as_ref()
+                        .unwrap()
+                        .to_string_lossy()
+                        .into(),
                     _ => arg,
                 });
 
@@ -185,13 +187,13 @@ impl<'tcx> DumpVisitor<'tcx> {
         }
     }
 
-    fn write_sub_paths(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         self.write_segments(path.segments)
     }
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere). See note on write_sub_paths about global.
-    fn write_sub_paths_truncated(&mut self, path: &'tcx hir::Path<'tcx>) {
+    fn write_sub_paths_truncated<R>(&mut self, path: &'tcx hir::Path<'tcx, R>) {
         if let [segments @ .., _] = path.segments {
             self.write_segments(segments)
         }
@@ -527,9 +529,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     let value = format!("{}::{} {{ {} }}", enum_data.name, name, fields_str);
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -552,7 +554,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                 }
                 ref v => {
                     let mut value = format!("{}::{}", enum_data.name, name);
-                    if let hir::VariantData::Tuple(fields, _) = v {
+                    if let hir::VariantData::Tuple(fields, _, _) = v {
                         value.push('(');
                         value.push_str(
                             &fields
@@ -565,9 +567,9 @@ impl<'tcx> DumpVisitor<'tcx> {
                     }
                     if !self.span.filter_generated(name_span) {
                         let span = self.span_from_span(name_span);
-                        let id = id_from_hir_id(variant.id, &self.save_ctxt);
+                        let id = id_from_hir_id(variant.hir_id, &self.save_ctxt);
                         let parent = Some(id_from_def_id(item.owner_id.to_def_id()));
-                        let attrs = self.tcx.hir().attrs(variant.id);
+                        let attrs = self.tcx.hir().attrs(variant.hir_id);
 
                         self.dumper.dump_def(
                             &access,
@@ -591,7 +593,7 @@ impl<'tcx> DumpVisitor<'tcx> {
             }
 
             for field in variant.data.fields() {
-                self.process_struct_field_def(field, variant.id);
+                self.process_struct_field_def(field, variant.hir_id);
                 self.visit_ty(field.ty);
             }
         }
@@ -1029,7 +1031,7 @@ impl<'tcx> DumpVisitor<'tcx> {
                                 trait_item.hir_id(),
                                 trait_item.ident,
                                 Some(bounds),
-                                default_ty.as_ref().map(|ty| &**ty),
+                                default_ty.as_deref(),
                                 &self.save_ctxt,
                             ),
                             attributes: lower_attributes(attrs.to_vec(), &self.save_ctxt),

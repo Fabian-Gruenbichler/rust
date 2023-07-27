@@ -249,8 +249,9 @@ pub struct DirBuilder {
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     fn inner(path: &Path) -> io::Result<Vec<u8>> {
         let mut file = File::open(path)?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)?;
+        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+        let mut bytes = Vec::with_capacity(size as usize);
+        io::default_read_to_end(&mut file, &mut bytes)?;
         Ok(bytes)
     }
     inner(path.as_ref())
@@ -288,8 +289,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
     fn inner(path: &Path) -> io::Result<String> {
         let mut file = File::open(path)?;
-        let mut string = String::new();
-        file.read_to_string(&mut string)?;
+        let size = file.metadata().map(|m| m.len()).unwrap_or(0);
+        let mut string = String::with_capacity(size as usize);
+        io::default_read_to_string(&mut file, &mut string)?;
         Ok(string)
     }
     inner(path.as_ref())
@@ -401,7 +403,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_create_new", issue = "none")]
+    #[unstable(feature = "file_create_new", issue = "105135")]
     pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
     }
@@ -510,8 +512,9 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
-    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
-    /// length would cause an overflow due to the implementation specifics.
+    /// Also, [`std::io::ErrorKind::InvalidInput`](crate::io::ErrorKind::InvalidInput)
+    /// will be returned if the desired length would cause an overflow due to
+    /// the implementation specifics.
     ///
     /// # Examples
     ///
@@ -1509,7 +1512,7 @@ impl FileType {
     }
 
     /// Tests whether this file type represents a regular file.
-    /// The result is  mutually exclusive to the results of
+    /// The result is mutually exclusive to the results of
     /// [`is_dir`] and [`is_symlink`]; only zero or one of these
     /// tests may pass.
     ///

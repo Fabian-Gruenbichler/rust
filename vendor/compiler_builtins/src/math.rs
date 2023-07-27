@@ -46,6 +46,8 @@ no_mangle! {
     fn fmaxf(x: f32, y: f32) -> f32;
     fn round(x: f64) -> f64;
     fn roundf(x: f32) -> f32;
+    fn rint(x: f64) -> f64;
+    fn rintf(x: f32) -> f32;
     fn sin(x: f64) -> f64;
     fn pow(x: f64, y: f64) -> f64;
     fn powf(x: f32, y: f32) -> f32;
@@ -65,20 +67,6 @@ no_mangle! {
     fn ldexpf(f: f32, n: i32) -> f32;
     fn tgamma(x: f64) -> f64;
     fn tgammaf(x: f32) -> f32;
-}
-
-#[cfg(any(
-    all(
-        target_family = "wasm",
-        target_os = "unknown",
-        not(target_env = "wasi")
-    ),
-    target_os = "xous",
-    all(target_arch = "x86_64", target_os = "uefi"),
-    all(target_arch = "xtensa", target_os = "none"),
-    all(target_vendor = "fortanix", target_env = "sgx")
-))]
-no_mangle! {
     fn atan(x: f64) -> f64;
     fn atan2(x: f64, y: f64) -> f64;
     fn cosh(x: f64) -> f64;
@@ -118,10 +106,11 @@ no_mangle! {
     fn truncf(x: f32) -> f32;
 }
 
-// only for the thumb*-none-eabi* targets and riscv32*-none-elf targets that lack the floating point instruction set
+// only for the thumb*-none-eabi*, riscv32*-none-elf and x86_64-unknown-none targets that lack the floating point instruction set
 #[cfg(any(
     all(target_arch = "arm", target_os = "none"),
-    all(target_arch = "riscv32", not(target_feature = "f"), target_os = "none")
+    all(target_arch = "riscv32", not(target_feature = "f"), target_os = "none"),
+    all(target_arch = "x86_64", target_os = "none")
 ))]
 no_mangle! {
     fn fmin(x: f64, y: f64) -> f64;
