@@ -6,12 +6,12 @@ Comment: Use https://github.com/infinity0/mdBook/tree/debian to help you rebase 
 ---
  src/tools/linkchecker/main.rs                      | 28 ++++++-
  vendor/mdbook/src/book/init.rs                     |  6 --
- .../src/renderer/html_handlebars/hbs_renderer.rs   | 80 ++-----------------
+ .../src/renderer/html_handlebars/hbs_renderer.rs   | 80 ++----------------
  .../mdbook/src/renderer/html_handlebars/search.rs  |  2 -
- vendor/mdbook/src/theme/index.hbs                  | 93 +---------------------
- vendor/mdbook/src/theme/mod.rs                     | 27 -------
+ vendor/mdbook/src/theme/index.hbs                  | 97 +---------------------
+ vendor/mdbook/src/theme/mod.rs                     | 27 ------
  vendor/mdbook/src/theme/searcher/mod.rs            |  2 -
- 7 files changed, 35 insertions(+), 203 deletions(-)
+ 7 files changed, 37 insertions(+), 205 deletions(-)
 
 diff --git a/src/tools/linkchecker/main.rs b/src/tools/linkchecker/main.rs
 index 4170c32..d7dcda7 100644
@@ -67,10 +67,10 @@ index 4170c32..d7dcda7 100644
                          report.links_ignored_exception += 1;
                      } else {
 diff --git a/vendor/mdbook/src/book/init.rs b/vendor/mdbook/src/book/init.rs
-index 264c113..2b0ff3a 100644
+index dd3fa8b..a088517 100644
 --- a/vendor/mdbook/src/book/init.rs
 +++ b/vendor/mdbook/src/book/init.rs
-@@ -151,12 +151,6 @@ impl BookBuilder {
+@@ -152,12 +152,6 @@ impl BookBuilder {
          let mut js = File::create(themedir.join("book.js"))?;
          js.write_all(theme::JS)?;
  
@@ -84,7 +84,7 @@ index 264c113..2b0ff3a 100644
      }
  
 diff --git a/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs b/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
-index b933a35..09b4a7a 100644
+index 1b648da..5fe813c 100644
 --- a/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
 +++ b/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
 @@ -3,7 +3,7 @@ use crate::config::{BookConfig, Config, HtmlConfig, Playground, RustEdition};
@@ -104,7 +104,7 @@ index b933a35..09b4a7a 100644
  
  use crate::utils::fs::get_404_output_file;
  use handlebars::Handlebars;
-@@ -232,80 +233,13 @@ impl HtmlHandlebars {
+@@ -235,80 +236,13 @@ impl HtmlHandlebars {
          if let Some(contents) = &theme.favicon_svg {
              write_file(destination, "favicon.svg", contents)?;
          }
@@ -191,10 +191,10 @@ index b933a35..09b4a7a 100644
          Ok(())
      }
 diff --git a/vendor/mdbook/src/renderer/html_handlebars/search.rs b/vendor/mdbook/src/renderer/html_handlebars/search.rs
-index c3b944c..d4bbe35 100644
+index a9e2f5c..3e3f69c 100644
 --- a/vendor/mdbook/src/renderer/html_handlebars/search.rs
 +++ b/vendor/mdbook/src/renderer/html_handlebars/search.rs
-@@ -52,8 +52,6 @@ pub fn create_files(search_config: &Search, destination: &Path, book: &Book) ->
+@@ -53,8 +53,6 @@ pub fn create_files(search_config: &Search, destination: &Path, book: &Book) ->
              format!("Object.assign(window.search, {});", index).as_bytes(),
          )?;
          utils::fs::write_file(destination, "searcher.js", searcher::JS)?;
@@ -204,10 +204,10 @@ index c3b944c..d4bbe35 100644
      }
  
 diff --git a/vendor/mdbook/src/theme/index.hbs b/vendor/mdbook/src/theme/index.hbs
-index 18d984a..4a0e2d1 100644
+index 147eb9a..27d358b 100644
 --- a/vendor/mdbook/src/theme/index.hbs
 +++ b/vendor/mdbook/src/theme/index.hbs
-@@ -34,10 +34,7 @@
+@@ -33,10 +33,7 @@
          {{/if}}
  
          <!-- Fonts -->
@@ -219,21 +219,21 @@ index 18d984a..4a0e2d1 100644
  
          <!-- Highlight.js Stylesheets -->
          <link rel="stylesheet" href="{{ path_to_root }}highlight.css">
-@@ -51,7 +48,7 @@
+@@ -50,7 +47,7 @@
  
          {{#if mathjax_support}}
          <!-- MathJax -->
--        <script async type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-+        <script async type="text/javascript" src="MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+-        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
++        <script async src="MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
          {{/if}}
      </head>
      <body>
-@@ -61,46 +58,6 @@
+@@ -60,46 +57,6 @@
              var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "{{ preferred_dark_theme }}" : "{{ default_theme }}";
          </script>
  
 -        <!-- Work around some values being stored in localStorage wrapped in quotes -->
--        <script type="text/javascript">
+-        <script>
 -            try {
 -                var theme = localStorage.getItem('mdbook-theme');
 -                var sidebar = localStorage.getItem('mdbook-sidebar');
@@ -249,7 +249,7 @@ index 18d984a..4a0e2d1 100644
 -        </script>
 -
 -        <!-- Set the theme before any content is loaded, prevents flash -->
--        <script type="text/javascript">
+-        <script>
 -            var theme;
 -            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
 -            if (theme === null || theme === undefined) { theme = default_theme; }
@@ -261,7 +261,7 @@ index 18d984a..4a0e2d1 100644
 -        </script>
 -
 -        <!-- Hide / unhide sidebar before it is displayed -->
--        <script type="text/javascript">
+-        <script>
 -            var html = document.querySelector('html');
 -            var sidebar = 'hidden';
 -            if (document.body.clientWidth >= 1080) {
@@ -275,13 +275,13 @@ index 18d984a..4a0e2d1 100644
          <nav id="sidebar" class="sidebar" aria-label="Table of contents">
              <div class="sidebar-scrollbox">
                  {{#toc}}{{/toc}}
-@@ -238,52 +195,6 @@
+@@ -237,54 +194,8 @@
          </script>
          {{/if}}
  
 -        {{#if google_analytics}}
 -        <!-- Google Analytics Tag -->
--        <script type="text/javascript">
+-        <script>
 -            var localAddrs = ["localhost", "127.0.0.1", ""];
 -
 -            // make sure we don't activate google analytics if the developer is
@@ -299,37 +299,41 @@ index 18d984a..4a0e2d1 100644
 -        {{/if}}
 -
 -        {{#if playground_line_numbers}}
--        <script type="text/javascript">
+-        <script>
 -            window.playground_line_numbers = true;
 -        </script>
 -        {{/if}}
 -
 -        {{#if playground_copyable}}
--        <script type="text/javascript">
+-        <script>
 -            window.playground_copyable = true;
 -        </script>
 -        {{/if}}
 -
 -        {{#if playground_js}}
--        <script src="{{ path_to_root }}ace.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}editor.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}mode-rust.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}theme-dawn.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}theme-tomorrow_night.js" type="text/javascript" charset="utf-8"></script>
+-        <script src="{{ path_to_root }}ace.js"></script>
+-        <script src="{{ path_to_root }}editor.js"></script>
+-        <script src="{{ path_to_root }}mode-rust.js"></script>
+-        <script src="{{ path_to_root }}theme-dawn.js"></script>
+-        <script src="{{ path_to_root }}theme-tomorrow_night.js"></script>
 -        {{/if}}
 -
 -        {{#if search_js}}
--        <script src="{{ path_to_root }}elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}mark.min.js" type="text/javascript" charset="utf-8"></script>
--        <script src="{{ path_to_root }}searcher.js" type="text/javascript" charset="utf-8"></script>
+-        <script src="{{ path_to_root }}elasticlunr.min.js"></script>
+-        <script src="{{ path_to_root }}mark.min.js"></script>
+-        <script src="{{ path_to_root }}searcher.js"></script>
 -        {{/if}}
 -
--        <script src="{{ path_to_root }}clipboard.min.js" type="text/javascript" charset="utf-8"></script>
-         <script src="{{ path_to_root }}highlight.js" type="text/javascript" charset="utf-8"></script>
-         <script src="{{ path_to_root }}book.js" type="text/javascript" charset="utf-8"></script>
+-        <script src="{{ path_to_root }}clipboard.min.js"></script>
+-        <script src="{{ path_to_root }}highlight.js"></script>
+-        <script src="{{ path_to_root }}book.js"></script>
++        <script src="{{ path_to_root }}highlight.js" type="text/javascript" charset="utf-8"></script>
++        <script src="{{ path_to_root }}book.js" type="text/javascript" charset="utf-8"></script>
  
+         <!-- Custom JS scripts -->
+         {{#each additional_js}}
 diff --git a/vendor/mdbook/src/theme/mod.rs b/vendor/mdbook/src/theme/mod.rs
-index a1ee18a..d059f01 100644
+index 7af5e2b..3086fcf 100644
 --- a/vendor/mdbook/src/theme/mod.rs
 +++ b/vendor/mdbook/src/theme/mod.rs
 @@ -1,9 +1,5 @@
