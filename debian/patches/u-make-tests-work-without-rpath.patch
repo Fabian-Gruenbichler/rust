@@ -9,10 +9,10 @@ Forwarded: TODO
  src/test/run-make-fulldeps/sysroot-crates-are-unstable/Makefile | 6 +++++-
  1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/src/test/run-make-fulldeps/sysroot-crates-are-unstable/Makefile b/src/test/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
+diff --git a/tests/run-make-fulldeps/sysroot-crates-are-unstable/Makefile b/tests/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
 index 1e267fb..ac46c24 100644
---- a/src/test/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
-+++ b/src/test/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
+--- a/tests/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
++++ b/tests/run-make-fulldeps/sysroot-crates-are-unstable/Makefile
 @@ -1,2 +1,6 @@
 +include ../tools.mk
 +
