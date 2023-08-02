@@ -320,7 +320,7 @@ Files: C*.md
        src/rust*
        src/stage0.json
        src/tools/*
-       src/test/*
+       tests/*
        src/version
        version
        x.py
@@ -358,7 +358,9 @@ Copyright: 2015-2020 The Rust Project Developers
 License: Apache-2.0 or MIT
 Comment: see https://github.com/laumann/compiletest-rs
 
-Files: vendor/ahash/*
+Files:
+ vendor/ahash/*
+ vendor/ahash-0.*/*
 Copyright: 2019-2022 Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/tkaitchuck/ahash
@@ -379,6 +381,7 @@ Files:
  vendor/bitflags/*
  vendor/cc/*
  vendor/cmake/*
+ vendor/env_logger/*
  vendor/env_logger-0.*/*
  vendor/getopts/*
  vendor/glob/*
@@ -388,6 +391,7 @@ Files:
  vendor/regex-syntax/*
  vendor/rustc-hash/*
  vendor/time/*
+ vendor/time-0.*/*
 Copyright: 2010-2021 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment:
@@ -395,6 +399,14 @@ Comment:
  Most of them come from the original upstream Rust project, thus share the
  same MIT/Apache-2.0 dual-license. See https://github.com/rust-lang.
  Exceptions are noted below.
+
+Files:
+ vendor/time-core/*
+ vendor/time-macros/*
+Copyright: 2019-2023 Jacob Pratt <open-source@jhpratt.dev>
+           2019-2023 Time contributors
+License: MIT OR Apache-2.0
+Comment: see https://github.com/time-rs/time
 
 Files: vendor/core-foundation-sys/*
 Copyright: 2012-2022 The Servo Project Developers
@@ -422,14 +434,9 @@ Comment: see https://github.com/servo/
 
 Files:
  vendor/getrandom/*
- vendor/getrandom-0*/*
  vendor/rand/*
- vendor/rand-0*/*
  vendor/rand_chacha/*
- vendor/rand_chacha-0*/*
  vendor/rand_core/*
- vendor/rand_core-0*/*
- vendor/rand_hc/*
  vendor/rand_xorshift/*
  vendor/rand_xoshiro/*
 Copyright: 2010-2019 The Rand Project Developers
@@ -441,7 +448,6 @@ Comment:
  see https://github.com/rust-random/small-rngs
 
 Files:
- vendor/cfg-if-0*/*
  vendor/cfg-if/*
  vendor/filetime/*
  vendor/flate2/*
@@ -546,7 +552,7 @@ Files:
  vendor/block-buffer/*
  vendor/digest/*
  vendor/md-5/*
- vendor/sha-1/*
+ vendor/sha1/*
  vendor/sha2/*
 Copyright: 2016-2020 RustCrypto Developers
 License: MIT or Apache-2.0
@@ -565,6 +571,11 @@ Copyright: 2016-2020 Andre Bogus <bogusandre@gmail.de>
            2016-2020 Joshua Landau <joshua@landau.ws>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/llogiq/bytecount
+
+Files: vendor/byteorder/*
+Copyright: 2015-2023 Andrew Gallant <jamslam@gmail.com>
+License: Unlicense OR MIT
+Comment: see https://github.com/BurntSushi/byteorder
 
 Files:
  vendor/globset/*
@@ -610,10 +621,10 @@ License: MIT or Apache-2.0
 Comment: see https://github.com/cryptocorrosion/cryptocorrosion
 
 Files:
- vendor/chalk-derive/*
+ vendor/chalk-derive-0.*/*
  vendor/chalk-engine/*
- vendor/chalk-ir/*
- vendor/chalk-solve/*
+ vendor/chalk-ir-0.*/*
+ vendor/chalk-solve-0.*/*
 Copyright:
  2015-2022 Rust Compiler Team
  2015-2022 Chalk developers
@@ -626,9 +637,12 @@ License: MIT or Apache-2.0
 Comment: see https://github.com/chronotope/chrono
 
 Files: 
+ vendor/clap/*
  vendor/clap-3.*/*
  vendor/clap_complete/*
  vendor/clap_derive/*
+ vendor/clap_derive-3.*/*
+ vendor/clap_lex/*
  vendor/clap_lex-0.*/*
 Copyright: 2015-2022 Kevin K. <kbknapp@gmail.com>
 License: MIT
@@ -872,7 +886,7 @@ Comment: see https://github.com/withoutboats/heck
 
 Files:
  vendor/hermit-abi/*
- vendor/hermit-abi-0.1.19/*
+ vendor/hermit-abi-0.*/*
 Copyright: 2019-2019 Stefan Lankes
 License: MIT or Apache-2.0
 Comment: see https://github.com/hermitcore/hermit-abi
@@ -945,6 +959,12 @@ Files: vendor/io-lifetimes/*
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/sunfishcode/io-lifetimes
+
+Files: vendor/is-terminal/*
+Copyright: 2022-2023 softprops <d.tangren@gmail.com>
+           2022-2023 Dan Gohman <dev@sunfishcode.online>
+License: MIT
+Comment: see https://github.com/sunfishcode/is-terminal
 
 Files: vendor/jsonpath_lib/*
 Copyright: 2018-2021 Changseok Han <freestrings@gmail.com>
@@ -1059,6 +1079,7 @@ Comment: see https://github.com/seanmonstar/num_cpus
 
 Files:
     vendor/object/*
+    vendor/object-0.*/*
 Copyright:
  2016-2020 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2020 Philip Craig <philipjcraig@gmail.com>
@@ -1092,6 +1113,7 @@ Comment: see https://github.com/Phundrak/output-vt100-rs
 
 Files:
  vendor/hashbrown/*
+ vendor/hashbrown-0.*/*
  vendor/lock_api/*
  vendor/thread_local/*
  vendor/parking_lot/*
@@ -1201,7 +1223,7 @@ License: MIT
 Comment: see https://github.com/mcarton/rust-punycode.git
 
 Files:
- vendor/quick-error/*
+ vendor/quick-error-1.*/*
 Copyright:
  2015-2020 Paul Colomiets <paul@colomiets.name>
  2015-2020 Colin Kiegel <kiegel@gmx.de>
@@ -1393,6 +1415,11 @@ Copyright: 2015-2020 Alex Crichton <alex@alexcrichton.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/stacker
 
+Files: vendor/static_assertions/*
+Copyright: 2017-2020 Nikolai Vazquez
+License: MIT OR Apache-2.0
+Comment: see https://github.com/nvzqz/static-assertions-rs
+
 Files: vendor/strsim/*
 Copyright: 2015-2021 Danny Guo <dannyguo91@gmail.com>
 License: MIT
@@ -1437,6 +1464,11 @@ Copyright:
  2014-2021 Steven Allen
 License: MIT or Apache-2.0
 Comment: see https://github.com/Stebalien/term
+
+Files: vendor/terminal_size/*
+Copyright: 2015-2023 Andrew Chin <achin@eminence32.net>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/eminence/terminal-size
 
 Files: vendor/termize/*
 Copyright: 2016-2020 Yuki Okushi <huyuumi.dev@gmail.com>
@@ -1510,6 +1542,11 @@ Copyright: 2020-2020 David Barsky <me@davidbarsky.com>
            2020-2020 Nathan Whitaker
 License: MIT OR Apache-2.0
 Comment: see https://github.com/davidbarsky/tracing-tree
+
+Files: vendor/twox-hash/*
+Copyright: 2015-2022 Jake Goulding <jake.goulding@gmail.com>
+License: MIT
+Comment: see https://github.com/shepmaster/twox-hash
 
 Files: vendor/type-map/*
 Copyright: 2019-2022 Jacob Brown <kardeiz@gmail.com>
@@ -1704,13 +1741,10 @@ Copyright:
 License: MIT
 Comment: see https://github.com/tokio-rs/valuable
 
-Files: vendor/wasi-0.9.0+wasi-snapshot-preview1/*
-Copyright: 2019-2022 The Cranelift Project Developers
-License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
-Comment: see https://github.com/bytecodealliance/wasi
-
 Files:
  vendor/windows-sys/*
+ vendor/windows-sys-0.*/*
+ vendor/windows-targets/*
  vendor/windows_aarch64_gnullvm/*
  vendor/windows_aarch64_msvc/*
  vendor/windows_i686_gnu/*
@@ -1718,7 +1752,7 @@ Files:
  vendor/windows_x86_64_gnu/*
  vendor/windows_x86_64_gnullvm/*
  vendor/windows_x86_64_msvc/*
-Copyright: 2019-2022 Microsoft Corporation
+Copyright: 2019-2023 Microsoft Corporation
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
 
@@ -1740,6 +1774,13 @@ Files:
 Copyright: 2020-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/matklad/xshell
+
+Files: vendor/zip/*
+Copyright: 2014-2023 Mathijs van de Nes <git@mathijs.vd-nes.nl>
+           2014-2023 Marli Frost <marli@frost.red>
+           2014-2023 Ryan Levick <ryan.levick@gmail.com>
+License: MIT
+Comment: see https://github.com/zip-rs/zip.git
 
 Files:
  vendor/icu_list/*
