@@ -16,9 +16,9 @@ Subject: d-0000-ignore-removed-submodules
 
 Index: rust/Cargo.toml
 ===================================================================
---- rust.orig/Cargo.toml
-+++ rust/Cargo.toml
-@@ -18,28 +18,15 @@ members = [
+--- rustc.orig/Cargo.toml
++++ rustc/Cargo.toml
+@@ -18,28 +18,19 @@ members = [
    "src/tools/tidy",
    "src/tools/tier-check",
    "src/tools/build-manifest",
@@ -48,7 +48,12 @@ Index: rust/Cargo.toml
    "src/tools/lld-wrapper",
    "src/tools/collect-license-metadata",
    "src/tools/generate-copyright",
-@@ -104,10 +90,19 @@ gimli.debug = 0
+   "src/tools/suggest-tests",
+-  "src/tools/generate-windows-sys",
+   "src/tools/rustdoc-gui-test",
+ ]
+ 
+@@ -101,6 +93,15 @@ gimli.debug = 0
  miniz_oxide.debug = 0
  object.debug = 0
  
