@@ -1,3 +1,9 @@
+rustc (1.68.2+dfsg1-1) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 10 Sep 2023 19:22:53 +0200
+
 rustc (1.68.2+dfsg1-1~exp1) experimental; urgency=medium
 
   [ Eric Long ]
