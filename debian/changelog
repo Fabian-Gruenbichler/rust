@@ -1,3 +1,23 @@
+rustc (1.68.2+dfsg1-1~exp1) experimental; urgency=medium
+
+  [ Eric Long ]
+  * New upstream version 1.68.2+dfsg1
+  * Update patches to adapt to upstream test path change
+
+  [ Fabian Grünbichler ]
+  * Update wasi-libc to 4362b18
+  * Update doc path to fix linkcheck
+  * Update d/copyright
+  * Update lintian overrides
+  * Update privacy breach removal (github badge)
+  * Bump Standards-Version to 4.6.2
+
+  [Helmut Grohne]
+  * Fix FTCBFS: Do not pass host CFLAGS to the build compiler
+    (Closes: #1050975)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 02 Aug 2023 13:17:47 +0200
+
 rustc (1.67.1+dfsg1-1) unstable; urgency=medium
 
   * Upload to unstable
