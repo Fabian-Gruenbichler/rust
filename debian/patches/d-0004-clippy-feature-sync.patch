@@ -10,10 +10,10 @@ this is what rustc_workspace_hack does in the upstream build.
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/tools/clippy/Cargo.toml b/src/tools/clippy/Cargo.toml
-index 3aa9ec6..0bb813d 100644
+index c7c6c3e..7e453c7 100644
 --- a/src/tools/clippy/Cargo.toml
 +++ b/src/tools/clippy/Cargo.toml
-@@ -43,7 +43,7 @@ if_chain = "1.0"
+@@ -44,7 +44,7 @@ if_chain = "1.0"
  itertools = "0.10.1"
  quote = "1.0"
  serde = { version = "1.0.125", features = ["derive"] }
@@ -23,7 +23,7 @@ index 3aa9ec6..0bb813d 100644
  parking_lot = "0.12"
  tokio = { version = "1", features = ["io-util"] }
 diff --git a/src/tools/rustfmt/Cargo.toml b/src/tools/rustfmt/Cargo.toml
-index 27b91f2..12d1567 100644
+index 12ed654..e5f1a20 100644
 --- a/src/tools/rustfmt/Cargo.toml
 +++ b/src/tools/rustfmt/Cargo.toml
 @@ -49,7 +49,7 @@ lazy_static = "1.4"

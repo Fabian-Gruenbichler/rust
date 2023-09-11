@@ -59,13 +59,13 @@ index 15cbb26..c012319 100644
  # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
  # here
 diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
-index 9cf43fc..39b985f 100644
+index 013d1ab..f6fd37b 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
-@@ -770,10 +770,6 @@ class RustBuild(object):
+@@ -777,10 +777,6 @@ class RustBuild(object):
+         args = [self.cargo(), "build", "--manifest-path",
                  os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-         for _ in range(0, self.verbose):
-             args.append("--verbose")
+         args.extend("--verbose" for _ in range(verbose_count))
 -        if self.use_locked_deps:
 -            args.append("--locked")
 -        if self.use_vendored_sources:
@@ -74,7 +74,7 @@ index 9cf43fc..39b985f 100644
              args.append("--features")
              args.append("build-metrics")
 diff --git a/src/bootstrap/builder.rs b/src/bootstrap/builder.rs
-index b4fc1d4..2bb0659 100644
+index b33fc02..4492577 100644
 --- a/src/bootstrap/builder.rs
 +++ b/src/bootstrap/builder.rs
 @@ -629,8 +629,6 @@ impl<'a> Builder<'a> {
@@ -134,7 +134,7 @@ index b4fc1d4..2bb0659 100644
                  install::Rustfmt,
                  install::RustDemangler,
                  install::Clippy,
-@@ -1889,10 +1876,7 @@ impl<'a> Builder<'a> {
+@@ -1878,10 +1865,7 @@ impl<'a> Builder<'a> {
              }
          }
  
@@ -147,10 +147,10 @@ index b4fc1d4..2bb0659 100644
          }
  
 diff --git a/src/bootstrap/doc.rs b/src/bootstrap/doc.rs
-index 9bad904..d02edb0 100644
+index cc80763..19754a2 100644
 --- a/src/bootstrap/doc.rs
 +++ b/src/bootstrap/doc.rs
-@@ -75,7 +75,6 @@ macro_rules! book {
+@@ -76,7 +76,6 @@ macro_rules! book {
  // FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
  // and checking against it?).
  book!(
@@ -159,10 +159,10 @@ index 9bad904..d02edb0 100644
      EditionGuide, "src/doc/edition-guide", "edition-guide", submodule;
      EmbeddedBook, "src/doc/embedded-book", "embedded-book", submodule;
 diff --git a/src/bootstrap/test.rs b/src/bootstrap/test.rs
-index 6078e39..1a385f5 100644
+index b4f1506..27236f3 100644
 --- a/src/bootstrap/test.rs
 +++ b/src/bootstrap/test.rs
-@@ -2005,17 +2005,7 @@ impl Step for RustcGuide {
+@@ -2024,17 +2024,7 @@ impl Step for RustcGuide {
      }
  
      fn run(self, builder: &Builder<'_>) {
@@ -182,7 +182,7 @@ index 6078e39..1a385f5 100644
  }
  
 diff --git a/src/tools/clippy/Cargo.toml b/src/tools/clippy/Cargo.toml
-index f8cb4b7..3aa9ec6 100644
+index 70d1268..c7c6c3e 100644
 --- a/src/tools/clippy/Cargo.toml
 +++ b/src/tools/clippy/Cargo.toml
 @@ -36,11 +36,6 @@ walkdir = "2.3"
@@ -195,10 +195,10 @@ index f8cb4b7..3aa9ec6 100644
 -rustc-workspace-hack = "1.0"
 -
  # UI test dependencies
+ clap = { version = "4.1.4", features = ["derive"] }
  clippy_utils = { path = "clippy_utils" }
- derive-new = "0.5"
 diff --git a/src/tools/rust-analyzer/Cargo.toml b/src/tools/rust-analyzer/Cargo.toml
-index 286ef1e..3d68711 100644
+index 333f03c..2a0faa2 100644
 --- a/src/tools/rust-analyzer/Cargo.toml
 +++ b/src/tools/rust-analyzer/Cargo.toml
 @@ -1,5 +1,14 @@
@@ -216,14 +216,14 @@ index 286ef1e..3d68711 100644
 +]
  exclude = ["crates/proc-macro-test/imp"]
  
- [profile.dev]
+ [workspace.package]
 diff --git a/src/tools/rustfmt/Cargo.toml b/src/tools/rustfmt/Cargo.toml
-index 7a4e02d..27b91f2 100644
+index 87ce59d..12ed654 100644
 --- a/src/tools/rustfmt/Cargo.toml
 +++ b/src/tools/rustfmt/Cargo.toml
 @@ -59,11 +59,6 @@ unicode_categories = "0.1"
  
- rustfmt-config_proc_macro = { version = "0.2", path = "config_proc_macro" }
+ rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
  
 -# A noop dependency that changes in the Rust repository, it's a bit of a hack.
 -# See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
@@ -234,10 +234,10 @@ index 7a4e02d..27b91f2 100644
  
  [package.metadata.rust-analyzer]
 diff --git a/src/tools/tidy/src/deps.rs b/src/tools/tidy/src/deps.rs
-index bc2edf6..142c2e9 100644
+index bddfdcf..9bac4b7 100644
 --- a/src/tools/tidy/src/deps.rs
 +++ b/src/tools/tidy/src/deps.rs
-@@ -332,7 +332,7 @@ const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
+@@ -333,7 +333,7 @@ const FORBIDDEN_TO_HAVE_DUPLICATES: &[&str] = &[
      // This crate takes quite a long time to build, so don't allow two versions of them
      // to accidentally sneak into our dependency graph, in order to ensure we keep our CI times
      // under control.
@@ -246,7 +246,7 @@ index bc2edf6..142c2e9 100644
  ];
  
  /// Dependency checks.
-@@ -608,6 +608,8 @@ fn direct_deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a
+@@ -609,6 +609,8 @@ fn direct_deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a
  }
  
  fn check_rustfix(metadata: &Metadata, bad: &mut bool) {
