@@ -2,7 +2,6 @@
 rustc source: source-is-missing [library/stdarch/crates/stdarch-verify/arm-intrinsics.html]
 # Test data
 rustc source: source-is-missing [src/tools/rust-analyzer/crates/ide/src/syntax_highlighting/test_data/*.html]
-rustc source: source-is-missing [tests/rustdoc/decl-trailing-whitespace.declaration.html]
 rustc source: source-is-missing [tests/rustdoc/doc-notable_trait*.html]
 rustc source: source-is-missing [tests/rustdoc/spotlight*.html]
 rustc source: source-is-missing [vendor/html5ever/data/bench/*.html]
