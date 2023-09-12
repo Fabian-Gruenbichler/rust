@@ -1,8 +1,15 @@
-rustc (1.69.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.69.0+dfsg1-1~exp1) experimental; urgency=medium
 
+  [ Eric Long ]
   * New upstream release
+  * Manually include `rust-analyzer-proc-macro-srv` (again)
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Mon, 11 Sep 2023 13:47:39 +0200
+  [ Fabian Grünbichler ]
+  * add libc with "extra_traits" to feature sync patch
+  * update d/copyright
+  * update lintian overrides
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 12 Sep 2023 10:17:15 +0200
 
 rustc (1.68.2+dfsg1-1) unstable; urgency=medium
 
