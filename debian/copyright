@@ -404,7 +404,6 @@ Comment:
 
 Files:
  vendor/time-core/*
- vendor/time-macros/*
 Copyright: 2019-2023 Jacob Pratt <open-source@jhpratt.dev>
            2019-2023 Time contributors
 License: MIT OR Apache-2.0
@@ -461,7 +460,7 @@ Files:
  vendor/rustc-demangle/*
  vendor/scoped-tls/*
  vendor/tar/*
- vendor/toml/*
+ vendor/toml-0*/*
  vendor/xz2/*
 Copyright: 2014-2020 Alex Crichton <alex@alexcrichton.com>
            2015-2017 The Rust Project Developers
@@ -484,6 +483,7 @@ Comment: see https://github.com/messense/rustc-test
 
 Files:
  vendor/addr2line/*
+ vendor/addr2line-*/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2021 Philip Craig <philipjcraig@gmail.com>
@@ -513,14 +513,6 @@ Files:
 Copyright: 2018-2020 Zibi Braniecki <gandalf@mozilla.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/zbraniecki/annotate-snippets-rs
-
-Files: vendor/ansi_term/*
-Copyright:
- 2014-2020 ogham@bsago.me
- 2014-2020 Ryan Scheel (Havvy) <ryan.havvy@gmail.com>
- 2014-2020 Josh Triplett <josh@joshtriplett.org>
-License: MIT
-Comment: see https://github.com/ogham/rust-ansi-term
 
 Files: vendor/aho-corasick/*
        vendor/memchr/*
@@ -790,6 +782,11 @@ Copyright: 2017-2018 Matt Ickstadt <mattico8@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/mattico/elasticlunr-rs
 
+Files: vendor/elsa/*
+Copyright: 2018-2023 Manish Goregaokar <manishsmail@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/manishearth/elsa
+
 Files: vendor/ena/*
 Copyright: 2015-2020 Niko Matsakis <niko@alum.mit.edu>
 License: MIT or Apache-2.0
@@ -865,6 +862,7 @@ Comment: see https://github.com/fizyk20/generic-array.git
 
 Files:
  vendor/gimli/*
+ vendor/gimli-*/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2021 Philip Craig <philipjcraig@gmail.com>
@@ -1052,6 +1050,7 @@ Comment:
 
 Files:
  vendor/miniz_oxide/*
+ vendor/miniz_oxide-0*/*
 Copyright: 2017-2020 Frommi <daniil.liferenko@gmail.com>
 License: MIT
 Comment: see https://github.com/Frommi/miniz_oxide
@@ -1073,6 +1072,14 @@ Files: vendor/ntapi/*
 Copyright: 2018-2022 MSxDOS <melcodos@gmail.com>
 License: Apache-2.0 OR MIT
 Comment: see https://github.com/MSxDOS/ntapi
+
+Files: vendor/nu-ansi-term/*
+Copyright: 2014-2023 ogham@bsago.me
+           2014-2023 Ryan Scheel (Havvy) <ryan.havvy@gmail.com>
+           2014-2023 Josh Triplett <josh@joshtriplett.org>
+           2014-2023 The Nushell Project Developers
+License: MIT
+Comment: see https://github.com/nushell/nu-ansi-term
 
 Files: vendor/num_cpus/*
 Copyright: 2015 Sean McArthur <sean.monstar@gmail.com>
@@ -1113,6 +1120,11 @@ Copyright: 2019-2019 Phuntsok Drak-pa <phundrak@phundrak.fr>
 License: MIT
 Comment: see https://github.com/Phundrak/output-vt100-rs
 
+Files: vendor/overload/*
+Copyright: 2019-2022 Daniel Salvadori <danaugrs@gmail.com>
+License: MIT
+Comment: see https://github.com/danaugrs/overload
+
 Files:
  vendor/hashbrown/*
  vendor/hashbrown-0.*/*
@@ -1121,7 +1133,7 @@ Files:
  vendor/parking_lot/*
  vendor/parking_lot-0.11.2/*
  vendor/parking_lot_core/*
- vendor/parking_lot_core-0.8.5/*
+ vendor/parking_lot_core-0.*/*
 Copyright: 2016-2019 Amanieu d'Antras <amanieu@gmail.com>
 License: MIT or Apache-2.0
 Comment:
@@ -1272,13 +1284,6 @@ Files: vendor/remove_dir_all/*
 Copyright: 2017-2018 Aaronepower <theaaronepower@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Aaronepower/remove_dir_all.git
-
-Files: vendor/rls-data/*
-       vendor/rls-span/*
-Copyright: 2016-2017 Nick Cameron <ncameron@mozilla.com>
-License: Apache-2.0 or MIT
-Comment: see https://github.com/nrc/rls-span
-         see https://github.com/nrc/rls-data
 
 Files: vendor/rowan/*
 Copyright: 2018-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
@@ -1531,7 +1536,7 @@ Files:
  vendor/tracing-attributes/*
  vendor/tracing-core/*
  vendor/tracing-log/*
- vendor/tracing-subscriber-0.*/*
+ vendor/tracing-subscriber/*
 Copyright:
  2018-2020 Eliza Weisman <eliza@buoyant.io>
  2018-2020 Tokio Contributors <team@tokio.rs>
