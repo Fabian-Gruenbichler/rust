@@ -39,7 +39,7 @@ Build-Depends:
  curl <pkg.rustc.dlstage0>,
  ca-certificates <pkg.rustc.dlstage0>,
 Build-Depends-Indep:
- wasi-libc (>= 0.0~git20230113.4362b18~~) <!nowasm>,
+ wasi-libc (>= 0.0~git20230113.4362b18-2~) <!nowasm>,
  wasi-libc (<= 0.0~git20230113.4362b18++) <!nowasm>,
  clang-15:native,
 Build-Conflicts: gdb-minimal <!nocheck>
