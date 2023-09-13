@@ -10,7 +10,7 @@ this is what rustc_workspace_hack does in the upstream build.
  2 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/src/tools/clippy/Cargo.toml b/src/tools/clippy/Cargo.toml
-index c7c6c3e..7e453c7 100644
+index a24d2f4..3681c85 100644
 --- a/src/tools/clippy/Cargo.toml
 +++ b/src/tools/clippy/Cargo.toml
 @@ -44,7 +44,7 @@ if_chain = "1.0"
