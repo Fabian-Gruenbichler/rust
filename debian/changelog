@@ -1,3 +1,10 @@
+rustc (1.69.0+dfsg1-1~exp2) experimental; urgency=medium
+
+  * config: also enable rustdoc explicitly
+  * bump wasi-libc to revert stack protection (Closes: #1051815)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 13 Sep 2023 08:02:53 +0200
+
 rustc (1.69.0+dfsg1-1~exp1) experimental; urgency=medium
 
   [ Eric Long ]
