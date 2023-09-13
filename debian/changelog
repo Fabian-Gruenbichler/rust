@@ -1,3 +1,9 @@
+rustc (1.69.0+dfsg1-1) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 13 Sep 2023 13:57:58 +0200
+
 rustc (1.69.0+dfsg1-1~exp2) experimental; urgency=medium
 
   * config: also enable rustdoc explicitly
