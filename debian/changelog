@@ -1,8 +1,13 @@
-rustc (1.70.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.70.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * switch to LLVM 16
+  * properly drop more components
+  * rust-src: fix path of installed example config
+  * fix lintian overrides
+  * update d/copyright
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Wed, 13 Sep 2023 15:11:23 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 14 Sep 2023 09:07:26 +0200
 
 rustc (1.69.0+dfsg1-1) unstable; urgency=medium
 
