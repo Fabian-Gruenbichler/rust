@@ -423,6 +423,14 @@ Copyright: 2019-2022 Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/tkaitchuck/ahash
 
+Files:
+ vendor/anstream/*
+ vendor/anstyle/*
+ vendor/anstyle-parse/*
+ vendor/anstyle-wincon/*
+Copyright: 2023 Ed Page <eopage@gmail.com>
+License: MIT or Apache-2.0
+
 Files: vendor/ar_archive_writer/*
 Copyright: 2003-2017 University of Illinois at Urbana-Champaign.
 License: Apache-2.0 with LLVM exception
@@ -598,6 +606,12 @@ Copyright: 2015-2022 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/backtrace-rs
 
+Files: vendor/basic-toml/*
+Copyright: 2014-2023 Alex Crichton <alex@alexcrichton.com>
+           2014-2023 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/basic-toml
+
 Files:
  vendor/block-buffer/*
  vendor/digest/*
@@ -689,6 +703,7 @@ Comment: see https://github.com/chronotope/chrono
 Files: 
  vendor/clap/*
  vendor/clap-3.*/*
+ vendor/clap_builder/*
  vendor/clap_complete/*
  vendor/clap_derive/*
  vendor/clap_derive-3.*/*
@@ -702,6 +717,13 @@ Files: vendor/colored/*
 Copyright: 2016-2020 Thomas Wickham <mackwic@gmail.com>
 License: MPL-2.0
 Comment: see https://github.com/mackwic/colored
+
+Files:
+ vendor/concolor-override/*
+ vendor/concolor-query/*
+Copyright: 2021-2022 Ed Page <eopage@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-cli/concolor
 
 Files: vendor/convert_case/*
 Copyright: 2020-2022 David Purdum <purdum41@gmail.com>
@@ -778,6 +800,7 @@ Files:
  vendor/itoa/*
  vendor/quote/*
  vendor/syn/*
+ vendor/syn-1.*/*
  vendor/unicode-ident/*
 Copyright: 2016-2022 David Tolnay <dtolnay@gmail.com>
 License: MIT or Apache-2.0
@@ -848,7 +871,9 @@ Copyright: 2015-2020 Niko Matsakis <niko@alum.mit.edu>
 License: MIT or Apache-2.0
 Comment: see https://github.com/nikomatsakis/ena
 
-Files: vendor/errno/*
+Files:
+ vendor/errno/*
+ vendor/errno-*/*
 Copyright: 2015-2022 Chris Wong <lambda.fairy@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/lambda-fairy/rust-errno
@@ -1027,6 +1052,11 @@ Copyright: 2018-2021 Changseok Han <freestrings@gmail.com>
 License: MIT
 Comment: see https://github.com/freestrings/jsonpath
 
+Files: vendor/junction/*
+Copyright: 2019-2023 Lzu Tao <taolzu@gmail.com>
+License: MIT
+Comment: see https://github.com/lzutao/junction
+
 Files: vendor/lazycell/*
 Copyright: 2016-2020 Alex Crichton <alex@alexcrichton.com>
            2016-2020 Nikita Pekin <contact@nikitapek.in>
@@ -1050,7 +1080,9 @@ Copyright: 2018-2021 Jorge Aparicio <jorge@japaric.io>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-lang-nursery/libm
 
-Files: vendor/linux-raw-sys/*
+Files:
+ vendor/linux-raw-sys/*
+ vendor/linux-raw-sys-0.*/*
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/sunfishcode/linux-raw-sys
@@ -1097,6 +1129,16 @@ Files:
 Copyright: 2017-2019 Gilad Naaman <gilad.naaman@gmail.com>
 License: MIT
 Comment: see https://github.com/Gilnaa/memoffset
+
+Files: vendor/mime/*
+Copyright: 2014-2019 Sean McArthur <sean@seanmonstar.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/hyperium/mime
+
+Files: vendor/mime_guess/*
+Copyright: 2015-2023 Austin Bonander <austin.bonander@gmail.com>
+License: MIT
+Comment: see https://github.com/abonander/mime_guess
 
 Files: vendor/minifier/*
 Copyright: 2017-2018 Guillaume Gomez <guillaume1.gomez@gmail.com>
@@ -1374,9 +1416,11 @@ Copyright:
 License: Apache-2.0 or MIT
 Comment: see https://github.com/killercup/rustfix
 
-Files: vendor/rustix/*
-Copyright: 2020-2022 Dan Gohman <dev@sunfishcode.online>
-           2020-2022 Jakub Konka <kubkon@jakubkonka.com>
+Files:
+ vendor/rustix/*
+ vendor/rustix-0.*/*
+Copyright: 2020-2023 Dan Gohman <dev@sunfishcode.online>
+           2020-2023 Jakub Konka <kubkon@jakubkonka.com>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/bytecodealliance/rustix
 
@@ -1495,9 +1539,11 @@ Copyright: 2017-2023 Peter Glotfelty <peter.glotfelty@microsoft.com>
 License: MIT
 Comment: see https://github.com/Peternator7/strum
 
-Files: vendor/synstructure/*
+Files:
+ vendor/synstructure/*
+ vendor/synstructure-0.*/*
 Copyright:
- 2016-2019 Nika Layzell <nika@thelayzells.com>
+ 2016-2023 Nika Layzell <nika@thelayzells.com>
 License: MIT
 Comment: see https://github.com/mystor/synstructure
 
@@ -1565,6 +1611,13 @@ Files: vendor/thorin-dwp/*
 Copyright: 2021-2022 David Wood <david.wood@huawei.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/davidtwco/thorin
+
+Files: vendor/threadpool/*
+Copyright: 2015-2021 The Rust Project Developers
+           2015-2021 Corey Farwell <coreyf@rwell.org>
+           2015-2021 Stefan Schindler <dns2utf8@estada.ch>
+License: MIT or Apache-2.0
+Comment: see https://github.com/rust-threadpool/rust-threadpool
 
 Files: vendor/tinystr/*
 Copyright: 2019-2022 Raph Levien <raph.levien@gmail.com>
@@ -1695,6 +1748,12 @@ Copyright: 2015-2018 Simon Sapin <simon.sapin@exyr.org>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/SimonSapin/rust-utf8
 
+Files: vendor/utf8parse/*
+Copyright: 2016-2023 Joe Wilm <joe@jwilm.com>
+           2016-2023 Christian Duerr <contact@christianduerr.com>
+License: Apache-2.0 OR MIT
+Comment: see https://github.com/alacritty/vte
+
 Files: vendor/uuid/*
 Copyright: 2014-2023 Ashley Mannix<ashleymannix@live.com.au>
            2014-2023 Christopher Armstrong
@@ -1805,6 +1864,7 @@ License: MIT
 Comment: see https://github.com/tokio-rs/valuable
 
 Files:
+ vendor/windows/*
  vendor/windows-sys/*
  vendor/windows-sys-0.*/*
  vendor/windows-targets/*
