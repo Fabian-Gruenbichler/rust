@@ -18,7 +18,7 @@ Index: rust/Cargo.toml
 ===================================================================
 --- rust.orig/Cargo.toml
 +++ rust/Cargo.toml
-@@ -18,29 +18,15 @@ members = [
+@@ -18,28 +18,15 @@ members = [
    "src/tools/tidy",
    "src/tools/tier-check",
    "src/tools/build-manifest",
@@ -44,11 +44,10 @@ Index: rust/Cargo.toml
    "src/tools/jsondoclint",
    "src/tools/html-checker",
 -  "src/tools/bump-stage0",
--  "src/tools/replace-version-placeholder",
+   "src/tools/replace-version-placeholder",
    "src/tools/lld-wrapper",
    "src/tools/collect-license-metadata",
-   "src/tools/generate-copyright",
-@@ -106,9 +92,6 @@ miniz_oxide.debug = 0
+@@ -106,9 +93,6 @@ miniz_oxide.debug = 0
  object.debug = 0
  
  [patch.crates-io]
