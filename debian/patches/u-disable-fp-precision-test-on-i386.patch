@@ -20,7 +20,7 @@ index d050d21c8c57..f5c2d1c6bf68 100644
      ///
      /// let abs_difference = (angle.to_degrees() - 180.0).abs();
 -    ///
-+    /// # #[cfg(any(not(target_arch = "x86"))]
++    /// # #[cfg(not(target_arch = "x86"))]
      /// assert!(abs_difference <= f32::EPSILON);
      /// ```
      #[must_use = "this returns the result of the operation, \
