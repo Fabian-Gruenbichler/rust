@@ -1,3 +1,11 @@
+rustc (1.70.0+dfsg1-1~exp2) experimental; urgency=medium
+
+  * don't remove replace-version-placeholder from workspace
+  * disable download tests
+  * fix x86 tests checking for SSE2
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 15 Sep 2023 10:10:52 +0200
+
 rustc (1.70.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
