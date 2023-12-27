@@ -76,3 +76,4 @@ ubuntu-disable-ppc64el-asm-tests.patch
 ubuntu-ignore-arm-doctest.patch
 d-0020-remove-windows-dependencies.patch
 d-0021-vendor-remove-windows-dependencies.patch
+c-update-libgit2.patch
