@@ -1,6 +1,8 @@
---- a/src/tools/cargo/crates/cargo-test-macro/src/lib.rs
-+++ b/src/tools/cargo/crates/cargo-test-macro/src/lib.rs
-@@ -203,6 +203,14 @@
+Index: rust/src/tools/cargo/crates/cargo-test-macro/src/lib.rs
+===================================================================
+--- rust.orig/src/tools/cargo/crates/cargo-test-macro/src/lib.rs
++++ rust/src/tools/cargo/crates/cargo-test-macro/src/lib.rs
+@@ -223,6 +223,14 @@ fn has_command(command: &str) -> bool {
          }
      };
      if !output.status.success() {
