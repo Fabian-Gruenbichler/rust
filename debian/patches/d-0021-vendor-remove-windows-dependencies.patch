@@ -279,6 +279,15 @@ Index: rust/vendor/uuid/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/uuid/Cargo.toml
 +++ rust/vendor/uuid/Cargo.toml
+@@ -64,7 +64,7 @@ version = "1.0.56"
+ 
+ [features]
+ default = ["std"]
+-guid = ["winapi"]
++guid = []
+ std = []
+ stdweb = ["getrandom", "getrandom/js"]
+ v1 = []
 @@ -72,9 +72,6 @@ v3 = ["md5"]
  v4 = ["getrandom"]
  v5 = ["sha1"]
@@ -377,6 +386,15 @@ Index: rust/vendor/chrono/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/chrono/Cargo.toml
 +++ rust/vendor/chrono/Cargo.toml
+@@ -93,7 +93,7 @@ version = "1"
+ __doctest = []
+ __internal_bench = []
+ alloc = []
+-clock = ["libc", "std", "winapi"]
++clock = ["libc", "std"]
+ default = ["clock", "std", "oldtime"]
+ oldtime = ["time"]
+ std = []
 @@ -108,10 +108,6 @@ version = "0.2"
  optional = true
  [target."cfg(all(target_arch = \"wasm32\", not(any(target_os = \"emscripten\", target_os = \"wasi\"))))".dev-dependencies.wasm-bindgen-test]
@@ -862,9 +880,13 @@ Index: rust/vendor/walkdir/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/walkdir/Cargo.toml
 +++ rust/vendor/walkdir/Cargo.toml
-@@ -32,8 +32,6 @@ version = "0.3"
+@@ -28,12 +28,7 @@ repository = "https://github.com/BurntSu
+ version = "1.0.1"
+ [dev-dependencies.doc-comment]
  version = "0.3"
- features = ["std", "winnt"]
+-[target."cfg(windows)".dependencies.winapi]
+-version = "0.3"
+-features = ["std", "winnt"]
  
 -[target."cfg(windows)".dependencies.winapi-util]
 -version = "0.1.1"
@@ -885,3 +907,41 @@ Index: rust/vendor/yansi-term/Cargo.toml
  [badges.maintenance]
  status = "actively-developed"
  
+Index: rust/vendor/output_vt100/Cargo.toml
+===================================================================
+--- rust.orig/vendor/output_vt100/Cargo.toml
++++ rust/vendor/output_vt100/Cargo.toml
+@@ -20,6 +20,3 @@ keywords = ["vt100", "console", "ansi"]
+ categories = ["development-tools"]
+ license = "MIT"
+ repository = "https://github.com/Phundrak/output-vt100-rs"
+-[dependencies.winapi]
+-version = "0.3.6"
+-features = ["winuser", "winbase", "consoleapi", "processenv"]
+Index: rust/vendor/snapbox/Cargo.toml
+===================================================================
+--- rust.orig/vendor/snapbox/Cargo.toml
++++ rust/vendor/snapbox/Cargo.toml
+@@ -154,14 +154,6 @@ optional = true
+ version = "2.3.2"
+ optional = true
+ 
+-[dependencies.winapi]
+-version = "0.3.9"
+-features = [
+-    "consoleapi",
+-    "minwindef",
+-]
+-optional = true
+-
+ [dependencies.yansi]
+ version = "0.5.0"
+ optional = true
+@@ -171,7 +163,6 @@ cmd = [
+     "dep:os_pipe",
+     "dep:wait-timeout",
+     "dep:libc",
+-    "dep:winapi",
+ ]
+ color = [
+     "dep:yansi",
