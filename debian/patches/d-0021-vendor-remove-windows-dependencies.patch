@@ -212,7 +212,7 @@ Index: rust/vendor/rustix/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/rustix/Cargo.toml
 +++ rust/vendor/rustix/Cargo.toml
-@@ -234,15 +234,3 @@ package = "errno"
+@@ -234,14 +234,3 @@ package = "errno"
  version = "1.5.2"
  optional = true
  
@@ -224,7 +224,6 @@ Index: rust/vendor/rustix/Cargo.toml
 -    "Win32_NetworkManagement_IpHelper",
 -    "Win32_System_Threading",
 -]
--cc = []
 -
 -[target."cfg(windows)".dev-dependencies.ctor]
 -version = "0.1.21"
