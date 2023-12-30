@@ -1,3 +1,9 @@
+rustc (1.70.0+dfsg1-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sat, 30 Dec 2023 14:52:00 +0100
+
 rustc (1.70.0+dfsg1-2~exp1) experimental; urgency=medium
 
   * riscv: disable split debuginfo support
