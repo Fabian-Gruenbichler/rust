@@ -21,21 +21,6 @@ Subject: [PATCH] Remove Windows dependencies
  vendor/terminal_size/Cargo.toml    |  7 -------
  15 files changed, 115 deletions(-)
 
-Index: rust/vendor/anstyle-wincon/Cargo.toml
-===================================================================
---- rust.orig/vendor/anstyle-wincon/Cargo.toml
-+++ rust/vendor/anstyle-wincon/Cargo.toml
-@@ -84,10 +84,3 @@ version = "0.3.0"
- 
- [dev-dependencies.lexopt]
- version = "0.3.0"
--
--[target."cfg(windows)".dependencies.windows-sys]
--version = "0.45.0"
--features = [
--    "Win32_System_Console",
--    "Win32_Foundation",
--]
 Index: rust/vendor/compiletest_rs/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/compiletest_rs/Cargo.toml
@@ -212,7 +197,7 @@ Index: rust/vendor/rustix/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/rustix/Cargo.toml
 +++ rust/vendor/rustix/Cargo.toml
-@@ -234,14 +234,3 @@ package = "errno"
+@@ -233,14 +233,3 @@ package = "errno"
  version = "1.5.2"
  optional = true
  
@@ -297,17 +282,6 @@ Index: rust/vendor/uuid/Cargo.toml
  [badges.appveyor]
  repository = "uuid-rs/uuid"
  
-Index: rust/vendor/ansi_term/Cargo.toml
-===================================================================
---- rust.orig/vendor/ansi_term/Cargo.toml
-+++ rust/vendor/ansi_term/Cargo.toml
-@@ -38,6 +38,3 @@ version = "1.0.39"
- 
- [features]
- derive_serde_style = ["serde"]
--[target."cfg(target_os=\"windows\")".dependencies.winapi]
--version = "0.3.4"
--features = ["consoleapi", "errhandlingapi", "fileapi", "handleapi", "processenv"]
 Index: rust/vendor/anstream/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/anstream/Cargo.toml
@@ -335,29 +309,6 @@ Index: rust/vendor/atty/Cargo.toml
 -features = ["consoleapi", "processenv", "minwinbase", "minwindef", "winbase"]
  [badges.travis-ci]
  repository = "softprops/atty"
-Index: rust/vendor/backtrace-0.3.66/Cargo.toml
-===================================================================
---- rust.orig/vendor/backtrace-0.3.66/Cargo.toml
-+++ rust/vendor/backtrace-0.3.66/Cargo.toml
-@@ -121,18 +121,4 @@ serialize-serde = ["serde"]
- std = []
- unix-backtrace = []
- verify-winapi = [
--    "winapi/dbghelp",
--    "winapi/handleapi",
--    "winapi/libloaderapi",
--    "winapi/memoryapi",
--    "winapi/minwindef",
--    "winapi/processthreadsapi",
--    "winapi/synchapi",
--    "winapi/tlhelp32",
--    "winapi/winbase",
--    "winapi/winnt",
- ]
--
--[target."cfg(windows)".dependencies.winapi]
--version = "0.3.9"
--optional = true
 Index: rust/vendor/backtrace/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/backtrace/Cargo.toml
@@ -501,21 +452,6 @@ Index: rust/vendor/errno-0.2.8/Cargo.toml
 -[target."cfg(windows)".dependencies.winapi]
 -version = "0.3"
 -features = ["errhandlingapi", "minwindef", "ntdef", "winbase"]
-Index: rust/vendor/filetime-0.2.19/Cargo.toml
-===================================================================
---- rust.orig/vendor/filetime-0.2.19/Cargo.toml
-+++ rust/vendor/filetime-0.2.19/Cargo.toml
-@@ -38,10 +38,3 @@ version = "0.2.9"
- 
- [target."cfg(unix)".dependencies.libc]
- version = "0.2.27"
--
--[target."cfg(windows)".dependencies.windows-sys]
--version = "0.42.0"
--features = [
--    "Win32_Foundation",
--    "Win32_Storage_FileSystem",
--]
 Index: rust/vendor/gix-discover/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/gix-discover/Cargo.toml
@@ -619,17 +555,6 @@ Index: rust/vendor/os_info/Cargo.toml
 -    "winerror",
 -    "winreg",
 -]
-Index: rust/vendor/parking_lot_core-0.8.5/Cargo.toml
-===================================================================
---- rust.orig/vendor/parking_lot_core-0.8.5/Cargo.toml
-+++ rust/vendor/parking_lot_core-0.8.5/Cargo.toml
-@@ -47,6 +47,3 @@ nightly = []
- version = "0.2.8"
- [target."cfg(unix)".dependencies.libc]
- version = "0.2.95"
--[target."cfg(windows)".dependencies.winapi]
--version = "0.3.9"
--features = ["winnt", "ntstatus", "minwindef", "winerror", "winbase", "errhandlingapi", "handleapi"]
 Index: rust/vendor/parking_lot_core-0.8.6/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/parking_lot_core-0.8.6/Cargo.toml
@@ -649,22 +574,6 @@ Index: rust/vendor/parking_lot_core-0.8.6/Cargo.toml
 -    "winbase",
 -    "errhandlingapi",
 -    "handleapi",
--]
-Index: rust/vendor/parking_lot_core-0.9.4/Cargo.toml
-===================================================================
---- rust.orig/vendor/parking_lot_core-0.9.4/Cargo.toml
-+++ rust/vendor/parking_lot_core-0.9.4/Cargo.toml
-@@ -58,11 +58,3 @@ version = "0.2.8"
- [target."cfg(unix)".dependencies.libc]
- version = "0.2.95"
- 
--[target."cfg(windows)".dependencies.windows-sys]
--version = "0.42.0"
--features = [
--    "Win32_Foundation",
--    "Win32_System_LibraryLoader",
--    "Win32_System_SystemServices",
--    "Win32_System_WindowsProgramming",
 -]
 Index: rust/vendor/pretty_assertions/Cargo.toml
 ===================================================================
@@ -906,17 +815,6 @@ Index: rust/vendor/yansi-term/Cargo.toml
  [badges.maintenance]
  status = "actively-developed"
  
-Index: rust/vendor/output_vt100/Cargo.toml
-===================================================================
---- rust.orig/vendor/output_vt100/Cargo.toml
-+++ rust/vendor/output_vt100/Cargo.toml
-@@ -20,6 +20,3 @@ keywords = ["vt100", "console", "ansi"]
- categories = ["development-tools"]
- license = "MIT"
- repository = "https://github.com/Phundrak/output-vt100-rs"
--[dependencies.winapi]
--version = "0.3.6"
--features = ["winuser", "winbase", "consoleapi", "processenv"]
 Index: rust/vendor/snapbox/Cargo.toml
 ===================================================================
 --- rust.orig/vendor/snapbox/Cargo.toml
