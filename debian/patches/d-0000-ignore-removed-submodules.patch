@@ -136,11 +136,10 @@ Index: rust/src/bootstrap/builder.rs
                  check::Rustfmt,
                  check::Bootstrap
              ),
-@@ -717,8 +702,6 @@ impl<'a> Builder<'a> {
-                 test::TierCheck,
+@@ -717,7 +702,6 @@ impl<'a> Builder<'a> {
                  test::ReplacePlaceholderTest,
                  test::Cargotest,
--                test::Cargo,
+                 test::Cargo,
 -                test::RustAnalyzer,
                  test::ErrorIndex,
                  test::Distcheck,
@@ -161,11 +160,10 @@ Index: rust/src/bootstrap/builder.rs
                  doc::EmbeddedBook,
                  doc::EditionGuide,
                  doc::StyleGuide,
-@@ -787,13 +768,9 @@ impl<'a> Builder<'a> {
-                 dist::RustcDev,
+@@ -787,12 +768,9 @@ impl<'a> Builder<'a> {
                  dist::Analysis,
                  dist::Src,
--                dist::Cargo,
+                 dist::Cargo,
 -                dist::Rls,
 -                dist::RustAnalyzer,
                  dist::Rustfmt,
@@ -175,11 +173,10 @@ Index: rust/src/bootstrap/builder.rs
                  dist::LlvmTools,
                  dist::RustDev,
                  dist::Bootstrap,
-@@ -809,12 +786,9 @@ impl<'a> Builder<'a> {
-             Kind::Install => describe!(
+@@ -809,11 +786,9 @@ impl<'a> Builder<'a> {
                  install::Docs,
                  install::Std,
--                install::Cargo,
+                 install::Cargo,
 -                install::RustAnalyzer,
                  install::Rustfmt,
                  install::RustDemangler,
