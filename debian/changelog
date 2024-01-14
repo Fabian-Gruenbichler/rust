@@ -1,10 +1,10 @@
-rustc (1.70.0+dfsg1-3) UNRELEASED; urgency=medium
+rustc (1.70.0+dfsg1-3) unstable; urgency=medium
 
   [ Andres Salomon ]
   * Enable profiler builtin and backport u-profiler.patch (closes: #1043311).
   * Build-dep on libclang-rt-16-dev.
 
- -- Andres Salomon <dilinger@debian.org>  Sun, 14 Jan 2024 11:03:18 +0000
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 14 Jan 2024 20:06:29 +0100
 
 rustc (1.70.0+dfsg1-2) unstable; urgency=medium
 
