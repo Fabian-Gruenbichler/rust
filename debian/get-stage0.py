@@ -10,7 +10,7 @@ from bootstrap import RustBuild
 
 class DownloadOnlyRustBuild(RustBuild):
     triple = None
-    def build_bootstrap(self):
+    def build_bootstrap(self, color, verbose_count):
         pass
     def run(self, *args):
         pass
@@ -25,7 +25,8 @@ def main(argv):
     triple = argv.pop(1)
     DownloadOnlyRustBuild.triple = triple
     bootstrap.RustBuild = DownloadOnlyRustBuild
-    bootstrap.bootstrap(False)
+    args = bootstrap.parse_args()
+    bootstrap.bootstrap(args)
 
 if __name__ == '__main__':
     main(sys.argv)
