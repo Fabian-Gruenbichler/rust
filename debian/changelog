@@ -1,3 +1,9 @@
+rustc (1.70.0+dfsg1-5) unstable; urgency=medium
+
+  * adapt LLVM_PROFILER_RT_LIB path
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 15 Jan 2024 08:16:35 +0100
+
 rustc (1.70.0+dfsg1-4) unstable; urgency=medium
 
   * fix libclang-rt-16-dev Build-dep
