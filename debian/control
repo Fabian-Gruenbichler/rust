@@ -21,6 +21,7 @@ Build-Depends:
  gcc-mingw-w64-x86-64-posix:native [amd64] <!nowindows>,
  gcc-mingw-w64-i686-posix:native [i386] <!nowindows>,
  libllvm16 (>= 1:16.0.0),
+ libclang-rt-16-dev:native,
  cmake (>= 3.0) | cmake3,
 # needed by some vendor crates
  pkg-config,
@@ -42,7 +43,6 @@ Build-Depends-Indep:
  wasi-libc (>= 0.0~git20230113.4362b18-2~) <!nowasm>,
  wasi-libc (<= 0.0~git20230113.4362b18++) <!nowasm>,
  clang-16:native,
- libclang-rt-16-dev:native,
 Build-Conflicts: gdb-minimal <!nocheck>
 Standards-Version: 4.6.2
 Homepage: http://www.rust-lang.org/
