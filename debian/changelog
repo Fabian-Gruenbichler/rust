@@ -1,3 +1,9 @@
+rustc (1.70.0+dfsg1-4) unstable; urgency=medium
+
+  * fix libclang-rt-16-dev Build-dep
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 15 Jan 2024 07:00:08 +0100
+
 rustc (1.70.0+dfsg1-3) unstable; urgency=medium
 
   [ Andres Salomon ]
