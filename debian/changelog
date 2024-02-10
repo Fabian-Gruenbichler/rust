@@ -5,6 +5,7 @@ rustc (1.70.0+dfsg1-6) UNRELEASED; urgency=medium
     architectures (closes: #1021711).
   * Run 'd/rules clean' after running make_orig-stage0_tarball.sh so that the
     suggestion to rebuild the .dsc actually works.
+  * Don't allow upstream's bootstrap.py to delete .cargo/ directory.
 
  -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 15 Jan 2024 08:16:35 +0100
 

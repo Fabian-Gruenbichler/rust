@@ -3,6 +3,7 @@
 # In that case, you probably just need to override the failing step in our
 # DownloadOnlyRustBuild class below.
 
+import shutil
 import sys
 
 import bootstrap
@@ -26,7 +27,12 @@ def main(argv):
     DownloadOnlyRustBuild.triple = triple
     bootstrap.RustBuild = DownloadOnlyRustBuild
     args = bootstrap.parse_args()
-    bootstrap.bootstrap(args)
+    # bootstrap.py likes to delete our .cargo directory out from under us
+    shutil.move(".cargo", ".cargo-bak")
+    try:
+        bootstrap.bootstrap(args)
+    finally:
+        shutil.move(".cargo-bak", ".cargo")
 
 if __name__ == '__main__':
     main(sys.argv)
