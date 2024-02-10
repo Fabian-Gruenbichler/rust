@@ -3,6 +3,8 @@ rustc (1.70.0+dfsg1-6) UNRELEASED; urgency=medium
   [ Andres Salomon ]
   * Fix source_orig-stage0 bootstrapping process to actually include all
     architectures (closes: #1021711).
+  * Run 'd/rules clean' after running make_orig-stage0_tarball.sh so that the
+    suggestion to rebuild the .dsc actually works.
 
  -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 15 Jan 2024 08:16:35 +0100
 

@@ -491,6 +491,7 @@ source_orig-stage0:
 	QUILT_PATCHES=debian/patches quilt push -aq; $(QUILT_SPECIAL_SNOWFLAKE_RETURN_CODE)
 	$(MAKE) -f debian/rules clean
 	debian/make_orig-stage0_tarball.sh
+	$(MAKE) -f debian/rules clean
 	QUILT_PATCHES=debian/patches quilt pop -aq; $(QUILT_SPECIAL_SNOWFLAKE_RETURN_CODE)
 	rm -rf .pc
 
