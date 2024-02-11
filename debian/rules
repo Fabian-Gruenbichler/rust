@@ -51,7 +51,15 @@ endif
 ifeq (armhf,$(DEB_TARGET_ARCH))
 CLANG_RT_ARCH = armhf
 endif
+
+ifeq (sparc64,$(DEB_TARGET_ARCH))
+# see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1061125
+CLANG_RT_ARCH =
+PROFILER = "false"
+else
 export LLVM_PROFILER_RT_LIB=/usr/lib/llvm-$(LLVM_VERSION)/lib/clang/$(LLVM_VERSION)/lib/linux/libclang_rt.profile-$(CLANG_RT_ARCH).a
+PROFILER = "true"
+endif
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 NJOBS := -j $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -219,6 +227,7 @@ debian/config.toml: debian/config.toml.in debian/rules
 		-DLLVM_DESTDIR="$(LLVM_DESTDIR)" \
 		-DLLVM_VERSION="$(LLVM_VERSION)" \
 		-DRUST_DESTDIR="$(RUST_DESTDIR)" \
+		-DPROFILER="$(PROFILER)" \
 		"$<" > "$@"
 	if $(DOWNLOAD_BOOTSTRAP) || [ $(HAVE_BINARY_TARBALL) != 0 ]; \
 	  then sed -i -e '/^rustc = /d' -e '/^cargo = /d' "$@"; fi
