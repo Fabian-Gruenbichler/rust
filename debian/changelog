@@ -1,3 +1,11 @@
+rustc (1.70.0+dfsg1-8) unstable; urgency=medium
+
+  * d/control: switch to libllvm16t64
+  * d/control: switch to pkgconf
+  * d/rules: fix make warning in filter invocation
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 15 Mar 2024 17:18:37 +0100
+
 rustc (1.70.0+dfsg1-7) unstable; urgency=medium
 
   * profiler: disable on mips64el for now, it's buggy
