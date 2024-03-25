@@ -32,7 +32,8 @@ Build-Depends:
  liblzma-dev:native,
 # test dependencies:
  binutils (>= 2.26) <!nocheck> | binutils-2.26 <!nocheck>,
- git <!nocheck>,
+# temporarily disabled cause of #1066794 / t64 transition
+# git <!nocheck>,
  procps <!nocheck>,
 # below are optional tools even for 'make check'
  gdb (>= 7.12) <!nocheck>,
