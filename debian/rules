@@ -431,6 +431,9 @@ ifeq (true,$(BUILD_WINDOWS))
 	  --target $(WINDOWS_ARCH)-pc-windows-gnu \
 	  library/std
 endif
+	# Remove Cargo made package cache
+	rm -v $(CURDIR)/debian/cargo/.package-cache
+
 
 override_dh_auto_install-indep: debian/dh_auto_install.stamp
 ifeq (true,$(BUILD_WASM))
@@ -457,6 +460,9 @@ ifeq (true,$(BUILD_DOCS))
 	done
 	find $(DEB_DESTDIR) \( -iname '*.html' -empty -o -name .lock -o -name '*.inc' \) -delete;
 endif
+	# Remove Cargo made package cache
+	rm -v $(CURDIR)/debian/cargo/.package-cache
+
 
 override_dh_install-indep:
 	dh_install
