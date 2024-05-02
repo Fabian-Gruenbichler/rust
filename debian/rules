@@ -445,7 +445,7 @@ endif
 ifeq (true,$(BUILD_DOCS))
 	# Install Cargo docs
 	install -d $(DEB_DESTDIR)/usr/share/doc/cargo
-	cp -r $(CURDIR)/build/$(DEB_BUILD_RUST_TYPE)/compiler-doc $(DEB_DESTDIR)/usr/share/doc/cargo/doc
+	cp -r $(CURDIR)/build/$(DEB_BUILD_RUST_TYPE)/compiler-doc $(DEB_DESTDIR)/usr/share/doc/cargo/reference
 	# Brute force to remove privacy-breach-logo lintian warning.
 	# We could have updated the upstream sources but it would complexify
 	# the rebase
@@ -459,6 +459,9 @@ ifeq (true,$(BUILD_DOCS))
 	    -e 's,<img src="https://img.shields.io/[^"]*" alt="\([^"]*\)" />,<span class="deb-privacy-replace--shields-io">\1</span>,g' "$$file"; \
 	done
 	find $(DEB_DESTDIR) \( -iname '*.html' -empty -o -name .lock -o -name '*.inc' \) -delete;
+
+	# mv cargo book to cargo-docs
+	mv $(DEB_DESTDIR)/usr/share/doc/rust/html/cargo $(DEB_DESTDIR)/usr/share/doc/cargo/book
 endif
 	# Remove Cargo made package cache
 	rm -v $(CURDIR)/debian/cargo/.package-cache
