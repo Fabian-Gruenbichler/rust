@@ -1,3 +1,23 @@
+rustc (1.70.0+dfsg2-1~exp1) experimental; urgency=medium
+
+  [ liushuyu ]
+  * d/*: initial merge of cargo into rustc source package (Closes: #1054658)
+
+  [ Fabian Grünbichler ]
+  * update libgit2
+  * cargo: sync test disabling changes
+  * adapt to current rustc/cargo version
+  * cargo: actually install, not just  build
+  * add extra component tarball
+  * scripts/guess-crate-copyright: switch to python3-toml
+  * d/check-orig-suspicious.sh: remove duplicate comment stripping
+  * d/check-orig-suspicious.sh: support extra tar ball
+  * fix autopkgtest control file
+  * update d/copyright
+  * extend lintian overrides
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 03 May 2024 09:27:25 +0200
+
 rustc (1.70.0+dfsg1-9) unstable; urgency=medium
 
   * temporarily skip git(-cli) tests
