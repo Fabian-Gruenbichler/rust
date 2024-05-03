@@ -1,3 +1,10 @@
+rustc (1.70.0+dfsg2-1~exp2) experimental; urgency=medium
+
+  * d/rules: allow removal of package cache to fail
+  * autopkgtest: disable full build test
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 03 May 2024 15:10:49 +0200
+
 rustc (1.70.0+dfsg2-1~exp1) experimental; urgency=medium
 
   [ liushuyu ]
