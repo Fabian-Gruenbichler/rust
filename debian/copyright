@@ -1486,6 +1486,11 @@ Copyright: 2016-2022 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/dtolnay/proc-macro-hack
 
+Files: vendor/prodash/*
+Copyright: 2020-2023 Sebastian Thiel <sebastian.thiel@icloud.com>
+License: MIT
+Comment: see https://github.com/Byron/prodash
+
 Files: vendor/psm/*
 Copyright: 2015-2020 Simonas Kazlauskas <git@kazlauskas.me>
 License: MIT or Apache-2.0
