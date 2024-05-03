@@ -1,3 +1,9 @@
+rustc (1.70.0+dfsg2-1~exp3) experimental; urgency=medium
+
+  * d/rules: fix last package cache removal
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 03 May 2024 17:02:14 +0200
+
 rustc (1.70.0+dfsg2-1~exp2) experimental; urgency=medium
 
   * d/rules: allow removal of package cache to fail
