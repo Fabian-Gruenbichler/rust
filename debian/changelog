@@ -1,3 +1,9 @@
+rustc (1.71.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream release (Closes: #1069019)
+
+ -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Mon, 06 May 2024 14:54:52 +0200
+
 rustc (1.70.0+dfsg2-1) unstable; urgency=medium
 
   * upload to unstable
