@@ -65,7 +65,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
  libstd-rust-dev (= ${binary:Version}),
  gcc, libc-dev, binutils (>= 2.26)
 Recommends:
- cargo (>= 0.71.0~~), cargo (<< 0.72.0~~),
+ cargo (= ${binary:Version}),
 # llvm is needed for llvm-dwp for -C split-debuginfo=packed
  llvm-16,
 Suggests:
