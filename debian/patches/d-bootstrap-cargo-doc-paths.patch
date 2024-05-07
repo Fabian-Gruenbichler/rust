@@ -304,7 +304,7 @@ Index: rust/src/doc/unstable-book/src/compiler-flags/sanitizer.md
 ===================================================================
 --- rust.orig/src/doc/unstable-book/src/compiler-flags/sanitizer.md
 +++ rust/src/doc/unstable-book/src/compiler-flags/sanitizer.md
-@@ -709,7 +709,7 @@ It is strongly recommended to combine sa
+@@ -793,7 +793,7 @@ It is strongly recommended to combine sa
  instrumented standard library, for example using [cargo `-Zbuild-std`
  functionality][build-std].
  

@@ -19,7 +19,6 @@ u-profiler.patch
 # not forwarded, or forwarded but unlikely to be merged
 u-ignore-ppc-hangs.patch
 u-rustc-llvm-cross-flags.patch
-u-reproducible-dl-stage0.patch
 #u-allow-system-compiler-rt.patch
 
 # Debian-specific patches, not suitable for upstream
@@ -44,7 +43,6 @@ d-bootstrap-rustflags.patch
 d-remove-arm-privacy-breaches.patch
 d-bootstrap-install-symlinks.patch
 d-bootstrap-disable-git.patch
-d-bootstrap-read-beta-version-from-file.patch
 d-bootstrap-no-assume-tools.patch
 d-bootstrap-cargo-doc-paths.patch
 d-bootstrap-use-local-css.patch

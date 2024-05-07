@@ -117,7 +117,7 @@ index 4779091..aa78771 100644
  [build-dependencies]
  # Only needed for Android, but cannot be target dependent
  # https://github.com/rust-lang/cargo/issues/4932
-@@ -82,16 +82,6 @@ libbacktrace = []
+@@ -85,16 +82,6 @@ libbacktrace = []
  libunwind = []
  unix-backtrace = []
  verify-winapi = [
@@ -175,7 +175,7 @@ index a7475f6..4ad22f5 100644
    "benches/benchsuite",
    "benches/capture",
  ]
-@@ -91,7 +91,6 @@ unicode-xid = "0.2.0"
+@@ -91,7 +93,6 @@ unicode-xid = "0.2.0"
  url = "2.2.2"
  varisat = "0.2.1"
  walkdir = "2.3.1"
@@ -183,7 +183,7 @@ index a7475f6..4ad22f5 100644
  
  [package]
  name = "cargo"
-@@ -174,22 +173,6 @@ walkdir.workspace = true
+@@ -174,22 +175,6 @@ walkdir.workspace = true
  [target.'cfg(not(windows))'.dependencies]
  openssl = { workspace = true, optional = true }
  
