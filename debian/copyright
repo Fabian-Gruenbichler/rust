@@ -2136,6 +2136,14 @@ Copyright: 2014-2018 Peter Atashian <retep998@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/retep998/winapi-rs
 
+Files: vendor/windows-metadata/*
+Copyright: Microsoft 2024
+License: MIT or Apache-2.0
+Comment:
+ see https://github.com/microsoft/windows-rs
+ this contains pre-generated files which are also MIT or Apache-2.0 licensed,
+ see vendor/windows-metadata/default/readme.md
+
 Files: vendor/xattr/*
 Copyright: 2015-2017 Steven Allen <steven@stebalien.com>
 License: MIT or Apache-2.0
