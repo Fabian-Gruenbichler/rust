@@ -68,10 +68,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends},
 Recommends:
  cargo (= ${binary:Version}),
 # llvm is needed for llvm-dwp for -C split-debuginfo=packed
- llvm-16,
-Suggests:
-# lld and clang are needed for wasm compilation
- lld-16, clang-16,
+ rust-llvm,
 Replaces: libstd-rust-dev (<< 1.25.0+dfsg1-2~~)
 Breaks: libstd-rust-dev (<< 1.25.0+dfsg1-2~~)
 Description: Rust systems programming language
@@ -229,6 +226,30 @@ Description: Rust debugger (lldb)
  .
  This package contains pretty printers and a wrapper script for
  invoking lldb on rust binaries.
+
+Package: rust-llvm
+Architecture: all
+Depends:
+ ${misc:Depends},
+# lld and clang are needed for wasm compilation
+ lld-16, clang-16,
+# llvm is needed for llvm-dwp for split-debuginfo=packed
+ llvm-16
+Description: Rust LLVM integration
+ Rust is a curly-brace, block-structured expression language.  It
+ visually resembles the C language family, but differs significantly
+ in syntactic and semantic details.  Its design is oriented toward
+ concerns of "programming in the large", that is, of creating and
+ maintaining boundaries - both abstract and operational - that
+ preserve large-system integrity, availability and concurrency.
+ .
+ It supports a mixture of imperative procedural, concurrent actor,
+ object-oriented and pure functional styles.  Rust also supports
+ generic programming and meta-programming, in both static and dynamic
+ styles.
+ .
+ This package contains symlinks for integration with LLVM tools such as lld and
+ grcov.
 
 Package: rust-doc
 Section: doc
