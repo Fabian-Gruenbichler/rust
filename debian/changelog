@@ -1,8 +1,19 @@
-rustc (1.71.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.71.1+dfsg1-1~exp1) experimental; urgency=medium
 
+  [ Fabian Grünbichler ]
   * New upstream release (Closes: #1069019)
+  * d/control: tighten cargo versions (Closes: #1029007)
+  * d/control: remove B-D on cmake-3 (Closes: #1067109)
+  * d/control: re-enable git-using tests
+  * rust-doc: fix references to cargo-doc (Closes: #969210, #1063390)
+  * rust-src: ship Cargo.lock (Closes: #1057736)
+  * d/control: add libssl and prefer curl with openssl (Closes: #962508)
+  * d/control: move LLVM symlinks to own package (Closes: #1021868)
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Mon, 06 May 2024 14:54:52 +0200
+  [ Rob Shearman ]
+  * Support finding llvm-profdata & llvm-cov with cargo-binutils
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 08 May 2024 18:48:48 +0200
 
 rustc (1.70.0+dfsg2-1) unstable; urgency=medium
 
