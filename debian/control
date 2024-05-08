@@ -32,8 +32,9 @@ Build-Depends:
  liblzma-dev:native,
 # used by cargo
  bash-completion,
- libcurl4-gnutls-dev | libcurl4-openssl-dev,
+ libcurl4-openssl-dev | libcurl4-gnutls-dev,
  libssh2-1-dev,
+ libssl-dev,
  libgit2-dev (>= 1.7.1),
  libgit2-dev (<< 1.8~~),
  libhttp-parser-dev,
