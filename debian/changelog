@@ -1,3 +1,9 @@
+rustc (1.71.1+dfsg1-1~exp2) experimental; urgency=medium
+
+  * d/control: properly B+R old rustc packages (Closes: #1071005)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 15 May 2024 07:21:42 +0200
+
 rustc (1.71.1+dfsg1-1~exp1) experimental; urgency=medium
 
   [ Fabian Grünbichler ]
