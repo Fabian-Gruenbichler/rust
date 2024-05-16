@@ -1,3 +1,9 @@
+rustc (1.71.1+dfsg1-1) unstable; urgency=medium
+
+  * upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 16 May 2024 21:46:58 +0200
+
 rustc (1.71.1+dfsg1-1~exp2) experimental; urgency=medium
 
   * d/control: properly B+R old rustc packages (Closes: #1071005)
