@@ -109,29 +109,6 @@ index d6bf2d0..7cebc31 100644
 -features = ["consoleapi", "processenv", "minwinbase", "minwindef", "winbase"]
  [badges.travis-ci]
  repository = "softprops/atty"
-diff --git a/vendor/backtrace-0.3.67/Cargo.toml b/vendor/backtrace-0.3.67/Cargo.toml
-index 96f4146..348d0f9 100644
---- a/vendor/backtrace-0.3.67/Cargo.toml
-+++ b/vendor/backtrace-0.3.67/Cargo.toml
-@@ -127,18 +127,4 @@ serialize-serde = ["serde"]
- std = []
- unix-backtrace = []
- verify-winapi = [
--    "winapi/dbghelp",
--    "winapi/handleapi",
--    "winapi/libloaderapi",
--    "winapi/memoryapi",
--    "winapi/minwindef",
--    "winapi/processthreadsapi",
--    "winapi/synchapi",
--    "winapi/tlhelp32",
--    "winapi/winbase",
--    "winapi/winnt",
- ]
--
--[target."cfg(windows)".dependencies.winapi]
--version = "0.3.9"
--optional = true
 diff --git a/vendor/backtrace/Cargo.toml b/vendor/backtrace/Cargo.toml
 index f33884a..b43a0dd 100644
 --- a/vendor/backtrace/Cargo.toml
@@ -402,25 +379,6 @@ index ef92ff0..c2733fb 100644
 -    "Win32_System_Threading",
 -]
 -optional = true
-diff --git a/vendor/is-terminal-0.4.7/Cargo.toml b/vendor/is-terminal-0.4.7/Cargo.toml
-index 7957a9c..0ab2ae1 100644
---- a/vendor/is-terminal-0.4.7/Cargo.toml
-+++ b/vendor/is-terminal-0.4.7/Cargo.toml
-@@ -53,14 +53,3 @@ features = ["termios"]
- 
- [target."cfg(target_os = \"hermit\")".dependencies.hermit-abi]
- version = "0.3.0"
--
--[target."cfg(windows)".dependencies.windows-sys]
--version = "0.48.0"
--features = [
--    "Win32_Foundation",
--    "Win32_Storage_FileSystem",
--    "Win32_System_Console",
--]
--
--[target."cfg(windows)".dev-dependencies.tempfile]
--version = "3"
 diff --git a/vendor/is-terminal/Cargo.toml b/vendor/is-terminal/Cargo.toml
 index e0baea0..7790abd 100644
 --- a/vendor/is-terminal/Cargo.toml
