@@ -581,7 +581,7 @@ diff --git a/vendor/rustix/Cargo.toml b/vendor/rustix/Cargo.toml
 index dd40b25..95b35ba 100644
 --- a/vendor/rustix/Cargo.toml
 +++ b/vendor/rustix/Cargo.toml
-@@ -236,20 +236,3 @@ package = "errno"
+@@ -235,20 +235,3 @@ package = "errno"
  [target."cfg(any(target_os = \"android\", target_os = \"linux\"))".dependencies.once_cell]
  version = "1.5.2"
  optional = true
