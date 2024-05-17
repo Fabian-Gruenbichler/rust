@@ -231,8 +231,8 @@ Package: rust-llvm
 Architecture: all
 Breaks:
  rustc (<< 1.71.1+dfsg1-1~exp1),
- rust-web (<< 1.71.1+dfsg1-1~exp1),
- rust-mozilla (<< 1.71.1+dfsg1-1~exp1),
+ rustc-web (<< 1.71.1+dfsg1-1~exp1),
+ rustc-mozilla (<< 1.71.1+dfsg1-1~exp1),
 Replaces:
  rustc (<< 1.71.1+dfsg1-1~exp1),
  rustc-web (<< 1.71.1+dfsg1-1~exp1),
