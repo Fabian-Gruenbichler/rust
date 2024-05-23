@@ -1,9 +1,10 @@
-rustc (1.72.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.72.1+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
   * Update wasi-libc to ~git20230621.7018e24
+  * Allow more test failures on loong64, and less on riscv64 (Closes: 1071707)
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Fri, 17 May 2024 12:00:02 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 23 May 2024 21:16:03 +0200
 
 rustc (1.71.1+dfsg1-2) unstable; urgency=medium
 
