@@ -1,6 +1,7 @@
 rustc (1.72.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
 
   * New upstream release
+  * Update wasi-libc to ~git20230621.7018e24
 
  -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Fri, 17 May 2024 12:00:02 +0200
 
