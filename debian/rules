@@ -517,7 +517,7 @@ override_dh_dwz:
 	dh_dwz --no-dwz-multifile
 
 override_dh_makeshlibs:
-	dh_makeshlibs -V
+	dh_makeshlibs -V -N $(LIBSTD_PKG)
 
 	# dh_makeshlibs doesn't support our "libfoo-version.so" naming
 	# structure, so we have to do this ourselves.
