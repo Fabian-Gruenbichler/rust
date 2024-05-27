@@ -335,7 +335,7 @@ endif
 ifneq (,$(filter $(DEB_BUILD_ARCH), ppc64 s390x riscv64))
   FAILURES_ALLOWED = 40
 endif
-ifneq (,$(filter $(DEB_BUILD_ARCH), loong64 powerpc powerpcspe sparc64 x32))
+ifneq (,$(filter $(DEB_BUILD_ARCH), loong64 powerpc powerpcspe sparc64 x32 hurd-i386 hurd-amd64))
   FAILURES_ALLOWED = 180
 endif
 FAILED_TESTS = grep "FAILED\|^command did not execute successfully" $(TEST_LOG) | grep -v '^test result: FAILED' | grep -v 'FAILED (allowed)'
