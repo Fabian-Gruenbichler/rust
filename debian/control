@@ -16,12 +16,12 @@ Build-Depends:
  cargo:native (>= 1.72.0+dfsg)      <!pkg.rustc.dlstage0>,
  rustc:native (>= 1.72.0+dfsg) <!pkg.rustc.dlstage0>,
  rustc:native (<= 1.73.0++)    <!pkg.rustc.dlstage0>,
- llvm-16-dev:native,
- llvm-16-tools:native,
+ llvm-17-dev:native,
+ llvm-17-tools:native,
  gcc-mingw-w64-x86-64-posix:native [amd64] <!nowindows>,
  gcc-mingw-w64-i686-posix:native [i386] <!nowindows>,
- libllvm16t64 (>= 1:16.0.0),
- libclang-rt-16-dev:native,
+ libllvm17t64 (>= 1:17.0.0),
+ libclang-rt-17-dev:native,
  cmake (>= 3.0),
 # needed by some vendor crates
  pkgconf,
@@ -51,7 +51,7 @@ Build-Depends:
 Build-Depends-Indep:
  wasi-libc (>= 0.0~git20230821.ec4566b~~) <!nowasm>,
  wasi-libc (<= 0.0~git20230821.ec4566b++) <!nowasm>,
- clang-16:native,
+ clang-17:native,
 Build-Conflicts: gdb-minimal <!nocheck>
 Standards-Version: 4.6.2
 Homepage: http://www.rust-lang.org/
@@ -163,7 +163,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 # Embeds wasi-libc so doesn't need to depend on it
 # None of its licenses require source redistrib, so no need for Built-Using
 Recommends:
- lld-16, clang-16,
+ lld-17, clang-17,
 Suggests:
 # nodejs contains wasi-node for running the program
  nodejs (>= 12.16),
@@ -209,7 +209,7 @@ Description: Rust debugger (gdb)
 Package: rust-lldb
 Architecture: all
 # When updating, also update rust-lldb.links
-Depends: lldb-16, ${misc:Depends}, python3-lldb-16
+Depends: lldb-17, ${misc:Depends}, python3-lldb-17
 Replaces: rustc (<< 1.1.0+dfsg1-1)
 Description: Rust debugger (lldb)
  Rust is a curly-brace, block-structured expression language.  It
@@ -240,9 +240,9 @@ Replaces:
 Depends:
  ${misc:Depends},
 # lld and clang are needed for wasm compilation
- lld-16, clang-16,
+ lld-17, clang-17,
 # llvm is needed for llvm-dwp for split-debuginfo=packed
- llvm-16
+ llvm-17
 Description: Rust LLVM integration
  Rust is a curly-brace, block-structured expression language.  It
  visually resembles the C language family, but differs significantly
