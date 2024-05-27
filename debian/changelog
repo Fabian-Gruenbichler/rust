@@ -1,3 +1,9 @@
+rustc (1.72.1+dfsg1-1~exp2) experimental; urgency=medium
+
+  * patches: apply rustix fixup to all versions
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 27 May 2024 10:20:22 +0200
+
 rustc (1.72.1+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
