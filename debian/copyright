@@ -350,6 +350,13 @@ Copyright: 2019-2023 Robert Vojta <rvojta@me.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/zrzka/anes-rs
 
+Files: vendor/ansi_term/*
+Copyright: 2014-2019 ogham@bsago.me
+           2014-2019 Ryan Scheel (Havvy) <ryan.havvy@gmail.com>
+           2014-2019 Josh Triplett <josh@joshtriplett.org>
+License: MIT
+Comment: see https://github.com/ogham/rust-ansi-term
+
 Files:
  vendor/anstream/*
  vendor/anstyle/*
@@ -476,9 +483,7 @@ Copyright: 2016-2019 The Rust Project Developers
 License: MIT OR Apache-2.0
 Comment: see https://github.com/messense/rustc-test
 
-Files:
- vendor/addr2line/*
- vendor/addr2line-*/*
+Files: vendor/addr2line/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2021 Philip Craig <philipjcraig@gmail.com>
@@ -657,6 +662,11 @@ Copyright: 2015-2023 Hyunsik Choi <hyunsik.choi@gmail.com>
 License: Apache-2.0
 Comment: see https://github.com/hyunsik/bytesize/
 
+Files: vendor/byteyarn/*
+Copyright: 2023-2024 Miguel Young de la Sota <mcyoung@mit.edu>
+License: Apache-2.0
+Comment: see https://github.com/mcy/byteyarn
+
 Files:
  vendor/globset/*
  vendor/ignore/*
@@ -719,9 +729,7 @@ Comment: see https://github.com/enarx/ciborium
 
 Files: 
  vendor/clap/*
- vendor/clap-4.*/*
  vendor/clap_builder/*
- vendor/clap_builder-4.*/*
  vendor/clap_complete/*
  vendor/clap_derive/*
  vendor/clap_lex/*
@@ -748,6 +756,27 @@ Files: vendor/colored/*
 Copyright: 2016-2020 Thomas Wickham <mackwic@gmail.com>
 License: MPL-2.0
 Comment: see https://github.com/mackwic/colored
+
+Files:
+ vendor/color-print/*
+ vendor/color-print-proc-macro/*
+Copyright: 2021-2024 Johann David <johann.david.dev@protonmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://gitlab.com/yolenoyer/color-print
+
+Files: vendor/comma/*
+Copyright: 2019-2023 Ethan McTague <ethan@tague.me>
+License: MIT
+Comment: see https://github.com/emctague/comma
+
+Files:
+ vendor/console/*
+ vendor/indicatif/*
+Copyright: 2017-2024 Armin Ronacher <armin.ronacher@active-4.com>
+License: MIT
+Comment:
+ see https://github.com/console-rs/console
+ see https://github.com/console-rs/indicatif
 
 Files: vendor/content_inspector/*
 Copyright: 2018-2018 David Peter <mail@david-peter.de>
@@ -817,8 +846,11 @@ Comment: see https://github.com/xacrimon/dashmap
 
 Files:
  vendor/darling/*
+ vendor/darling-0.*/*
  vendor/darling_core/*
+ vendor/darling_core-0.*/*
  vendor/darling_macro/*
+ vendor/darling_macro-0.*/*
 Copyright: 2017-2024 Ted Driggs <ted.driggs@outlook.com>
 License: MIT
 Comment: see https://github.com/TedDriggs/darling
@@ -831,15 +863,26 @@ Copyright:
 License: Apache-2.0 or MIT
 Comment: see https://github.com/rust-lang-nursery/datafrog
 
+Files: vendor/deranged/*
+Copyright: 2020-2023 Jacob Pratt <jacob@jhpratt.dev>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/jhpratt/deranged
+
+Files:
+ vendor/derive_builder/*
+ vendor/derive_builder_core/*
+ vendor/derive_builder_macro/*
+Copyright: 2016-2024 Colin Kiegel <kiegel@gmx.de>
+           2016-2024 Pascal Hertleif <killercup@gmail.com>
+           2016-2024 Jan-Erik Rediger <janerik@fnordig.de>
+           2016-2024 Ted Driggs <ted.driggs@outlook.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/colin-kiegel/rust-derive-builder
+
 Files: vendor/derive_more/*
 Copyright: 2016-2023 Jelte Fennema <github-tech@jeltef.nl>
 License: MIT
 Comment: see https://github.com/JelteF/derive_more
-
-Files: vendor/derive-new/*
-Copyright: 2016-2020 Nick Cameron <ncameron@mozilla.com>
-License: MIT
-Comment: see https://github.com/nrc/derive-new
 
 Files: vendor/derive_setters/*
 Copyright: 2019-2023 Lymia Aluysia <lymia@lymiahugs.com>
@@ -872,7 +915,6 @@ Comment:
 
 Files:
  vendor/arrayvec/*
- vendor/arrayvec-0.5.*/*
  vendor/either/*
  vendor/itertools/*
  vendor/maplit/*
@@ -944,6 +986,11 @@ Copyright: 2016-2024 Henri Sivonen <hsivonen@hsivonen.fi>
 License: (Apache-2.0 OR MIT) AND BSD-3-Clause
 Comment: see https://github.com/hsivonen/encoding_rs
 
+Files: vendor/erased-serde/*
+Copyright: 2016-2024 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/erased-serde
+
 Files: vendor/errno/*
 Copyright: 2015-2022 Chris Wong <lambda.fairy@gmail.com>
 License: MIT or Apache-2.0
@@ -980,9 +1027,12 @@ Copyright: 2016-2019 Steven Fackler <sfackler@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/sfackler/rust-fallible-iterator
 
-Files:
- vendor/fastrand/*
- vendor/fastrand-1.*/*
+Files: vendor/faster-hex/*
+Copyright: 2018-2023 zhangsoledad <787953403@qq.com>
+License: MIT
+Comment: see https://github.com/NervosFoundation/faster-hex
+
+Files: vendor/fastrand/*
 Copyright: 2020-2023 Stjepan Glavina <stjepang@gmail.com>
 License: Apache-2.0 OR MIT
 Comment: see https://github.com/smol-rs/fastrand
@@ -1058,9 +1108,7 @@ Copyright:
 License: MIT
 Comment: see https://github.com/fizyk20/generic-array.git
 
-Files:
- vendor/gimli/*
- vendor/gimli-*/*
+Files: vendor/gimli/*
 Copyright:
  2016-2021 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2021 Philip Craig <philipjcraig@gmail.com>
@@ -1069,9 +1117,6 @@ Comment: see https://github.com/gimli-rs/gimli
 
 
 Files:
- extra/git2/*
- extra/git2-curl/*
- extra/libgit2-sys/*
  vendor/git2/*
  vendor/git2-curl/*
  vendor/libgit2-sys/*
@@ -1095,6 +1140,7 @@ Files:
  vendor/gix-diff/*
  vendor/gix-discover/*
  vendor/gix-features/*
+ vendor/gix-filter/*
  vendor/gix-fs/*
  vendor/gix-glob/*
  vendor/gix-hash/*
@@ -1102,13 +1148,15 @@ Files:
  vendor/gix-ignore/*
  vendor/gix-index/*
  vendor/gix-lock/*
- vendor/gix-mailmap/*
+ vendor/gix-macros/*
  vendor/gix-negotiate/*
  vendor/gix-object/*
  vendor/gix-odb/*
  vendor/gix-pack/*
  vendor/gix-packetline/*
+ vendor/gix-packetline-blocking/*
  vendor/gix-path/*
+ vendor/gix-pathspec/*
  vendor/gix-prompt/*
  vendor/gix-protocol/*
  vendor/gix-quote/*
@@ -1117,7 +1165,9 @@ Files:
  vendor/gix-revision/*
  vendor/gix-revwalk/*
  vendor/gix-sec/*
+ vendor/gix-submodule/*
  vendor/gix-tempfile/*
+ vendor/gix-trace/*
  vendor/gix-transport/*
  vendor/gix-traverse/*
  vendor/gix-url/*
@@ -1125,8 +1175,9 @@ Files:
  vendor/gix-validate/*
  vendor/gix-worktree/*
 Copyright:
- 2018-2024 Sebastian Thiel <sebastian.thiel@icloud.com>
  2018-2024 Conor Davis <gitoxide@conor.fastmail.fm>
+ 2018-2024 Jiahao XU <Jiahao_XU@outlook.com>
+ 2018-2024 Sebastian Thiel <sebastian.thiel@icloud.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Byron/gitoxide
 
@@ -1270,11 +1321,6 @@ Copyright: 2017-2021 Ted Driggs <ted.driggs@outlook.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/TedDriggs/ident_case
 
-Files: vendor/imara-diff/*
-Copyright: 2022-2023 pascalkuthe <pascalkuthe@semimod.de>
-License: Apache-2.0
-Comment: see https://github.com/pascalkuthe/imara-diff
-
 Files: vendor/im-rc/*
 Copyright: 2017-2022 Bodil Stokke <bodil@bodil.org>
 License: MPL-2.0+
@@ -1309,11 +1355,6 @@ Copyright: 2018-2021 Kekoa Riggin <kekoariggin@gmail.com>
            2018-2021 Zibi Braniecki <zbraniecki@mozilla.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/zbraniecki/pluralrules
-
-Files: vendor/io-close/*
-Copyright: 2020-2021 wufz
-License: MIT OR Apache-2.0
-Comment: see https://gitlab.com/wufz/io-close
 
 Files: vendor/io-lifetimes/*
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
@@ -1384,11 +1425,6 @@ Copyright: 2018-2021 Changseok Han <freestrings@gmail.com>
 License: MIT
 Comment: see https://github.com/freestrings/jsonpath
 
-Files: vendor/kstring/*
-Copyright: 2014-2024 Ed Page <eopage@gmail.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/cobalt-org/kstring
-
 Files: vendor/la-arena/*
 Copyright: 2024 rust-analyzer team
 License: MIT or Apache-2.0
@@ -1412,6 +1448,11 @@ Copyright: 2016-2022 Nick Fitzgerald <fitzgen@gmail.com>
            2016-2022 Philip Craig <philipjcraig@gmail.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/gimli-rs/leb128
+
+Files: vendor/levenshtein/*
+Copyright: 2016-2021 Titus Wormer <tituswormer@gmail.com>
+License: MIT
+Comment: see https://github.com/wooorm/levenshtein-rs
 
 Files:
  vendor/libloading/*
@@ -1453,6 +1494,11 @@ Files:
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/sunfishcode/linux-raw-sys
+
+Files: vendor/lsp-server/*
+Copyright: 2024 rust-analyzer team
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-lang/rust-analyzer/tree/master/lib/lsp-server
 
 Files: vendor/lsp-types/*
 Copyright: 2016-2022 Markus Westerlind <marwes91@gmail.com>
@@ -1569,9 +1615,12 @@ Copyright: 2015 Sean McArthur <sean.monstar@gmail.com>
 License: MIT
 Comment: see https://github.com/seanmonstar/num_cpus
 
-Files:
-    vendor/object/*
-    vendor/object-0.*/*
+Files: vendor/number_prefix/*
+Copyright: 2014-2020 Benjamin Sago <ogham@bsago.me>
+License: MIT
+Comment: see https://github.com/ogham/rust-number-prefix
+
+Files: vendor/object/*
 Copyright:
  2016-2020 Nick Fitzgerald <fitzgen@gmail.com>
  2016-2020 Philip Craig <philipjcraig@gmail.com>
@@ -1670,6 +1719,10 @@ Copyright: 2018-2021 Gonzalo Brito Gadeschi <gonzalobg88@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang-nursery/packed_simd
 
+Files: vendor/pad/*
+Copyright: 2018-2024 Ben S <ogham@bsago.me>
+License: MIT
+
 Files:
  vendor/partial_ref/*
  vendor/partial_ref_derive/*
@@ -1735,6 +1788,11 @@ Copyright: 2019-2024 Hao Hou <haohou302@gmail.com>
 License: MIT
 Comment: see https://github.com/plotters-rs/plotters
 
+Files: vendor/portable-atomic/*
+Copyright: 2022 Taiki Endo
+License: Apache-2.0 OR MIT
+Comment: see https://github.com/taiki-e/portable-atomic
+
 Files: vendor/precomputed-hash/*
 Copyright: 2017-2017 Emilio Cobos Álvarez <emilio@crisal.io>
 License: MIT
@@ -1746,6 +1804,11 @@ Copyright: 2017-2022 Colin Kiegel <kiegel@gmx.de>
            2017-2022 Tom Milligan <code@tommilligan.net>
 License: MIT or Apache-2.0
 Comment: see https://github.com/colin-kiegel/rust-pretty-assertions
+
+Files: vendor/prettydiff/*
+Copyright: 2019-2024 Roman Koblov <penpen938@me.com>
+License: MIT
+Comment: see https://github.com/romankoblov/prettydiff
 
 Files: vendor/proc-macro-hack/*
 Copyright: 2016-2022 David Tolnay <dtolnay@gmail.com>
@@ -1803,6 +1866,18 @@ Comment:
  see https://github.com/rayon-rs/rayon
  see https://github.com/Zoxc/rayon/tree/rustc
 
+Files: vendor/r-efi/*
+Copyright: 2018-2024 David Rheinsberg <david.rheinsberg@gmail.com>
+           2018-2024 Tom Gundersen <teg@jklm.no>
+License: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+Comment: see https://github.com/r-efi/r-efi
+
+Files: vendor/r-efi-alloc/*
+Copyright: 2018-2022 David Rheinsberg <david.rheinsberg@gmail.com>
+           2018-2022 Tom Gundersen <teg@jklm.no>
+License: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+Comment: see https://github.com/r-efi/r-efi-alloc
+
 Files: vendor/redox_users/*
 Copyright: 2017-2021 Jose Narvaez <goyox86@gmail.com>
            2017-2021 Wesley Hershberger <mggmugginsmc@gmail.com>
@@ -1819,7 +1894,8 @@ Comment:
 
 Files:
  vendor/regex-automata/*
- vendor/regex-automata-0.1.10/*
+ vendor/regex-automata-0.1.*/*
+ vendor/regex-automata-0.2.*/*
 Copyright: 2018-2020 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense or MIT
 Comment: see https://github.com/BurntSushi/regex-automata
@@ -1949,6 +2025,11 @@ Copyright:
 License: MIT or Apache-2.0
 Comment: see https://github.com/toml-rs/toml
 
+Files: vendor/serde-untagged/*
+Copyright: 2023-2024 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/serde-untagged
+
 Files: vendor/serde_urlencoded/*
 Copyright: 2016-2024 Anthony Ramine <n.oxyde@gmail.com>
 License: MIT or Apache-2.0
@@ -1978,14 +2059,6 @@ Files: vendor/shlex/*
 Copyright: 2015-2015 comex <comexk@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/comex/rust-shlex
-
-Files:
- vendor/signal-hook/*
- vendor/signal-hook-registry/*
-Copyright: 2018-2024 Michal 'vorner' Vaner <vorner@vorner.cz>
-           2018-2024 Thomas Himmelstoss <thimm@posteo.de>
-License: Apache-2.0 or MIT
-Comment: see https://github.com/vorner/signal-hook
 
 Files: vendor/similar/*
 Copyright: 2021-2024 Armin Ronacher <armin.ronacher@active-4.com>
@@ -2057,11 +2130,6 @@ Copyright: 2017-2020 Nikolai Vazquez
 License: MIT OR Apache-2.0
 Comment: see https://github.com/nvzqz/static-assertions-rs
 
-Files: vendor/strip-ansi-escapes/*
-Copyright: 2017-2023 Ted Mielczarek <ted@mielczarek.org>
-License: Apache-2.0 or MIT
-Comment: see https://github.com/luser/strip-ansi-escapes
-
 Files: vendor/strsim/*
 Copyright: 2015-2021 Danny Guo <dannyguo91@gmail.com>
 License: MIT
@@ -2094,6 +2162,11 @@ Files:
 Copyright: 2015-2022 Guillaume Gomez <guillaume1.gomez@gmail.com>
 License: MIT
 Comment: see https://github.com/GuillaumeGomez/sysinfo
+
+Files: vendor/tar-0.4.38/*
+Copyright: 2014-2023 Alex Crichton <alex@alexcrichton.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/alexcrichton/tar-rs
 
 Files: vendor/tempfile/*
 Copyright: 2015-2018 Steven Allen <steven@stebalien.com>
@@ -2262,7 +2335,7 @@ Copyright: 2015-2019 Paho Lurie-Gregg <paho@paholg.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/paholg/typenum
 
-Files: vendor/ui_test/*
+Files: vendor/ui_test-0.*/*
 Copyright:
  2010-2024 The Rust Project Developers
  2015-2024 Thomas Bracht Laumann Jespersen <laumann.thomas@gmail.com>
@@ -2299,6 +2372,11 @@ Copyright: 2018-2022 Jannis Harder <me@jix.one>
 License: MIT or Apache-2.0
 Comment: see https://github.com/jix/varisat
 
+Files: vendor/vcpkg/*
+Copyright: 2017-2024 Jim McGrath <jimmc2@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/mcgoo/vcpkg-rs
+
 Files: vendor/vec_mut_scan/*
 Copyright: 2019-2023 Jannis Harder <me@jix.one>
 License: 0BSD
@@ -2308,17 +2386,6 @@ Files: vendor/version_check/*
 Copyright: 2017-2019 Sergio Benitez <sb@sergio.bz>
 License: MIT or Apache-2.0
 Comment: see https://github.com/SergioBenitez/version_check
-
-Files: vendor/vte/*
-Copyright: 2016-2024 Joe Wilm <joe@jwilm.com>
-           2016-2024 Christian Duerr <contact@christianduerr.com>
-License: Apache-2.0 OR MIT
-Comment: see https://github.com/alacritty/vte
-
-Files: vendor/vte_generate_state_changes/*
-Copyright: 2016-2024 Christian Duerr <contact@christianduerr.com>
-License: Apache-2.0 OR MIT
-Comment: see https://github.com/jwilm/vte
 
 Files: vendor/want/*
 Copyright: 2018-2023 Sean McArthur <sean@seanmonstar.com>
@@ -2423,9 +2490,7 @@ Copyright: 2019-2020 The Cranelift Project Developers
 License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
 Comment: see https://github.com/CraneStation/rust-wasi
 
-Files:
- vendor/windows-bindgen/*
- vendor/windows-tokens/*
+Files: vendor/windows-bindgen/*
 Copyright: 2019-2024 Microsoft
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
