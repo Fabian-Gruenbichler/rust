@@ -2429,14 +2429,14 @@ Files:
 Copyright: 2019-2024 Microsoft
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
+ this contains pre-generated files which are also MIT or Apache-2.0 licensed,
+ see vendor/windows-bindgen/default/readme.md
 
 Files: vendor/windows-metadata/*
 Copyright: Microsoft 2024
 License: MIT or Apache-2.0
 Comment:
  see https://github.com/microsoft/windows-rs
- this contains pre-generated files which are also MIT or Apache-2.0 licensed,
- see vendor/windows-metadata/default/readme.md
 
 Files: vendor/winnow/*
 Copyright:
