@@ -8,7 +8,7 @@ rustc (1.74.1+dfsg1-1~exp1) experimental; urgency=medium
   * rules: Disable profiling on Hurd ports, llvm does not provide it yet
   * rules: Set the number of expected failures on Hurd ports
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Wed, 29 May 2024 11:24:48 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 29 May 2024 11:24:48 +0200
 
 rustc (1.73.0+dfsg1-1) unstable; urgency=medium
 
