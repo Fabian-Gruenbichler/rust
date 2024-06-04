@@ -1,8 +1,14 @@
-rustc (1.75.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.75.0+dfsg1-1~exp1) experimental; urgency=medium
 
-  * New upstream release
+  [ Fabian Grünbichler ]
+  * New upstream release (Closes: #1068008)
+  * fix cross-building (thanks John Paul Adrian Glaubitz!)
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 04 Jun 2024 19:41:54 +0200
+  [ Samuel Thibault ]
+  * rules: Use 32bit limitations workaround on !linux as well
+
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 04 Jun 2024 21:24:09 +0200
 
 rustc (1.74.1+dfsg1-1) unstable; urgency=medium
 
