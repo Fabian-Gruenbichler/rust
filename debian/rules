@@ -236,7 +236,7 @@ debian/config.toml: debian/config.toml.in debian/rules
 	  then sed -i -e '/^rustc = /d' -e '/^cargo = /d' "$@"; fi
 # Work around low-memory (32-bit) architectures: https://github.com/rust-lang/rust/issues/45854
 # otherwise they fail to mmap rustc_driver when building rustdoc in >1.60
-	if [ $DEB_BUILD_ARCH_BITS == "32" ]; then \
+	if [ $(DEB_BUILD_ARCH_BITS) == "32" ]; then \
 		sed -i -e 's/^debuginfo-level = .*/debuginfo-level = 0/g' "$@"; \
 	fi
 
