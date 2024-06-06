@@ -1,9 +1,15 @@
+rustc (1.75.0+dfsg1-4) unstable; urgency=medium
+
+  * d/rules: fix comparison (unbreak 32-bit builds)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 06 Jun 2024 10:25:40 +0200
+
 rustc (1.75.0+dfsg1-3) unstable; urgency=medium
 
   * d/rules: fix variable typo
   * fix changelog
 
- -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Thu, 06 Jun 2024 09:16:53 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 06 Jun 2024 09:16:53 +0200
 
 rustc (1.75.0+dfsg1-1) unstable; urgency=medium
 
