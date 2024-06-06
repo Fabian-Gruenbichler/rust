@@ -1,3 +1,9 @@
+rustc (1.75.0+dfsg1-2) UNRELEASED; urgency=medium
+
+  * d/rules: fix variable typo
+
+ -- Fabian Grünbichler <f.gruenbichler@proxmox.com>  Thu, 06 Jun 2024 09:16:53 +0200
+
 rustc (1.75.0+dfsg1-1) unstable; urgency=medium
 
   * d/rules: switch low-mem check to cover all 32-bits archs
