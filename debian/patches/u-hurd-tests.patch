@@ -1,0 +1,36 @@
+These tests hang or make the box OOM
+
+Index: rustc-1.75.0+dfsg1/tests/ui/associated-consts/issue-93775.rs
+===================================================================
+--- rustc-1.75.0+dfsg1.orig/tests/ui/associated-consts/issue-93775.rs
++++ rustc-1.75.0+dfsg1/tests/ui/associated-consts/issue-93775.rs
+@@ -1,5 +1,6 @@
+ // build-pass
+ // ignore-tidy-linelength
++// ignore-hurd
+ 
+ // Regression for #93775, needs build-pass to test it.
+ 
+Index: rustc-1.75.0+dfsg1/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
+===================================================================
+--- rustc-1.75.0+dfsg1.orig/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
++++ rustc-1.75.0+dfsg1/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
+@@ -1,5 +1,6 @@
+ // build-pass
+ // ignore-tidy-filelength
++// ignore-hurd
+ #![crate_type = "rlib"]
+ 
+ fn banana(v: &str) -> u32 {
+Index: rustc-1.75.0+dfsg1/tests/ui/threads-sendsync/mpsc_stress.rs
+===================================================================
+--- rustc-1.75.0+dfsg1.orig/tests/ui/threads-sendsync/mpsc_stress.rs
++++ rustc-1.75.0+dfsg1/tests/ui/threads-sendsync/mpsc_stress.rs
+@@ -1,6 +1,7 @@
+ // run-pass
+ // compile-flags:--test
+ // ignore-emscripten
++// ignore-hurd
+ 
+ use std::sync::mpsc::channel;
+ use std::sync::mpsc::TryRecvError;
