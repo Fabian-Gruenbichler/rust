@@ -1,3 +1,16 @@
+rustc (1.75.0+dfsg1-5) UNRELEASED; urgency=medium
+
+  * hurd-i386 build fixes:
+    - d/patches/u-hurd-backtrace.patch
+    - d/patches/u-hurd-getrandom.patch
+    - d/patches/u-hurd-libc.3.patch
+    - d/patches/u-hurd-libc.4.patch
+    - d/patches/u-hurd-libloading-0.7.4.patch
+    - d/patches/u-hurd-socket2.patch
+    - d/patches/u-hurd-tests.patch
+
+ -- Samuel Thibault <sthibault@debian.org>  Fri, 07 Jun 2024 10:27:13 +0200
+
 rustc (1.75.0+dfsg1-4) unstable; urgency=medium
 
   * d/rules: fix comparison (unbreak 32-bit builds)
