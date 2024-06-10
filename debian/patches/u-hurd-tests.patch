@@ -1,9 +1,9 @@
 These tests hang or make the box OOM
 
-Index: rustc-1.75.0+dfsg1/tests/ui/associated-consts/issue-93775.rs
+Index: rust/tests/ui/associated-consts/issue-93775.rs
 ===================================================================
---- rustc-1.75.0+dfsg1.orig/tests/ui/associated-consts/issue-93775.rs
-+++ rustc-1.75.0+dfsg1/tests/ui/associated-consts/issue-93775.rs
+--- rust.orig/tests/ui/associated-consts/issue-93775.rs
++++ rust/tests/ui/associated-consts/issue-93775.rs
 @@ -1,5 +1,6 @@
  // build-pass
  // ignore-tidy-linelength
@@ -11,10 +11,10 @@ Index: rustc-1.75.0+dfsg1/tests/ui/associated-consts/issue-93775.rs
  
  // Regression for #93775, needs build-pass to test it.
  
-Index: rustc-1.75.0+dfsg1/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
+Index: rust/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
 ===================================================================
---- rustc-1.75.0+dfsg1.orig/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
-+++ rustc-1.75.0+dfsg1/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
+--- rust.orig/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
++++ rust/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
 @@ -1,5 +1,6 @@
  // build-pass
  // ignore-tidy-filelength
@@ -22,10 +22,10 @@ Index: rustc-1.75.0+dfsg1/tests/ui/issues/issue-74564-if-expr-stack-overflow.rs
  #![crate_type = "rlib"]
  
  fn banana(v: &str) -> u32 {
-Index: rustc-1.75.0+dfsg1/tests/ui/threads-sendsync/mpsc_stress.rs
+Index: rust/tests/ui/threads-sendsync/mpsc_stress.rs
 ===================================================================
---- rustc-1.75.0+dfsg1.orig/tests/ui/threads-sendsync/mpsc_stress.rs
-+++ rustc-1.75.0+dfsg1/tests/ui/threads-sendsync/mpsc_stress.rs
+--- rust.orig/tests/ui/threads-sendsync/mpsc_stress.rs
++++ rust/tests/ui/threads-sendsync/mpsc_stress.rs
 @@ -1,6 +1,7 @@
  // run-pass
  // compile-flags:--test
@@ -34,3 +34,21 @@ Index: rustc-1.75.0+dfsg1/tests/ui/threads-sendsync/mpsc_stress.rs
  
  use std::sync::mpsc::channel;
  use std::sync::mpsc::TryRecvError;
+Index: rust/tests/run-make/long-linker-command-lines/foo.rs
+===================================================================
+--- rust.orig/tests/run-make/long-linker-command-lines/foo.rs
++++ rust/tests/run-make/long-linker-command-lines/foo.rs
+@@ -44,6 +44,13 @@ fn read_linker_args(path: &Path) -> Stri
+     }
+ }
+ 
++#[cfg(target_os = "hurd")]
++// Debian: test causes build to fail on hurd
++fn main() {
++    return;
++}
++
++#[cfg(not(target_os = "hurd"))]
+ fn main() {
+     let tmpdir = PathBuf::from(env::var_os("TMPDIR").unwrap());
+     let ok = tmpdir.join("ok");
