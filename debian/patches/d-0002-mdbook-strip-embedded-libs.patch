@@ -8,10 +8,10 @@ Comment: Use https://github.com/infinity0/mdBook/tree/debian to help you rebase 
  vendor/mdbook/src/book/init.rs                     |  19 ----
  .../src/renderer/html_handlebars/hbs_renderer.rs   | 104 ++++-----------------
  .../mdbook/src/renderer/html_handlebars/search.rs  |   2 -
- vendor/mdbook/src/theme/index.hbs                  |  99 +-------------------
+ vendor/mdbook/src/theme/index.hbs                  |  86 +----------------
  vendor/mdbook/src/theme/mod.rs                     |  27 ------
  vendor/mdbook/src/theme/searcher/mod.rs            |   2 -
- 7 files changed, 47 insertions(+), 234 deletions(-)
+ 7 files changed, 47 insertions(+), 221 deletions(-)
 
 diff --git a/src/tools/linkchecker/main.rs b/src/tools/linkchecker/main.rs
 index 7f73cac..e4805cc 100644
@@ -97,7 +97,7 @@ index faca1d0..c1a82a3 100644
      }
  
 diff --git a/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs b/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
-index 709aa06..17ff63c 100644
+index 8ea2f49..3cb1c9f 100644
 --- a/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
 +++ b/vendor/mdbook/src/renderer/html_handlebars/hbs_renderer.rs
 @@ -3,13 +3,14 @@ use crate::config::{BookConfig, Code, Config, HtmlConfig, Playground, RustEditio
@@ -245,7 +245,7 @@ index 24d62fd..849a48c 100644
      }
  
 diff --git a/vendor/mdbook/src/theme/index.hbs b/vendor/mdbook/src/theme/index.hbs
-index 80315c4..48413b0 100644
+index 080b785..f6064f6 100644
 --- a/vendor/mdbook/src/theme/index.hbs
 +++ b/vendor/mdbook/src/theme/index.hbs
 @@ -33,10 +33,7 @@
@@ -268,8 +268,8 @@ index 80315c4..48413b0 100644
 +        <script async src="MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
          {{/if}}
      </head>
-     <body>
-@@ -61,48 +58,6 @@
+     <body class="sidebar-visible no-js">
+@@ -61,35 +58,6 @@
              var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "{{ preferred_dark_theme }}" : "{{ default_theme }}";
          </script>
  
@@ -295,30 +295,17 @@ index 80315c4..48413b0 100644
 -            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
 -            if (theme === null || theme === undefined) { theme = default_theme; }
 -            var html = document.querySelector('html');
--            html.classList.remove('no-js')
 -            html.classList.remove('{{ default_theme }}')
 -            html.classList.add(theme);
--            html.classList.add('js');
+-            var body = document.querySelector('body');
+-            body.classList.remove('no-js')
+-            body.classList.add('js');
 -        </script>
 -
--        <!-- Hide / unhide sidebar before it is displayed -->
--        <script>
--            var html = document.querySelector('html');
--            var sidebar = null;
--            if (document.body.clientWidth >= 1080) {
--                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
--                sidebar = sidebar || 'visible';
--            } else {
--                sidebar = 'hidden';
--            }
--            html.classList.remove('sidebar-visible');
--            html.classList.add("sidebar-" + sidebar);
--        </script>
--
-         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-             <div class="sidebar-scrollbox">
-                 {{#toc}}{{/toc}}
-@@ -262,54 +217,8 @@
+         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+ 
+         <!-- Hide / unhide sidebar before it is displayed -->
+@@ -269,54 +237,8 @@
          </script>
          {{/if}}
  
