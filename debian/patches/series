@@ -41,6 +41,9 @@ d-0005-no-jemalloc.patch
 d-0010-cargo-remove-vendored-c-crates.patch
 d-0011-cargo-remove-nghttp2.patch
 d-0012-cargo-always-return-dev-channel.patch
+# remove non-linux
+d-0020-remove-windows-dependencies.patch
+d-0021-vendor-remove-windows-dependencies.patch
 
 ## Patches to the build process, including doc path tweaks
 ## Should not change resulting rustc behaviour
@@ -73,5 +76,3 @@ d-rustdoc-disable-embedded-fonts.patch
 # cherry-picked from ubuntu
 ubuntu-disable-ppc64el-asm-tests.patch
 ubuntu-ignore-arm-doctest.patch
-d-0020-remove-windows-dependencies.patch
-d-0021-vendor-remove-windows-dependencies.patch
