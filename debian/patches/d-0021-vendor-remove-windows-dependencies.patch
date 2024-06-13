@@ -5,6 +5,17 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
+use something like
+
+ find vendor -iname Cargo.toml -exec grep -H -n -e 'windows-sys' -e 'winapi' -e 'ntapi' -e 'wincon' -e 'winreg' -e 'windows' {} \; > /tmp/files
+
+to find dependencies on windows targets in vendored crates. you will likely
+need to remove some hunks from this patch after pruning dependencies, since
+hopefully a few of the crates patched during early rebasing are eliminated.
+
+windows-bindgen and windows-metadata should not be removed, they are needed for
+the build and don't pull in windows-sys and friends.
+
 Signed-off-by: Fabian Grünbichler <f.gruenbichler@proxmox.com>
 ---
  vendor/android-tzdata/Cargo.toml         |  1 +

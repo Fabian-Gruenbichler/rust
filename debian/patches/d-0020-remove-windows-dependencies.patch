@@ -2,6 +2,15 @@ From: Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>
 Date: Mon, 6 May 2024 10:25:32 +0200
 Subject: d-0020-remove-windows-dependencies
 
+use something like
+
+ find src compiler library -iname Cargo.toml -exec grep -H -n -e 'windows-sys' -e 'winapi' -e 'ntapi' -e 'wincon' -e 'winreg' -e 'windows' {} \; >
+
+to find and eliminate dependencies on windows-only crates when rebasing.
+
+windows-bindgen and windows-metadata should not be removed, they are needed for
+the build and don't pull in windows-sys and friends.
+
 ===================================================================
 ---
  compiler/rustc_codegen_ssa/Cargo.toml              |  4 ----
