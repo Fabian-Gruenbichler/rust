@@ -26,7 +26,7 @@ git branch -f debian/rebase-patches debian/experimental
 git checkout debian/rebase-patches
 
 git branch -f patch-queue/debian/rebase-patches
-for i in debian/patches/d-00*.patch; do gbp pq apply "$i"; done
+gbp pq import --no-patch-numbers
 
 gbp import-orig "../rustc_${ver}${dfsg}.orig.tar.xz" \
   --upstream-branch=upstream/rebase-patches \
@@ -40,8 +40,8 @@ echo "$0: When done, exit the child shell with ctrl-D"
 $SHELL
 
 gbp pq export --no-patch-numbers
-for i in debian/patches/d-00*.patch; do git add "$i"; done
-git commit -m "Update early-stage patches for ${ver}${dfsg}"
+git add debian/patches
+git commit -m "early-stage update of patches for ${ver}${dfsg}"
 git checkout .
 git rebase @~ --onto=debian/experimental
 git branch -f debian/experimental
