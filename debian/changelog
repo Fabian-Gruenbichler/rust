@@ -1,3 +1,9 @@
+rustc (1.76.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream release (Closes: #1073068)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 13 Jun 2024 09:56:24 +0200
+
 rustc (1.75.0+dfsg1-5) unstable; urgency=medium
 
   [ Samuel Thibault ]
