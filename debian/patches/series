@@ -14,7 +14,6 @@ u-fix-get-toml-when-test.patch
 u-riscv-disable-unpacked-split-debuginfo.patch
 u-avoid-blessing-cargo-deps-s-source-code-in-ui-tests.patch
 u-hurd-backtrace.patch
-u-hurd-getrandom.patch
 u-hurd-libc.3.patch
 u-hurd-libc.4.patch
 u-hurd-libloading-0.7.4.patch

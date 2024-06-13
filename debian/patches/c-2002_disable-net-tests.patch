@@ -14,9 +14,9 @@ Index: rust/src/tools/cargo/tests/testsuite/git_auth.rs
 -#[cargo_test]
 +#[allow(dead_code)]
  fn http_auth_offered() {
-     // TODO(Seb): remove this once possible.
-     if cargo_uses_gitoxide() {
-@@ -172,7 +172,7 @@ Caused by:
+     let (addr, t, connections) = setup_failed_auth_test();
+     let p = project()
+@@ -167,7 +167,7 @@ Caused by:
  }
  
  // Boy, sure would be nice to have a TLS implementation in rust!
