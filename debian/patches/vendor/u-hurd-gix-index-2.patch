@@ -1,0 +1,20 @@
+Index: rustc-1.76.0+dfsg1/vendor/gix-index/src/fs.rs
+===================================================================
+--- rustc-1.76.0+dfsg1.orig/vendor/gix-index/src/fs.rs
++++ rustc-1.76.0+dfsg1/vendor/gix-index/src/fs.rs
+@@ -115,10 +115,14 @@ impl Metadata {
+ 
+     /// Return the device id on which the file is located, or 0 on windows.
+     pub fn dev(&self) -> u64 {
+-        #[cfg(not(windows))]
++        #[cfg(all(not(windows), not(host_os = "hurd")))]
+         {
+             self.0.st_dev as u64
+         }
++        #[cfg(host_os = "hurd")]
++        {
++            self.0.st_fsid as u64
++        }
+         #[cfg(windows)]
+         0
+     }
