@@ -581,12 +581,12 @@ Comment: see https://github.com/RumovZ/android-tzdata
 
 Files:
  vendor/annotate-snippets/*
+ vendor/annotate-snippets-0.*/*
 Copyright: 2018-2020 Zibi Braniecki <gandalf@mozilla.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/zbraniecki/annotate-snippets-rs
 
 Files: vendor/aho-corasick/*
-       vendor/aho-corasick-0.*/*
        vendor/memchr/*
 Copyright: 2015 Andrew Gallant <jamslam@gmail.com>
            2015-2018 bluss
@@ -1084,9 +1084,7 @@ Copyright: 2016-2018 Steven Fackler <sfackler@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/sfackler/fallible-streaming-iterator
 
-Files:
- vendor/faster-hex/*
- vendor/faster-hex-0.*/*
+Files: vendor/faster-hex/*
 Copyright: 2018-2023 zhangsoledad <787953403@qq.com>
 License: MIT
 Comment: see https://github.com/NervosFoundation/faster-hex
@@ -1204,7 +1202,6 @@ Files:
  vendor/gix-diff/*
  vendor/gix-discover/*
  vendor/gix-features/*
- vendor/gix-features-0.*/*
  vendor/gix-filter/*
  vendor/gix-fs/*
  vendor/gix-glob/*
@@ -1270,7 +1267,7 @@ Comment: see https://github.com/starkat99/half-rs
 
 Files: 
  vendor/handlebars/*
- vendor/handlebars-3.5.*/*
+ vendor/handlebars-4.*/*
 Copyright: 2014-2017 Ning Sun <sunng@about.me>
 License: MIT
 Comment: see https://github.com/sunng87/handlebars-rust
@@ -1519,9 +1516,7 @@ Copyright: 2016-2021 Titus Wormer <tituswormer@gmail.com>
 License: MIT
 Comment: see https://github.com/wooorm/levenshtein-rs
 
-Files:
- vendor/libloading/*
- vendor/libloading-0.7.4/*
+Files: vendor/libloading/*
 Copyright: 2015-2022 Simonas Kazlauskas <libloading@kazlauskas.me>
 License: ISC
 Comment: see https://github.com/nagisa/rust_libloading/
@@ -1562,6 +1557,11 @@ Files: vendor/linux-raw-sys/*
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/sunfishcode/linux-raw-sys
+
+Files: vendor/lsp-server/*
+Copyright: 2024 rust-analyzer team
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-lang/rust-analyzer/tree/master/lib/lsp-server
 
 Files: vendor/lsp-types/*
 Copyright: 2016-2022 Markus Westerlind <marwes91@gmail.com>
@@ -1984,12 +1984,7 @@ Copyright: 2018-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-analyzer/rowan
 
-Files:
- vendor/ra-ap-rustc_lexer/*
- vendor/ra-ap-rustc_abi/*
- vendor/ra-ap-rustc_index/*
- vendor/ra-ap-rustc_index_macros/*
- vendor/ra-ap-rustc_parse_format/*
+Files: vendor/ra-ap-rustc_lexer/*
 Copyright: 2010-2024 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust
@@ -2264,11 +2259,6 @@ Copyright: 2020-2024 Maxim Zhiburt <zhiburt@gmail.com>
 License: MIT
 Comment: see https://github.com/zhiburt/tabled
 
-Files: vendor/tar-0.4.38/*
-Copyright: 2014-2023 Alex Crichton <alex@alexcrichton.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/alexcrichton/tar-rs
-
 Files: vendor/tempfile/*
 Copyright: 2015-2018 Steven Allen <steven@stebalien.com>
            2015-2018 The Rust Project Developers
@@ -2318,15 +2308,6 @@ Files:
 Copyright: 2019-2020 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/dtolnay/thiserror
-
-Files:
- vendor/thiserror-core/*
- vendor/thiserror-core-impl/*
-Copyright:
- 2019-2023 David Tolnay <dtolnay@gmail.com>
- 2022-2023 Florian Uekermann <florian@code.green>
-License: MIT or Apache-2.0
-Comment: https://github.com/FlorianUekermann/thiserror/tree/core
 
 Files: vendor/thorin-dwp/*
 Copyright: 2021-2022 David Wood <david.wood@huawei.com>
@@ -2433,11 +2414,6 @@ Files: vendor/type-map/*
 Copyright: 2019-2022 Jacob Brown <kardeiz@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/kardeiz/type-map
-
-Files: vendor/typed-arena/*
-Copyright: 2015-2023 The typed-arena developers
-License: MIT
-Comment: see https://github.com/SimonSapin/rust-typed-arena
 
 Files: vendor/typenum/*
 Copyright: 2015-2019 Paho Lurie-Gregg <paho@paholg.com>
