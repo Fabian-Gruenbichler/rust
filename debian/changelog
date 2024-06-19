@@ -1,3 +1,11 @@
+rustc (1.76.0+dfsg1-1~exp2) UNRELEASED; urgency=medium
+
+  * Fix hurd build:
+    - debian/patches/vendor/u-hurd-gix-index-2.patch
+    - debian/patches/vendor/u-hurd-gix-index.patch
+
+ -- Samuel Thibault <sthibault@debian.org>  Wed, 19 Jun 2024 00:53:11 +0200
+
 rustc (1.76.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release (Closes: #1073068)
