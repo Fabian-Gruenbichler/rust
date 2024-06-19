@@ -51,4 +51,3 @@ git checkout debian/experimental
 git tag -d "${upstream_tag}" || true
 git branch -D upstream/rebase-patches || true
 git branch -D debian/rebase-patches || true
-git branch -D patch-queue/debian/rebase-patches || true
