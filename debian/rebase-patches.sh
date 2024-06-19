@@ -25,7 +25,7 @@ git branch -f upstream/rebase-patches upstream/experimental
 git branch -f debian/rebase-patches debian/experimental
 git checkout debian/rebase-patches
 
-git branch -f patch-queue/debian/rebase-patches
+gbp pq drop || true
 gbp pq import --no-patch-numbers
 
 gbp import-orig "../rustc_${ver}${dfsg}.orig.tar.xz" \
