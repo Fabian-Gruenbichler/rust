@@ -30,7 +30,6 @@ Files-Excluded:
 # rust-analyzer parts we don't need (yet)
  src/tools/rust-analyzer/editors
  src/tools/rust-analyzer/.github
- vendor/rust-analyzer-salsa/book
 # Embedded GH pages
  src/tools/clippy/util/gh-pages
 # Embedded C libraries
