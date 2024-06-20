@@ -5,7 +5,6 @@ cargo/c-disable-fs-specific-test.patch
 cargo/c-0003-tests-add-missing-cross-disabled-checks.patch
 cargo/d-0012-cargo-always-return-dev-channel.patch
 upstream/u-fix-get-toml-when-test.patch
-upstream/u-riscv-disable-unpacked-split-debuginfo.patch
 upstream/u-avoid-blessing-cargo-deps-s-source-code-in-ui-tests.patch
 upstream/u-ignore-ppc-hangs.patch
 upstream/u-rustc-llvm-cross-flags.patch
