@@ -28,7 +28,7 @@ index 51b5cdc..c36b095 100644
 +                        let name = entry.file_name().into_string()
 +                            .expect("Debian: rustc files should have UTF-8 name");
 +                        if name.starts_with("rustdoc-") && name.ends_with(".css") {
-+                            Some(name)
++                            Some(format!("static.files/{name}"))
 +                        } else { None }
 +                    })).flatten();
 +                if let Some(name) = _css {
