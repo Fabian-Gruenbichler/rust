@@ -424,6 +424,7 @@ debian/dh_auto_install.stamp:
 
 	# Remove Cargo made package cache
 	rm -vf $(CURDIR)/debian/cargo/.package-cache
+	rm -vf $(CURDIR)/debian/cargo/.package-cache-mutate
 
 	touch "$@"
 
@@ -436,6 +437,7 @@ ifeq (true,$(BUILD_WINDOWS))
 endif
 	# Remove Cargo made package cache
 	rm -vf $(CURDIR)/debian/cargo/.package-cache
+	rm -vf $(CURDIR)/debian/cargo/.package-cache-mutate
 
 
 override_dh_auto_install-indep: debian/dh_auto_install.stamp
@@ -468,6 +470,7 @@ ifeq (true,$(BUILD_DOCS))
 endif
 	# Remove Cargo made package cache
 	rm -vf $(CURDIR)/debian/cargo/.package-cache
+	rm -vf $(CURDIR)/debian/cargo/.package-cache-mutate
 
 
 override_dh_install-indep:
