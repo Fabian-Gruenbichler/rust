@@ -1,8 +1,9 @@
-rustc (1.78.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.78.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * cherry-pick rmake v2 test fix
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 20 Jun 2024 16:49:11 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 21 Jun 2024 12:33:24 +0200
 
 rustc (1.77.2+dfsg1-1) unstable; urgency=medium
 
