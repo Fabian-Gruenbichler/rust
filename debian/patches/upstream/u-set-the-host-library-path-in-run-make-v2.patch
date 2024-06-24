@@ -1,7 +1,9 @@
 From: =?utf-8?q?Fabian_Gr=C3=BCnbichler?= <debian@fabian.gruenbichler.email>
 Date: Thu, 20 Jun 2024 21:58:10 +0200
 Subject: [PATCH] Set the host library path in run-make v2
-Author: Josh Stone <jistone@redhat.com> Date: Wed,
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
 When the build is configured with `[rust] rpath = false`, we need to set
 `LD_LIBRARY_PATH` (or equivalent) to what would have been the `RPATH`,

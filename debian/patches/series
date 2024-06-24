@@ -44,3 +44,4 @@ behaviour/d-rustc-i686-baseline.patch
 behaviour/d-rustdoc-disable-embedded-fonts.patch
 ubuntu/ubuntu-disable-ppc64el-asm-tests.patch
 ubuntu/ubuntu-ignore-arm-doctest.patch
+upstream/Revert-loongarch-add-frecipe-and-relax-target-feature.patch
