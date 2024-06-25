@@ -1,8 +1,10 @@
-rustc (1.79.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.79.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * New wasi-libc version (SDK 22)
+  * config: adapt to new change tracking mechanism
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 24 Jun 2024 12:00:38 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 25 Jun 2024 09:40:12 +0200
 
 rustc (1.78.0+dfsg1-2) unstable; urgency=medium
 
