@@ -337,6 +337,7 @@ Package: rustfmt
 Architecture: any
 Multi-Arch: allowed
 Depends: ${misc:Depends}, ${shlibs:Depends},
+ libstd-rust-1.79 (= ${binary:Version}),
 Recommends: cargo
 Description: Rust formatting helper
  Rust is a curly-brace, block-structured expression language.  It
