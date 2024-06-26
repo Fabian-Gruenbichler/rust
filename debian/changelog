@@ -1,3 +1,11 @@
+rustc (1.79.0+dfsg1-1) unstable; urgency=medium
+
+  * cargo wrapper: switch to config.toml
+  * cargo wrapper: ensure debug symbols are not stripped
+  * add missing rustfmt dependency (Closes: #1074290)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 26 Jun 2024 08:36:52 +0200
+
 rustc (1.79.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
