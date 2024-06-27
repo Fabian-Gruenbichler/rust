@@ -1,3 +1,14 @@
+rustc (1.79.0+dfsg1-2) unstable; urgency=medium
+
+  [ Fabian Grünbichler ]
+  * build: remove more cache files (Closes: #1074373)
+  * d/control: update Standards-Version to 4.7.0
+
+  [ Samuel Thibault ]
+  * Avoid hurd-stuck test
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 27 Jun 2024 14:30:53 +0200
+
 rustc (1.79.0+dfsg1-1) unstable; urgency=medium
 
   * cargo wrapper: switch to config.toml
