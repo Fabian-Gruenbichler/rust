@@ -186,7 +186,7 @@ Description: Rust standard libraries - development files
  .
  This package contains the standard Rust libraries including development files,
  needed to cross-compile Rust programs to the wasm32-unknown-unknown and
- wasm32-wasi targets.
+ wasm32-wasip1/wasm32-wasip2 targets.
 
 Package: rust-gdb
 Architecture: all
