@@ -10,6 +10,7 @@ upstream/u-rustc-llvm-cross-flags.patch
 upstream/u-hurd-tests.patch
 upstream/d-ignore-test_arc_condvar_poison-ppc.patch
 upstream/d-disable-download-tests.patch
+upstream/u-hurd-amd64.patch
 prune/d-0000-ignore-removed-submodules.patch
 prune/d-0001-pkg-config-no-special-snowflake.patch
 prune/d-0002-mdbook-strip-embedded-libs.patch
@@ -21,6 +22,7 @@ prune/d-0021-vendor-remove-windows-dependencies.patch
 vendor/u-hurd-gix-index-2.patch
 vendor/u-hurd-rustix.patch
 vendor/d-0003-cc-psm-rebuild-wasm32.patch
+vendor/u-libc-hurd-amd64.patch
 build/d-bootstrap-rustflags.patch
 build/d-bootstrap-install-symlinks.patch
 build/d-bootstrap-disable-git.patch
