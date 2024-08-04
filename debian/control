@@ -56,7 +56,8 @@ Build-Depends-Indep:
  wasi-libc (>= 0.0~git20240411.9e8c542-3~~) <!nowasm>,
  wasi-libc (<= 0.0~git20240411.9e8c542++) <!nowasm>,
  clang-17:native,
-Build-Conflicts: gdb-minimal <!nocheck>
+# see #1057780, gdb now Conflicts gdb-minimal
+#Build-Conflicts: gdb-minimal <!nocheck>
 Standards-Version: 4.7.0
 Homepage: http://www.rust-lang.org/
 Vcs-Git: https://salsa.debian.org/rust-team/rust.git

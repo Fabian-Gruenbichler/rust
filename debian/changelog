@@ -4,8 +4,9 @@ rustc (1.80.0+dfsg1-1~exp1) experimental; urgency=medium
   * Build wasi-p2 target
   * Use packaged libonig
   * Update lintian overrides
+  * d/control: drop Build-Conflicts on gdb-minimal
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 31 Jul 2024 13:45:25 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 04 Aug 2024 10:38:52 +0200
 
 rustc (1.79.0+dfsg1-2) unstable; urgency=medium
 
