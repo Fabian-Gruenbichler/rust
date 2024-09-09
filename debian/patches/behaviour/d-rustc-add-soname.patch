@@ -37,7 +37,7 @@ index 8c582fa..4f75b28 100644
 +       && sess.target.linker_flavor.is_gnu() {
 +        let filename = String::from(out_filename.file_name().unwrap().to_str().unwrap());
 +        let soname = [String::from("-Wl,-soname=") + &filename];
-+        cmd.args(&soname);
++        cmd.cc_args(&soname);
 +    }
  }
  
