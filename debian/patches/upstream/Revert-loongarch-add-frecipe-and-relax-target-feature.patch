@@ -15,10 +15,10 @@ Bug: https://github.com/rust-lang/rust/issues/114661
  2 files changed, 1 insertion(+), 3 deletions(-)
 
 diff --git a/compiler/rustc_target/src/target_features.rs b/compiler/rustc_target/src/target_features.rs
-index d981254..1b038a2 100644
+index 6667efb..339760a 100644
 --- a/compiler/rustc_target/src/target_features.rs
 +++ b/compiler/rustc_target/src/target_features.rs
-@@ -376,12 +376,10 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
+@@ -387,12 +387,10 @@ const LOONGARCH_ALLOWED_FEATURES: &[(&str, Stability)] = &[
      // tidy-alphabetical-start
      ("d", Unstable(sym::loongarch_target_feature)),
      ("f", Unstable(sym::loongarch_target_feature)),
@@ -32,7 +32,7 @@ index d981254..1b038a2 100644
      // tidy-alphabetical-end
  ];
 diff --git a/tests/ui/abi/compatibility.rs b/tests/ui/abi/compatibility.rs
-index c27a107..2717cc7 100644
+index ca78604..ae4e991 100644
 --- a/tests/ui/abi/compatibility.rs
 +++ b/tests/ui/abi/compatibility.rs
 @@ -39,7 +39,7 @@

@@ -18,7 +18,6 @@ prune/d-0010-cargo-remove-vendored-c-crates.patch
 prune/d-0011-cargo-remove-nghttp2.patch
 prune/d-0020-remove-windows-dependencies.patch
 prune/d-0021-vendor-remove-windows-dependencies.patch
-vendor/u-hurd-gix-index.patch
 vendor/u-hurd-gix-index-2.patch
 vendor/u-hurd-rustix.patch
 vendor/d-0003-cc-psm-rebuild-wasm32.patch
@@ -31,7 +30,6 @@ build/d-bootstrap-use-local-css.patch
 build/d-bootstrap-custom-debuginfo-path.patch
 build/d-bootstrap-permit-symlink-in-docs.patch
 build/d-test-ignore-avx-44056.patch
-build/d-armel-fix-lldb.patch
 behaviour/d-rust-gdb-paths.patch
 behaviour/d-rust-lldb-paths.patch
 behaviour/d-rustc-add-soname.patch
