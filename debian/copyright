@@ -1052,8 +1052,9 @@ Files:
  vendor/regex-syntax-*/*
  vendor/regex-syntax-0.*/*
  vendor/rustc-hash-*/*
+ vendor/rustc-stable-hash-*/*
  vendor/time-*/*
-Copyright: 2010-2021 The Rust Project Developers
+Copyright: 2010-2024 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment:
  This is a collection of external crates embedded here to bootstrap cargo.
@@ -1492,11 +1493,6 @@ Files:
 Copyright: 2014-2024 Alex Crichton <alex@alexcrichton.com>
 License: MIT
 Comment: see https://github.com/alexcrichton/curl-rust
-
-Files: vendor/dashmap-*/*
-Copyright: 2019-2022 Acrimon <joel.wejdenstal@gmail.com>
-License: MIT
-Comment: see https://github.com/xacrimon/dashmap
 
 Files:
  vendor/darling-*/*
@@ -1970,6 +1966,12 @@ Copyright: 2017-2021 Ted Driggs <ted.driggs@outlook.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/TedDriggs/ident_case
 
+Files: vendor/id-arena-*/*
+Copyright: 2018-2023 Nick Fitzgerald <fitzgen@gmail.com>
+           2018-2023 Aleksey Kladov <aleksey.kladov@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/fitzgen/id-arena
+
 Files: vendor/im-rc-*/*
 Copyright: 2017-2022 Bodil Stokke <bodil@bodil.org>
 License: MPL-2.0+
@@ -2094,6 +2096,11 @@ Copyright: 2016-2022 Nick Fitzgerald <fitzgen@gmail.com>
            2016-2022 Philip Craig <philipjcraig@gmail.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/gimli-rs/leb128
+
+Files: vendor/lexopt-*/*
+Copyright: 2021-2023 Jan Verbeek <jan.verbeek@posteo.nl>
+License: MIT
+Comment: see https://github.com/blyxxyz/lexopt
 
 Files: vendor/levenshtein-*/*
 Copyright: 2016-2021 Titus Wormer <tituswormer@gmail.com>
@@ -2544,6 +2551,11 @@ Copyright: 2015-2019 mcarton <cartonmartin+git@gmail.com>
 License: MIT
 Comment: see https://github.com/mcarton/rust-punycode.git
 
+Files: vendor/quickcheck-0.4.1/*
+Copyright: 2014-2023 Andrew Gallant <jamslam@gmail.com>
+License: Unlicense or MIT
+Comment: see https://github.com/BurntSushi/quickcheck
+
 Files: vendor/quick-error-*/*
 Copyright:
  2015-2023 Paul Colomiets <paul@colomiets.name>
@@ -2808,6 +2820,12 @@ Copyright: 2024 Oli Scherer
 License: MIT OR Apache-2.0
 Comment: see https://github.com/oli-obk/spanned
 
+Files: vendor/spdx-*/*
+Copyright: 2019-2024 Embark <opensource@embark-studios.com>
+           2019-2024 Jake Shadle <jake.shadle@embark-studios.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/EmbarkStudios/spdx
+
 Files:
  vendor/spdx-expression-*/*
  vendor/spdx-rs-*/*
@@ -3047,6 +3065,11 @@ Copyright: 2015-2022 Jake Goulding <jake.goulding@gmail.com>
 License: MIT
 Comment: see https://github.com/shepmaster/twox-hash
 
+Files: vendor/typeid-*/*
+Copyright: 2024-2024 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/typeid
+
 Files: vendor/type-map-*/*
 Copyright: 2019-2022 Jacob Brown <kardeiz@gmail.com>
 License: MIT or Apache-2.0
@@ -3212,10 +3235,23 @@ Copyright: Nick Fitzgerald <fitzgen@gmail.com>
 License: Apache-2.0 with LLVM exception
 Comment: see https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasm-encoder
 
-Files: vendor/wasmparser-*/*
-Copyright: Yury Delendik <ydelendik@mozilla.com>
-License: Apache-2.0 with LLVM exception
-Comment: see https://github.com/bytecodealliance/wasm-tools/tree/main/crates/wasmparser
+Files: vendor/wasm-component-ld-*/*
+Copyright: 2023-2024 Alex Crichton <alex@alexcrichton.com>
+License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
+Comment: see https://github.com/bytecodealliance/wasm-component-ld
+
+Files:
+ vendor/wasmparser-*/*
+ vendor/wasm-metadata-*/*
+ vendor/wast-*/*
+ vendor/wat-*/*
+ vendor/wit-component-*/*
+ vendor/wit-parser-*/*
+Copyright:
+ Yury Delendik <ydelendik@mozilla.com>
+ The Wasmtime Project Developers
+License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
+Comment: see https://github.com/bytecodealliance/wasm-tools
 
 Files: vendor/windows-bindgen-*/*
 Copyright: 2019-2024 Microsoft
