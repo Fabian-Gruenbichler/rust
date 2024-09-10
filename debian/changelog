@@ -1,8 +1,16 @@
-rustc (1.81.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.81.0+dfsg1-1~exp1) experimental; urgency=medium
 
+  [ Fabian Grünbichler ]
   * New upstream release
+  * switch to LLVM 18
+  * bump libgit2 to 1.8.1
+  * build and install wasm-component-ld for wasm-wasip2
+  * make rust-llvm arch:any
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 09 Sep 2024 14:12:03 +0200
+  [ Samuel Thibault ]
+  * add hurd-amd64 support
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 11 Sep 2024 08:26:59 +0200
 
 rustc (1.80.1+dfsg1-1) unstable; urgency=medium
 
