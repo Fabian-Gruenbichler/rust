@@ -233,7 +233,7 @@ Description: Rust debugger (lldb)
  invoking lldb on rust binaries.
 
 Package: rust-llvm
-Architecture: all
+Architecture: any
 Breaks:
  rustc (<< 1.71.1+dfsg1-1~exp1),
  rustc-web (<< 1.71.1+dfsg1-1~exp1),
@@ -242,8 +242,7 @@ Replaces:
  rustc (<< 1.71.1+dfsg1-1~exp1),
  rustc-web (<< 1.71.1+dfsg1-1~exp1),
  rustc-mozilla (<< 1.71.1+dfsg1-1~exp1),
-Depends:
- ${misc:Depends},
+Depends: ${shlibs:Depends}, ${misc:Depends},
 # lld and clang are needed for wasm compilation
  lld-18, clang-18,
 # llvm is needed for llvm-dwp for split-debuginfo=packed
@@ -262,7 +261,7 @@ Description: Rust LLVM integration
  styles.
  .
  This package contains symlinks for integration with LLVM tools such as lld and
- grcov.
+ grcov, and the wasm-component-ld helper binary for the wasm-wasip2 target.
 
 Package: rust-doc
 Section: doc
