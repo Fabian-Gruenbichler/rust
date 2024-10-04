@@ -1,3 +1,10 @@
+rustc (1.81.0+dfsg1-1~exp2) experimental; urgency=medium
+
+  * source: duplicate lintian overrides to make ftp-masters happy
+  * cargo wrapper: fix LTO handling (Closes: #1079071)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 04 Oct 2024 18:28:19 +0200
+
 rustc (1.81.0+dfsg1-1~exp1) experimental; urgency=medium
 
   [ Fabian Grünbichler ]
