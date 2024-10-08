@@ -25,7 +25,7 @@ Forwarded: no
  1 file changed, 7 insertions(+)
 
 diff --git a/compiler/rustc_codegen_ssa/src/back/link.rs b/compiler/rustc_codegen_ssa/src/back/link.rs
-index 8c582fa..4f75b28 100644
+index 8c582fa..77170ba 100644
 --- a/compiler/rustc_codegen_ssa/src/back/link.rs
 +++ b/compiler/rustc_codegen_ssa/src/back/link.rs
 @@ -2488,6 +2488,13 @@ fn add_order_independent_options(
