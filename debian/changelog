@@ -1,3 +1,11 @@
+rustc (1.81.0+dfsg1-2) unstable; urgency=medium
+
+  * use system libz-sys even when cross-building (Closes: #1084754)
+  * drop no longer needed loongarch64 patch
+  * add temporary Breaks to force migration of libgit2
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 08 Oct 2024 14:34:41 +0200
+
 rustc (1.81.0+dfsg1-1) unstable; urgency=medium
 
   * Upload to unstable
