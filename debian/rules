@@ -59,9 +59,10 @@ ifneq (,$(filter $(DEB_TARGET_ARCH),sparc64 mips64el hurd-i386 hurd-amd64))
 # mips64el: has profiler, but buggy atm (32-bit overflow in some counter?)
 CLANG_RT_ARCH =
 PROFILER = "false"
+PROFILER_PATH = ""
 else
-export LLVM_PROFILER_RT_LIB=/usr/lib/llvm-$(LLVM_VERSION)/lib/clang/$(LLVM_VERSION)/lib/linux/libclang_rt.profile-$(CLANG_RT_ARCH).a
 PROFILER = "true"
+PROFILER_PATH = profiler = \"/usr/lib/llvm-$(LLVM_VERSION)/lib/clang/$(LLVM_VERSION)/lib/linux/libclang_rt.profile-$(CLANG_RT_ARCH).a\"
 endif
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
@@ -233,6 +234,8 @@ debian/config.toml: debian/config.toml.in debian/rules
 		-DLLVM_VERSION="$(LLVM_VERSION)" \
 		-DRUST_DESTDIR="$(RUST_DESTDIR)" \
 		-DPROFILER="$(PROFILER)" \
+		-DPROFILER_PATH="$(PROFILER_PATH)" \
+		-DWINDOWS_ARCH="$(WINDOWS_ARCH)" \
 		"$<" > "$@"
 	if $(DOWNLOAD_BOOTSTRAP) || [ $(HAVE_BINARY_TARBALL) != 0 ]; \
 	  then sed -i -e '/^rustc = /d' -e '/^cargo = /d' "$@"; fi
