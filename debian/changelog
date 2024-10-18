@@ -1,3 +1,10 @@
+rustc (1.82.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream release
+  * New wasi-libc version 0.0~git20240708.3f43ea9
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 18 Oct 2024 12:46:19 +0200
+
 rustc (1.81.0+dfsg1-2) unstable; urgency=medium
 
   * use system libz-sys even when cross-building (Closes: #1084754)
