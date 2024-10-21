@@ -1,4 +1,5 @@
-use crate::base::ExtCtxt;
+use std::ops::{Bound, Range};
+
 use ast::token::IdentIsRaw;
 use pm::bridge::{
     server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
@@ -20,7 +21,8 @@ use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 use smallvec::{smallvec, SmallVec};
-use std::ops::{Bound, Range};
+
+use crate::base::ExtCtxt;
 
 trait FromInternal<T> {
     fn from_internal(x: T) -> Self;
@@ -412,7 +414,7 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub struct FreeFunctions;
+pub(crate) struct FreeFunctions;
 
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
@@ -424,7 +426,7 @@ pub(crate) struct Rustc<'a, 'b> {
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -522,7 +524,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let message = rustc_errors::DiagMessage::from(diagnostic.message);
         let mut diag: Diag<'_, ()> =
-            Diag::new(&self.psess().dcx, diagnostic.level.to_internal(), message);
+            Diag::new(self.psess().dcx(), diagnostic.level.to_internal(), message);
         diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             // This message comes from another diagnostic, and we are just reconstructing the

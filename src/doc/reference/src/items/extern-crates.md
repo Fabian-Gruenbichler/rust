@@ -11,11 +11,9 @@
 > &nbsp;&nbsp; `as` ( [IDENTIFIER] | `_` )
 
 An _`extern crate` declaration_ specifies a dependency on an external crate.
-The external crate is then bound into the declaring scope as the [identifier]
-provided in the `extern crate` declaration. Additionally, if the `extern
-crate` appears in the crate root, then the crate name is also added to the
-[extern prelude], making it automatically in scope in all modules. The `as`
-clause can be used to bind the imported crate to a different name.
+The external crate is then bound into the declaring scope as the given [identifier] in the [type namespace].
+Additionally, if the `extern crate` appears in the crate root, then the crate name is also added to the [extern prelude], making it automatically in scope in all modules.
+The `as` clause can be used to bind the imported crate to a different name.
 
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
@@ -52,11 +50,6 @@ Here is an example:
 extern crate hello_world; // hyphen replaced with an underscore
 ```
 
-## Extern Prelude
-
-This section has been moved to [Preludes — Extern Prelude](../names/preludes.md#extern-prelude).
-<!-- this is to appease the linkchecker, will remove once other books are updated -->
-
 ## Underscore Imports
 
 An external crate dependency can be declared without binding its name in scope
@@ -79,6 +72,7 @@ crate to access only its macros.
 [extern prelude]: ../names/preludes.md#extern-prelude
 [`macro_use` prelude]: ../names/preludes.md#macro_use-prelude
 [`crate_name` attributes]: ../crates-and-source-files.md#the-crate_name-attribute
+[type namespace]: ../names/namespaces.md
 
 <script>
 (function() {

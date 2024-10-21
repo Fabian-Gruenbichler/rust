@@ -87,6 +87,7 @@ Example uses:
 - Depend on crates with the same name from different registries"),
         ])
         .arg_manifest_path_without_unsupported_path_tip()
+        .arg_lockfile_path()
         .arg_package("Package to modify")
         .arg_ignore_rust_version()
         .arg_dry_run("Don't actually write the manifest")
@@ -214,11 +215,9 @@ pub fn exec(gctx: &mut GlobalContext, args: &ArgMatches) -> CliResult {
     };
     add(&ws, &options)?;
 
-    if !dry_run {
-        // Reload the workspace since we've changed dependencies
-        let ws = args.workspace(gctx)?;
-        resolve_ws(&ws)?;
-    }
+    // Reload the workspace since we've changed dependencies
+    let ws = args.workspace(gctx)?;
+    resolve_ws(&ws, dry_run)?;
 
     Ok(())
 }

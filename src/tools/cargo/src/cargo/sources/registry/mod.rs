@@ -445,7 +445,7 @@ pub enum MaybeLock {
 
 mod download;
 mod http_remote;
-mod index;
+pub(crate) mod index;
 pub use index::IndexSummary;
 mod local;
 mod remote;
@@ -642,10 +642,10 @@ impl<'gctx> RegistrySource<'gctx> {
         let prefix = unpack_dir.file_name().unwrap();
         let parent = unpack_dir.parent().unwrap();
         for entry in tar.entries()? {
-            let mut entry = entry.with_context(|| "failed to iterate over archive")?;
+            let mut entry = entry.context("failed to iterate over archive")?;
             let entry_path = entry
                 .path()
-                .with_context(|| "failed to read entry path")?
+                .context("failed to read entry path")?
                 .into_owned();
 
             // We're going to unpack this tarball into the global source
@@ -719,7 +719,7 @@ impl<'gctx> RegistrySource<'gctx> {
             .unpack_package(package, path)
             .with_context(|| format!("failed to unpack package `{}`", package))?;
         let mut src = PathSource::new(&path, self.source_id, self.gctx);
-        src.update()?;
+        src.load()?;
         let mut pkg = match src.download(package)? {
             MaybePackage::Ready(pkg) => pkg,
             MaybePackage::Download { .. } => unreachable!(),

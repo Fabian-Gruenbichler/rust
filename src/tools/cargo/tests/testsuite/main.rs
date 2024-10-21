@@ -2,12 +2,10 @@
 #![allow(clippy::print_stderr)]
 #![allow(clippy::print_stdout)]
 
-#[macro_use]
-extern crate cargo_test_macro;
-
 mod advanced_env;
 mod alt_registry;
 mod artifact_dep;
+mod artifact_dir;
 mod bad_config;
 mod bad_manifest_path;
 mod bench;
@@ -36,6 +34,7 @@ mod cargo_fix;
 mod cargo_generate_lockfile;
 mod cargo_git_checkout;
 mod cargo_help;
+mod cargo_info;
 mod cargo_init;
 mod cargo_install;
 mod cargo_locate_project;
@@ -113,6 +112,7 @@ mod list_availables;
 mod local_registry;
 mod locate_project;
 mod lockfile_compat;
+mod lockfile_path;
 mod login;
 mod logout;
 mod lto;
@@ -129,7 +129,6 @@ mod new;
 mod offline;
 mod old_cargos;
 mod open_namespaces;
-mod out_dir;
 mod owner;
 mod package;
 mod package_features;
@@ -152,6 +151,7 @@ mod publish_lockfile;
 mod read_manifest;
 mod registry;
 mod registry_auth;
+mod registry_overlay;
 mod rename_deps;
 mod replace;
 mod required_features;
@@ -184,6 +184,8 @@ mod warn_on_failure;
 mod weak_dep_features;
 mod workspaces;
 mod yank;
+
+use cargo_test_support::prelude::*;
 
 #[cargo_test]
 fn aaa_trigger_cross_compile_disabled_check() {

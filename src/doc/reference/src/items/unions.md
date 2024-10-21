@@ -3,10 +3,11 @@
 > **<sup>Syntax</sup>**\
 > _Union_ :\
 > &nbsp;&nbsp; `union` [IDENTIFIER]&nbsp;[_GenericParams_]<sup>?</sup> [_WhereClause_]<sup>?</sup>
->   `{`[_StructFields_] `}`
+>   `{`[_StructFields_]<sup>?</sup> `}`
 
 A union declaration uses the same syntax as a struct declaration, except with
 `union` in place of `struct`.
+A union declaration defines the given name in the [type namespace] of the module or block where it is located.
 
 ```rust
 #[repr(C)]
@@ -29,6 +30,8 @@ Union field types are restricted to the following subset of types:
 This restriction ensures, in particular, that union fields never need to be
 dropped. Like for structs and enums, it is possible to `impl Drop` for a union
 to manually define what happens when it gets dropped.
+
+Unions without any fields are not accepted by the compiler, but can be accepted by macros.
 
 ## Initialization of a union
 
@@ -172,9 +175,8 @@ checking, etc etc etc).
 [_GenericParams_]: generics.md
 [_WhereClause_]: generics.md#where-clauses
 [_StructFields_]: structs.md
-[`transmute`]: ../../std/mem/fn.transmute.html
-[`Copy`]: ../../std/marker/trait.Copy.html
+[`transmute`]: std::mem::transmute
 [boolean type]: ../types/boolean.md
-[ManuallyDrop]: ../../std/mem/struct.ManuallyDrop.html
 [the C representation]: ../type-layout.md#reprc-unions
-[undefined behavior]: ../behavior-considered-undefined.html
+[type namespace]: ../names/namespaces.md
+[undefined behavior]: ../behavior-considered-undefined.md

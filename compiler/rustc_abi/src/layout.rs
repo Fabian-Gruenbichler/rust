@@ -1,9 +1,7 @@
 use std::borrow::{Borrow, Cow};
-use std::cmp;
 use std::fmt::{self, Write};
-use std::iter;
-use std::ops::Bound;
-use std::ops::Deref;
+use std::ops::{Bound, Deref};
+use std::{cmp, iter};
 
 use rustc_index::Idx;
 use tracing::debug;
@@ -186,7 +184,7 @@ pub trait LayoutCalculator {
         let (present_first, present_second) = {
             let mut present_variants = variants
                 .iter_enumerated()
-                .filter_map(|(i, v)| if absent(v) { None } else { Some(i) });
+                .filter_map(|(i, v)| if !repr.c() && absent(v) { None } else { Some(i) });
             (present_variants.next(), present_variants.next())
         };
         let present_first = match present_first {
@@ -621,7 +619,7 @@ where
     let discr_type = repr.discr_type();
     let bits = Integer::from_attr(dl, discr_type).size().bits();
     for (i, mut val) in discriminants {
-        if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
+        if !repr.c() && variants[i].iter().any(|f| f.abi.is_uninhabited()) {
             continue;
         }
         if discr_type.is_signed() {
@@ -982,7 +980,8 @@ fn univariant<
         if repr.can_randomize_type_layout() && cfg!(feature = "randomize") {
             #[cfg(feature = "randomize")]
             {
-                use rand::{seq::SliceRandom, SeedableRng};
+                use rand::seq::SliceRandom;
+                use rand::SeedableRng;
                 // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                 // ordering.
                 let mut rng =

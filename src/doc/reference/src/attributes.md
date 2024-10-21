@@ -9,7 +9,8 @@
 > &nbsp;&nbsp; `#` `[` _Attr_ `]`
 >
 > _Attr_ :\
-> &nbsp;&nbsp; [_SimplePath_] _AttrInput_<sup>?</sup>
+> &nbsp;&nbsp; &nbsp;&nbsp; [_SimplePath_] _AttrInput_<sup>?</sup>\
+> &nbsp;&nbsp; | `unsafe` `(` [_SimplePath_] _AttrInput_<sup>?</sup> `)`
 >
 > _AttrInput_ :\
 > &nbsp;&nbsp; &nbsp;&nbsp; [_DelimTokenTree_]\
@@ -28,6 +29,17 @@ delimited token tree whose interpretation is defined by the attribute.
 Attributes other than macro attributes also allow the input to be an equals
 sign (`=`) followed by an expression. See the [meta item
 syntax](#meta-item-attribute-syntax) below for more details.
+
+An attribute may be unsafe to apply. To avoid undefined behavior when using
+these attributes, certain obligations that cannot be checked by the compiler
+must be met.  To assert these have been, the attribute is wrapped in
+`unsafe(..)`, e.g. `#[unsafe(no_mangle)]`.
+
+The following attributes are unsafe:
+
+* [`export_name`]
+* [`link_section`]
+* [`no_mangle`]
 
 Attributes can be classified into the following kinds:
 
@@ -174,7 +186,7 @@ active. All other attributes are inert.
 ## Tool attributes
 
 The compiler may allow attributes for external tools where each tool resides
-in its own namespace in the [tool prelude]. The first segment of the attribute
+in its own module in the [tool prelude]. The first segment of the attribute
 path is the name of the tool, with one or more additional segments whose
 interpretation is up to the tool.
 
@@ -196,86 +208,87 @@ struct S {
 pub fn f() {}
 ```
 
-> Note: `rustc` currently recognizes the tools "clippy", "rustfmt" and "diagnostic".
+> Note: `rustc` currently recognizes the tools "clippy", "rustfmt", "diagnostic",
+> "miri" and "rust_analyzer".
 
 ## Built-in attributes index
 
 The following is an index of all built-in attributes.
 
 - Conditional compilation
-  - [`cfg`] — Controls conditional compilation.
-  - [`cfg_attr`] — Conditionally includes attributes.
+  - [`cfg`] --- Controls conditional compilation.
+  - [`cfg_attr`] --- Conditionally includes attributes.
 - Testing
-  - [`test`] — Marks a function as a test.
-  - [`ignore`] — Disables a test function.
-  - [`should_panic`] — Indicates a test should generate a panic.
+  - [`test`] --- Marks a function as a test.
+  - [`ignore`] --- Disables a test function.
+  - [`should_panic`] --- Indicates a test should generate a panic.
 - Derive
-  - [`derive`] — Automatic trait implementations.
-  - [`automatically_derived`] — Marker for implementations created by
+  - [`derive`] --- Automatic trait implementations.
+  - [`automatically_derived`] --- Marker for implementations created by
     `derive`.
 - Macros
-  - [`macro_export`] — Exports a `macro_rules` macro for cross-crate usage.
-  - [`macro_use`] — Expands macro visibility, or imports macros from other
+  - [`macro_export`] --- Exports a `macro_rules` macro for cross-crate usage.
+  - [`macro_use`] --- Expands macro visibility, or imports macros from other
     crates.
-  - [`proc_macro`] — Defines a function-like macro.
-  - [`proc_macro_derive`] — Defines a derive macro.
-  - [`proc_macro_attribute`] — Defines an attribute macro.
+  - [`proc_macro`] --- Defines a function-like macro.
+  - [`proc_macro_derive`] --- Defines a derive macro.
+  - [`proc_macro_attribute`] --- Defines an attribute macro.
 - Diagnostics
-  - [`allow`], [`warn`], [`deny`], [`forbid`] — Alters the default lint level.
-  - [`deprecated`] — Generates deprecation notices.
-  - [`must_use`] — Generates a lint for unused values.
-  - [`diagnostic::on_unimplemented`] — Hints the compiler to emit a certain error
+  - [`allow`], [`expect`], [`warn`], [`deny`], [`forbid`] --- Alters the default lint level.
+  - [`deprecated`] --- Generates deprecation notices.
+  - [`must_use`] --- Generates a lint for unused values.
+  - [`diagnostic::on_unimplemented`] --- Hints the compiler to emit a certain error
     message if a trait is not implemented.
 - ABI, linking, symbols, and FFI
-  - [`link`] — Specifies a native library to link with an `extern` block.
-  - [`link_name`] — Specifies the name of the symbol for functions or statics
+  - [`link`] --- Specifies a native library to link with an `extern` block.
+  - [`link_name`] --- Specifies the name of the symbol for functions or statics
     in an `extern` block.
-  - [`link_ordinal`] — Specifies the ordinal of the symbol for functions or
+  - [`link_ordinal`] --- Specifies the ordinal of the symbol for functions or
     statics in an `extern` block.
-  - [`no_link`] — Prevents linking an extern crate.
-  - [`repr`] — Controls type layout.
-  - [`crate_type`] — Specifies the type of crate (library, executable, etc.).
-  - [`no_main`] — Disables emitting the `main` symbol.
-  - [`export_name`] — Specifies the exported symbol name for a function or
+  - [`no_link`] --- Prevents linking an extern crate.
+  - [`repr`] --- Controls type layout.
+  - [`crate_type`] --- Specifies the type of crate (library, executable, etc.).
+  - [`no_main`] --- Disables emitting the `main` symbol.
+  - [`export_name`] --- Specifies the exported symbol name for a function or
     static.
-  - [`link_section`] — Specifies the section of an object file to use for a
+  - [`link_section`] --- Specifies the section of an object file to use for a
     function or static.
-  - [`no_mangle`] — Disables symbol name encoding.
-  - [`used`] — Forces the compiler to keep a static item in the output
+  - [`no_mangle`] --- Disables symbol name encoding.
+  - [`used`] --- Forces the compiler to keep a static item in the output
     object file.
-  - [`crate_name`] — Specifies the crate name.
+  - [`crate_name`] --- Specifies the crate name.
 - Code generation
-  - [`inline`] — Hint to inline code.
-  - [`cold`] — Hint that a function is unlikely to be called.
-  - [`no_builtins`] — Disables use of certain built-in functions.
-  - [`target_feature`] — Configure platform-specific code generation.
+  - [`inline`] --- Hint to inline code.
+  - [`cold`] --- Hint that a function is unlikely to be called.
+  - [`no_builtins`] --- Disables use of certain built-in functions.
+  - [`target_feature`] --- Configure platform-specific code generation.
   - [`track_caller`] - Pass the parent call location to `std::panic::Location::caller()`.
   - [`instruction_set`] - Specify the instruction set used to generate a functions code
 - Documentation
-  - `doc` — Specifies documentation. See [The Rustdoc Book] for more
+  - `doc` --- Specifies documentation. See [The Rustdoc Book] for more
     information. [Doc comments] are transformed into `doc` attributes.
 - Preludes
-  - [`no_std`] — Removes std from the prelude.
-  - [`no_implicit_prelude`] — Disables prelude lookups within a module.
+  - [`no_std`] --- Removes std from the prelude.
+  - [`no_implicit_prelude`] --- Disables prelude lookups within a module.
 - Modules
-  - [`path`] — Specifies the filename for a module.
+  - [`path`] --- Specifies the filename for a module.
 - Limits
-  - [`recursion_limit`] — Sets the maximum recursion limit for certain
+  - [`recursion_limit`] --- Sets the maximum recursion limit for certain
     compile-time operations.
-  - [`type_length_limit`] — Sets the maximum size of a polymorphic type.
+  - [`type_length_limit`] --- Sets the maximum size of a polymorphic type.
 - Runtime
-  - [`panic_handler`] — Sets the function to handle panics.
-  - [`global_allocator`] — Sets the global memory allocator.
-  - [`windows_subsystem`] — Specifies the windows subsystem to link with.
+  - [`panic_handler`] --- Sets the function to handle panics.
+  - [`global_allocator`] --- Sets the global memory allocator.
+  - [`windows_subsystem`] --- Specifies the windows subsystem to link with.
 - Features
-  - `feature` — Used to enable unstable or experimental compiler features. See
+  - `feature` --- Used to enable unstable or experimental compiler features. See
     [The Unstable Book] for features implemented in `rustc`.
 - Type System
-  - [`non_exhaustive`] — Indicate that a type will have more fields/variants
+  - [`non_exhaustive`] --- Indicate that a type will have more fields/variants
     added in future.
 - Debugger
-  - [`debugger_visualizer`] — Embeds a file that specifies debugger output for a type.
-  - [`collapse_debuginfo`] — Controls how macro invocations are encoded in debuginfo.
+  - [`debugger_visualizer`] --- Embeds a file that specifies debugger output for a type.
+  - [`collapse_debuginfo`] --- Controls how macro invocations are encoded in debuginfo.
 
 [Doc comments]: comments.md#doc-comments
 [ECMA-334]: https://www.ecma-international.org/publications-and-standards/standards/ecma-334/
@@ -302,6 +315,7 @@ The following is an index of all built-in attributes.
 [`deprecated`]: attributes/diagnostics.md#the-deprecated-attribute
 [`derive`]: attributes/derive.md
 [`export_name`]: abi.md#the-export_name-attribute
+[`expect`]: attributes/diagnostics.md#lint-check-attributes
 [`forbid`]: attributes/diagnostics.md#lint-check-attributes
 [`global_allocator`]: runtime.md#the-global_allocator-attribute
 [`ignore`]: attributes/testing.md#the-ignore-attribute

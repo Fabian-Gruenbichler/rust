@@ -1,4 +1,5 @@
-use rustc_errors::{codes::*, Diag, LintDiagnostic};
+use rustc_errors::codes::*;
+use rustc_errors::{Diag, LintDiagnostic};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
@@ -104,7 +105,7 @@ impl<'a> LintDiagnostic<'a, ()> for MustNotSupend<'_, '_> {
         diag.primary_message(fluent::mir_transform_must_not_suspend);
         diag.span_label(self.yield_sp, fluent::_subdiag::label);
         if let Some(reason) = self.reason {
-            diag.subdiagnostic(diag.dcx, reason);
+            diag.subdiagnostic(reason);
         }
         diag.span_help(self.src_sp, fluent::_subdiag::help);
         diag.arg("pre", self.pre);

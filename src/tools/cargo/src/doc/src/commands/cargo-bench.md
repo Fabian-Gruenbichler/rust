@@ -138,7 +138,7 @@ in the manifest settings. Setting examples to `bench = true` will build and
 run the example as a benchmark, replacing the example's `main` function with
 the libtest harness.
 
-Setting targets to `bench = false` will stop them from being bencharmked by
+Setting targets to `bench = false` will stop them from being benchmarked by
 default. Target selection options that take a target by name (such as
 `--example foo`) ignore the `bench` flag and will always benchmark the given
 target.
@@ -403,6 +403,18 @@ offline.</p>
 
 <dt class="option-term" id="option-cargo-bench---frozen"><a class="option-anchor" href="#option-cargo-bench---frozen"></a><code>--frozen</code></dt>
 <dd class="option-desc">Equivalent to specifying both <code>--locked</code> and <code>--offline</code>.</dd>
+
+
+<dt class="option-term" id="option-cargo-bench---lockfile-path"><a class="option-anchor" href="#option-cargo-bench---lockfile-path"></a><code>--lockfile-path</code> <em>PATH</em></dt>
+<dd class="option-desc">Changes the path of the lockfile from the default (<code>&lt;workspace_root&gt;/Cargo.lock</code>) to <em>PATH</em>. <em>PATH</em> must end with
+<code>Cargo.lock</code> (e.g. <code>--lockfile-path /tmp/temporary-lockfile/Cargo.lock</code>). Note that providing
+<code>--lockfile-path</code> will ignore existing lockfile at the default path, and instead will
+either use the lockfile from <em>PATH</em>, or write a new lockfile into the provided <em>PATH</em> if it doesn’t exist.
+This flag can be used to run most commands in read-only directories, writing lockfile into the provided <em>PATH</em>.</p>
+<p>This option is only available on the <a href="https://doc.rust-lang.org/book/appendix-07-nightly-rust.html">nightly
+channel</a> and
+requires the <code>-Z unstable-options</code> flag to enable (see
+<a href="https://github.com/rust-lang/cargo/issues/14421">#14421</a>).</dd>
 
 </dl>
 

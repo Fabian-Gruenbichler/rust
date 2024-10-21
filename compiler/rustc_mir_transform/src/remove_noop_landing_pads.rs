@@ -3,6 +3,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_target::spec::PanicStrategy;
+use tracing::debug;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `UnwindAction::Continue`. This is important because otherwise LLVM generates
@@ -75,6 +76,7 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Unreachable
             | TerminatorKind::Call { .. }
+            | TerminatorKind::TailCall { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::InlineAsm { .. } => false,

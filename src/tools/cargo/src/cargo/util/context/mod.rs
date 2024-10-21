@@ -335,8 +335,8 @@ impl GlobalContext {
     /// any config files from disk. Those will be loaded lazily as-needed.
     pub fn default() -> CargoResult<GlobalContext> {
         let shell = Shell::new();
-        let cwd = env::current_dir()
-            .with_context(|| "couldn't get the current directory of the process")?;
+        let cwd =
+            env::current_dir().context("couldn't get the current directory of the process")?;
         let homedir = homedir(&cwd).ok_or_else(|| {
             anyhow!(
                 "Cargo couldn't find your home directory. \
@@ -496,7 +496,7 @@ impl GlobalContext {
                 let exe = from_env()
                     .or_else(|_| from_current_exe())
                     .or_else(|_| from_argv())
-                    .with_context(|| "couldn't get the path to cargo executable")?;
+                    .context("couldn't get the path to cargo executable")?;
                 Ok(exe)
             })
             .map(AsRef::as_ref)
@@ -569,8 +569,8 @@ impl GlobalContext {
     ///
     /// There is not a need to also call [`Self::reload_rooted_at`].
     pub fn reload_cwd(&mut self) -> CargoResult<()> {
-        let cwd = env::current_dir()
-            .with_context(|| "couldn't get the current directory of the process")?;
+        let cwd =
+            env::current_dir().context("couldn't get the current directory of the process")?;
         let homedir = homedir(&cwd).ok_or_else(|| {
             anyhow!(
                 "Cargo couldn't find your home directory. \
@@ -1035,6 +1035,11 @@ impl GlobalContext {
             self.cli_config = Some(cli_config.iter().map(|s| s.to_string()).collect());
             self.merge_cli_args()?;
         }
+
+        // Load the unstable flags from config file here first, as the config
+        // file itself may enable inclusion of other configs. In that case, we
+        // want to re-load configs with includes enabled:
+        self.load_unstable_flags_from_config()?;
         if self.unstable_flags.config_include {
             // If the config was already loaded (like when fetching the
             // `[alias]` table), it was loaded with includes disabled because
@@ -1090,8 +1095,6 @@ impl GlobalContext {
                 .unwrap_or(false);
         let cli_target_dir = target_dir.as_ref().map(|dir| Filesystem::new(dir.clone()));
         self.target_dir = cli_target_dir;
-
-        self.load_unstable_flags_from_config()?;
 
         Ok(())
     }
@@ -1163,7 +1166,7 @@ impl GlobalContext {
             result.push(cv);
             Ok(())
         })
-        .with_context(|| "could not load Cargo configuration")?;
+        .context("could not load Cargo configuration")?;
         Ok(result)
     }
 
@@ -1203,7 +1206,7 @@ impl GlobalContext {
             })?;
             Ok(())
         })
-        .with_context(|| "could not load Cargo configuration")?;
+        .context("could not load Cargo configuration")?;
 
         match cfg {
             CV::Table(map, _) => Ok(map),
@@ -1492,7 +1495,7 @@ impl GlobalContext {
             };
             let tmp_table = self
                 .load_includes(tmp_table, &mut HashSet::new(), WhyLoad::Cli)
-                .with_context(|| "failed to load --config include".to_string())?;
+                .context("failed to load --config include".to_string())?;
             loaded_args
                 .merge(tmp_table, true)
                 .with_context(|| format!("failed to merge --config argument `{arg}`"))?;
@@ -2031,7 +2034,7 @@ impl ConfigError {
     }
 
     fn is_missing_field(&self) -> bool {
-        self.error.downcast_ref::<MissingField>().is_some()
+        self.error.downcast_ref::<MissingFieldError>().is_some()
     }
 
     fn missing(key: &ConfigKey) -> ConfigError {
@@ -2067,15 +2070,15 @@ impl fmt::Display for ConfigError {
 }
 
 #[derive(Debug)]
-struct MissingField(String);
+struct MissingFieldError(String);
 
-impl fmt::Display for MissingField {
+impl fmt::Display for MissingFieldError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "missing field `{}`", self.0)
     }
 }
 
-impl std::error::Error for MissingField {}
+impl std::error::Error for MissingFieldError {}
 
 impl serde::de::Error for ConfigError {
     fn custom<T: fmt::Display>(msg: T) -> Self {
@@ -2087,7 +2090,7 @@ impl serde::de::Error for ConfigError {
 
     fn missing_field(field: &'static str) -> Self {
         ConfigError {
-            error: anyhow::Error::new(MissingField(field.to_string())),
+            error: anyhow::Error::new(MissingFieldError(field.to_string())),
             definition: None,
         }
     }
@@ -2609,7 +2612,9 @@ pub struct CargoBuildConfig {
     pub rustc_workspace_wrapper: Option<ConfigRelativePath>,
     pub rustc: Option<ConfigRelativePath>,
     pub rustdoc: Option<ConfigRelativePath>,
+    // deprecated alias for artifact-dir
     pub out_dir: Option<ConfigRelativePath>,
+    pub artifact_dir: Option<ConfigRelativePath>,
 }
 
 /// Configuration for `build.target`.
@@ -2675,14 +2680,14 @@ impl BuildTargetConfig {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CargoResolverConfig {
-    pub something_like_precedence: Option<CargoResolverPrecedence>,
+    pub incompatible_rust_versions: Option<IncompatibleRustVersions>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
-pub enum CargoResolverPrecedence {
-    SomethingLikeMaximum,
-    SomethingLikeRustVersion,
+pub enum IncompatibleRustVersions {
+    Allow,
+    Fallback,
 }
 
 #[derive(Deserialize, Default)]

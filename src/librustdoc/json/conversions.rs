@@ -8,13 +8,14 @@ use std::fmt;
 
 use rustc_ast::ast;
 use rustc_attr::DeprecatedSince;
-use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
+use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
+use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
 use rustc_target::spec::abi::Abi as RustcAbi;
-
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -187,6 +188,16 @@ impl FromWithTcx<clean::Constant> for Constant {
     }
 }
 
+impl FromWithTcx<clean::ConstantKind> for Constant {
+    // FIXME(generic_const_items): Add support for generic const items.
+    fn from_tcx(constant: clean::ConstantKind, tcx: TyCtxt<'_>) -> Self {
+        let expr = constant.expr(tcx);
+        let value = constant.value(tcx);
+        let is_literal = constant.is_literal(tcx);
+        Constant { expr, value, is_literal }
+    }
+}
+
 impl FromWithTcx<clean::AssocItemConstraint> for TypeBinding {
     fn from_tcx(constraint: clean::AssocItemConstraint, tcx: TyCtxt<'_>) -> Self {
         TypeBinding {
@@ -310,20 +321,21 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         EnumItem(e) => ItemEnum::Enum(e.into_tcx(tcx)),
         VariantItem(v) => ItemEnum::Variant(v.into_tcx(tcx)),
         FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), tcx)),
-        ForeignFunctionItem(f) => ItemEnum::Function(from_function(f, false, header.unwrap(), tcx)),
+        ForeignFunctionItem(f, _) => {
+            ItemEnum::Function(from_function(f, false, header.unwrap(), tcx))
+        }
         TraitItem(t) => ItemEnum::Trait((*t).into_tcx(tcx)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_tcx(tcx)),
         MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), tcx)),
         TyMethodItem(m) => ItemEnum::Function(from_function(m, false, header.unwrap(), tcx)),
         ImplItem(i) => ItemEnum::Impl((*i).into_tcx(tcx)),
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
-        ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
+        ForeignStaticItem(s, _) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
         TypeAliasItem(t) => ItemEnum::TypeAlias(t.into_tcx(tcx)),
-        OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         // FIXME(generic_const_items): Add support for generic free consts
-        ConstantItem(_generics, t, c) => {
-            ItemEnum::Constant { type_: (*t).into_tcx(tcx), const_: c.into_tcx(tcx) }
+        ConstantItem(ci) => {
+            ItemEnum::Constant { type_: ci.type_.into_tcx(tcx), const_: ci.kind.into_tcx(tcx) }
         }
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
@@ -338,8 +350,8 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
             ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
-        AssocConstItem(_generics, ty, default) => {
-            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: Some(default.expr(tcx)) }
+        AssocConstItem(ci) => {
+            ItemEnum::AssocConst { type_: ci.type_.into_tcx(tcx), default: Some(ci.kind.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_tcx(tcx),
@@ -464,7 +476,7 @@ impl FromWithTcx<clean::GenericParamDefKind> for GenericParamDefKind {
                 default: default.map(|x| (*x).into_tcx(tcx)),
                 synthetic,
             },
-            Const { ty, default, is_host_effect: _ } => GenericParamDefKind::Const {
+            Const { ty, default, synthetic: _ } => GenericParamDefKind::Const {
                 type_: (*ty).into_tcx(tcx),
                 default: default.map(|x| *x),
             },
@@ -499,22 +511,26 @@ impl FromWithTcx<clean::WherePredicate> for WherePredicate {
                                     synthetic,
                                 }
                             }
-                            clean::GenericParamDefKind::Const {
-                                ty,
-                                default,
-                                is_host_effect: _,
-                            } => GenericParamDefKind::Const {
-                                type_: (*ty).into_tcx(tcx),
-                                default: default.map(|d| *d),
-                            },
+                            clean::GenericParamDefKind::Const { ty, default, synthetic: _ } => {
+                                GenericParamDefKind::Const {
+                                    type_: (*ty).into_tcx(tcx),
+                                    default: default.map(|d| *d),
+                                }
+                            }
                         };
                         GenericParamDef { name, kind }
                     })
                     .collect(),
             },
-            RegionPredicate { lifetime, bounds } => WherePredicate::RegionPredicate {
+            RegionPredicate { lifetime, bounds } => WherePredicate::LifetimePredicate {
                 lifetime: convert_lifetime(lifetime),
-                bounds: bounds.into_tcx(tcx),
+                outlives: bounds
+                    .iter()
+                    .map(|bound| match bound {
+                        clean::GenericBound::Outlives(lt) => convert_lifetime(*lt),
+                        _ => bug!("found non-outlives-bound on lifetime predicate"),
+                    })
+                    .collect(),
             },
             EqPredicate { lhs, rhs } => {
                 WherePredicate::EqPredicate { lhs: lhs.into_tcx(tcx), rhs: rhs.into_tcx(tcx) }
@@ -535,6 +551,7 @@ impl FromWithTcx<clean::GenericBound> for GenericBound {
                 }
             }
             Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
+            Use(args) => GenericBound::Use(args.into_iter().map(|arg| arg.to_string()).collect()),
         }
     }
 }
@@ -561,7 +578,7 @@ impl FromWithTcx<clean::Type> for Type {
     fn from_tcx(ty: clean::Type, tcx: TyCtxt<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple,
         };
 
         match ty {
@@ -571,6 +588,8 @@ impl FromWithTcx<clean::Type> for Type {
                 traits: bounds.into_tcx(tcx),
             }),
             Generic(s) => Type::Generic(s.to_string()),
+            // FIXME: add dedicated variant to json Type?
+            SelfTy => Type::Generic("Self".to_owned()),
             Primitive(p) => Type::Primitive(p.as_sym().to_string()),
             BareFunction(f) => Type::FunctionPointer(Box::new((*f).into_tcx(tcx))),
             Tuple(t) => Type::Tuple(t.into_tcx(tcx)),
@@ -812,16 +831,10 @@ impl FromWithTcx<Box<clean::TypeAlias>> for TypeAlias {
     }
 }
 
-impl FromWithTcx<clean::OpaqueTy> for OpaqueTy {
-    fn from_tcx(opaque: clean::OpaqueTy, tcx: TyCtxt<'_>) -> Self {
-        OpaqueTy { bounds: opaque.bounds.into_tcx(tcx), generics: opaque.generics.into_tcx(tcx) }
-    }
-}
-
 impl FromWithTcx<clean::Static> for Static {
     fn from_tcx(stat: clean::Static, tcx: TyCtxt<'_>) -> Self {
         Static {
-            type_: stat.type_.into_tcx(tcx),
+            type_: (*stat.type_).into_tcx(tcx),
             mutable: stat.mutability == ast::Mutability::Mut,
             expr: stat
                 .expr
@@ -849,7 +862,6 @@ impl FromWithTcx<ItemType> for ItemKind {
             Enum => ItemKind::Enum,
             Function | TyMethod | Method => ItemKind::Function,
             TypeAlias => ItemKind::TypeAlias,
-            OpaqueTy => ItemKind::OpaqueTy,
             Static => ItemKind::Static,
             Constant => ItemKind::Constant,
             Trait => ItemKind::Trait,

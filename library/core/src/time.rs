@@ -617,16 +617,15 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
-    /// #![feature(duration_abs_diff)]
     /// use std::time::Duration;
     ///
     /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
     /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
     /// ```
-    #[unstable(feature = "duration_abs_diff", issue = "117618")]
+    #[stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[rustc_const_stable(feature = "duration_abs_diff", since = "1.81.0")]
+    #[rustc_allow_const_fn_unstable(const_option)]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]
@@ -638,8 +637,6 @@ impl Duration {
     /// if overflow occurred.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::time::Duration;
@@ -699,8 +696,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -757,8 +752,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -813,8 +806,6 @@ impl Duration {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::time::Duration;
     ///
@@ -842,7 +833,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -861,7 +852,7 @@ impl Duration {
 
     /// Returns the number of seconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -880,7 +871,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f64`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -901,7 +892,7 @@ impl Duration {
 
     /// Returns the number of milliseconds contained by this `Duration` as `f32`.
     ///
-    /// The returned value does include the fractional (nanosecond) part of the duration.
+    /// The returned value includes the fractional (nanosecond) part of the duration.
     ///
     /// # Examples
     /// ```
@@ -1036,7 +1027,7 @@ impl Duration {
         Duration::from_secs_f32(rhs * self.as_secs_f32())
     }
 
-    /// Divide `Duration` by `f64`.
+    /// Divides `Duration` by `f64`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1057,7 +1048,7 @@ impl Duration {
         Duration::from_secs_f64(self.as_secs_f64() / rhs)
     }
 
-    /// Divide `Duration` by `f32`.
+    /// Divides `Duration` by `f32`.
     ///
     /// # Panics
     /// This method will panic if result is negative, overflows `Duration` or not finite.
@@ -1080,7 +1071,7 @@ impl Duration {
         Duration::from_secs_f32(self.as_secs_f32() / rhs)
     }
 
-    /// Divide `Duration` by `Duration` and return `f64`.
+    /// Divides `Duration` by `Duration` and returns `f64`.
     ///
     /// # Examples
     /// ```
@@ -1101,7 +1092,7 @@ impl Duration {
         self_nanos / rhs_nanos
     }
 
-    /// Divide `Duration` by `Duration` and return `f32`.
+    /// Divides `Duration` by `Duration` and returns `f32`.
     ///
     /// # Examples
     /// ```

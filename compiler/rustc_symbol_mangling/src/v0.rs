@@ -1,3 +1,7 @@
+use std::fmt::Write;
+use std::iter;
+use std::ops::Range;
+
 use rustc_data_structures::base_n::ToBaseN;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -9,17 +13,12 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, EarlyBinder, FloatTy, Instance, IntTy, ReifyReason, Ty, TyCtxt, TypeVisitable,
-    TypeVisitableExt, UintTy,
+    self, EarlyBinder, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty,
+    TyCtxt, TypeVisitable, TypeVisitableExt, UintTy,
 };
-use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::symbol::kw;
 use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
-
-use std::fmt::Write;
-use std::iter;
-use std::ops::Range;
 
 pub(super) fn mangle<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -43,14 +42,20 @@ pub(super) fn mangle<'tcx>(
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
-        ty::InstanceDef::ThreadLocalShim(_) => Some("tls"),
-        ty::InstanceDef::VTableShim(_) => Some("vtable"),
-        ty::InstanceDef::ReifyShim(_, None) => Some("reify"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
-        ty::InstanceDef::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
+        ty::InstanceKind::ThreadLocalShim(_) => Some("tls"),
+        ty::InstanceKind::VTableShim(_) => Some("vtable"),
+        ty::InstanceKind::ReifyShim(_, None) => Some("reify"),
+        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::FnPtr)) => Some("reify_fnptr"),
+        ty::InstanceKind::ReifyShim(_, Some(ReifyReason::Vtable)) => Some("reify_vtable"),
 
-        ty::InstanceDef::ConstructCoroutineInClosureShim { .. }
-        | ty::InstanceDef::CoroutineKindShim { .. } => Some("fn_once"),
+        // FIXME(async_closures): This shouldn't be needed when we fix
+        // `Instance::ty`/`Instance::def_id`.
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: true, .. } => {
+            Some("by_move")
+        }
+        ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
+            Some("by_ref")
+        }
 
         _ => None,
     };
@@ -421,7 +426,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 self.print_def_path(def_id, &[])?;
             }
 
-            ty::FnPtr(sig) => {
+            ty::FnPtr(sig_tys, hdr) => {
+                let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.in_binder(&sig, |cx, sig| {
                     if sig.safety == hir::Safety::Unsafe {

@@ -35,7 +35,7 @@ const DEFAULT_EXAMPLE_DIR_NAME: &'static str = "examples";
 pub(super) fn to_targets(
     features: &Features,
     original_toml: &TomlManifest,
-    resolved_toml: &TomlManifest,
+    normalized_toml: &TomlManifest,
     package_root: &Path,
     edition: Edition,
     metabuild: &Option<StringOrVec>,
@@ -45,7 +45,7 @@ pub(super) fn to_targets(
 
     if let Some(target) = to_lib_target(
         original_toml.lib.as_ref(),
-        resolved_toml.lib.as_ref(),
+        normalized_toml.lib.as_ref(),
         package_root,
         edition,
         warnings,
@@ -53,38 +53,38 @@ pub(super) fn to_targets(
         targets.push(target);
     }
 
-    let package = resolved_toml
+    let package = normalized_toml
         .package
         .as_ref()
         .ok_or_else(|| anyhow::format_err!("manifest has no `package` (or `project`)"))?;
 
     targets.extend(to_bin_targets(
         features,
-        resolved_toml.bin.as_deref().unwrap_or_default(),
+        normalized_toml.bin.as_deref().unwrap_or_default(),
         package_root,
         edition,
     )?);
 
     targets.extend(to_example_targets(
-        resolved_toml.example.as_deref().unwrap_or_default(),
+        normalized_toml.example.as_deref().unwrap_or_default(),
         package_root,
         edition,
     )?);
 
     targets.extend(to_test_targets(
-        resolved_toml.test.as_deref().unwrap_or_default(),
+        normalized_toml.test.as_deref().unwrap_or_default(),
         package_root,
         edition,
     )?);
 
     targets.extend(to_bench_targets(
-        resolved_toml.bench.as_deref().unwrap_or_default(),
+        normalized_toml.bench.as_deref().unwrap_or_default(),
         package_root,
         edition,
     )?);
 
     // processing the custom build script
-    if let Some(custom_build) = package.resolved_build().expect("should be resolved") {
+    if let Some(custom_build) = package.normalized_build().expect("previously normalized") {
         if metabuild.is_some() {
             anyhow::bail!("cannot specify both `metabuild` and `build`");
         }
@@ -104,7 +104,7 @@ pub(super) fn to_targets(
     }
     if let Some(metabuild) = metabuild {
         // Verify names match available build deps.
-        let bdeps = resolved_toml.build_dependencies.as_ref();
+        let bdeps = normalized_toml.build_dependencies.as_ref();
         for name in &metabuild.0 {
             if !bdeps.map_or(false, |bd| bd.contains_key(name.as_str())) {
                 anyhow::bail!(
@@ -124,7 +124,7 @@ pub(super) fn to_targets(
 }
 
 #[tracing::instrument(skip_all)]
-pub fn resolve_lib(
+pub fn normalize_lib(
     original_lib: Option<&TomlLibTarget>,
     package_root: &Path,
     package_name: &str,
@@ -176,28 +176,17 @@ pub fn resolve_lib(
 #[tracing::instrument(skip_all)]
 fn to_lib_target(
     original_lib: Option<&TomlLibTarget>,
-    resolved_lib: Option<&TomlLibTarget>,
+    normalized_lib: Option<&TomlLibTarget>,
     package_root: &Path,
     edition: Edition,
     warnings: &mut Vec<String>,
 ) -> CargoResult<Option<Target>> {
-    let Some(lib) = resolved_lib else {
+    let Some(lib) = normalized_lib else {
         return Ok(None);
     };
 
-    let path = lib.path.as_ref().expect("previously resolved");
+    let path = lib.path.as_ref().expect("previously normalized");
     let path = package_root.join(&path.0);
-
-    if lib.plugin == Some(true) {
-        warnings.push(format!(
-            "support for rustc plugins has been removed from rustc. \
-            library `{}` should not specify `plugin = true`",
-            name_or_panic(lib)
-        ));
-        warnings.push(format!(
-            "support for `plugin = true` will be removed from cargo in the future"
-        ));
-    }
 
     // Per the Macros 1.1 RFC:
     //
@@ -208,8 +197,8 @@ fn to_lib_target(
     //
     // A plugin requires exporting plugin_registrar so a crate cannot be
     // both at once.
-    let crate_types = match (lib.crate_types(), lib.plugin, lib.proc_macro()) {
-        (Some(kinds), _, _)
+    let crate_types = match (lib.crate_types(), lib.proc_macro()) {
+        (Some(kinds), _)
             if kinds.contains(&CrateType::Dylib.as_str().to_owned())
                 && kinds.contains(&CrateType::Cdylib.as_str().to_owned()) =>
         {
@@ -218,14 +207,7 @@ fn to_lib_target(
                 name_or_panic(lib)
             ));
         }
-        (Some(kinds), _, _) if kinds.contains(&"proc-macro".to_string()) => {
-            if let Some(true) = lib.plugin {
-                // This is a warning to retain backwards compatibility.
-                warnings.push(format!(
-                    "proc-macro library `{}` should not specify `plugin = true`",
-                    name_or_panic(lib)
-                ));
-            }
+        (Some(kinds), _) if kinds.contains(&"proc-macro".to_string()) => {
             warnings.push(format!(
                 "library `{}` should only specify `proc-macro = true` instead of setting `crate-type`",
                 name_or_panic(lib)
@@ -235,13 +217,9 @@ fn to_lib_target(
             }
             vec![CrateType::ProcMacro]
         }
-        (_, Some(true), Some(true)) => {
-            anyhow::bail!("`lib.plugin` and `lib.proc-macro` cannot both be `true`")
-        }
-        (Some(kinds), _, _) => kinds.iter().map(|s| s.into()).collect(),
-        (None, Some(true), _) => vec![CrateType::Dylib],
-        (None, _, Some(true)) => vec![CrateType::ProcMacro],
-        (None, _, _) => vec![CrateType::Lib],
+        (Some(kinds), _) => kinds.iter().map(|s| s.into()).collect(),
+        (None, Some(true)) => vec![CrateType::ProcMacro],
+        (None, _) => vec![CrateType::Lib],
     };
 
     let mut target = Target::lib_target(name_or_panic(lib), crate_types, path, edition);
@@ -251,7 +229,7 @@ fn to_lib_target(
 }
 
 #[tracing::instrument(skip_all)]
-pub fn resolve_bins(
+pub fn normalize_bins(
     toml_bins: Option<&Vec<TomlBinTarget>>,
     package_root: &Path,
     package_name: &str,
@@ -261,7 +239,7 @@ pub fn resolve_bins(
     errors: &mut Vec<String>,
     has_lib: bool,
 ) -> CargoResult<Vec<TomlBinTarget>> {
-    if is_resolved(toml_bins, autodiscover) {
+    if is_normalized(toml_bins, autodiscover) {
         let toml_bins = toml_bins.cloned().unwrap_or_default();
         for bin in &toml_bins {
             validate_bin_name(bin, warnings)?;
@@ -337,7 +315,7 @@ fn to_bin_targets(
 
     let mut result = Vec::new();
     for bin in bins {
-        let path = package_root.join(&bin.path.as_ref().expect("previously resolved").0);
+        let path = package_root.join(&bin.path.as_ref().expect("previously normalized").0);
         let mut target = Target::bin_target(
             name_or_panic(bin),
             bin.filename.clone(),
@@ -374,7 +352,7 @@ fn legacy_bin_path(package_root: &Path, name: &str, has_lib: bool) -> Option<Pat
 }
 
 #[tracing::instrument(skip_all)]
-pub fn resolve_examples(
+pub fn normalize_examples(
     toml_examples: Option<&Vec<TomlExampleTarget>>,
     package_root: &Path,
     edition: Edition,
@@ -384,7 +362,7 @@ pub fn resolve_examples(
 ) -> CargoResult<Vec<TomlExampleTarget>> {
     let mut inferred = || infer_from_directory(&package_root, Path::new(DEFAULT_EXAMPLE_DIR_NAME));
 
-    let targets = resolve_targets(
+    let targets = normalize_targets(
         "example",
         "example",
         toml_examples,
@@ -410,7 +388,7 @@ fn to_example_targets(
 
     let mut result = Vec::new();
     for toml in targets {
-        let path = package_root.join(&toml.path.as_ref().expect("previously resolved").0);
+        let path = package_root.join(&toml.path.as_ref().expect("previously normalized").0);
         let crate_types = match toml.crate_types() {
             Some(kinds) => kinds.iter().map(|s| s.into()).collect(),
             None => Vec::new(),
@@ -431,7 +409,7 @@ fn to_example_targets(
 }
 
 #[tracing::instrument(skip_all)]
-pub fn resolve_tests(
+pub fn normalize_tests(
     toml_tests: Option<&Vec<TomlTestTarget>>,
     package_root: &Path,
     edition: Edition,
@@ -441,7 +419,7 @@ pub fn resolve_tests(
 ) -> CargoResult<Vec<TomlTestTarget>> {
     let mut inferred = || infer_from_directory(&package_root, Path::new(DEFAULT_TEST_DIR_NAME));
 
-    let targets = resolve_targets(
+    let targets = normalize_targets(
         "test",
         "test",
         toml_tests,
@@ -467,7 +445,7 @@ fn to_test_targets(
 
     let mut result = Vec::new();
     for toml in targets {
-        let path = package_root.join(&toml.path.as_ref().expect("previously resolved").0);
+        let path = package_root.join(&toml.path.as_ref().expect("previously normalized").0);
         let mut target = Target::test_target(
             name_or_panic(&toml),
             path,
@@ -481,7 +459,7 @@ fn to_test_targets(
 }
 
 #[tracing::instrument(skip_all)]
-pub fn resolve_benches(
+pub fn normalize_benches(
     toml_benches: Option<&Vec<TomlBenchTarget>>,
     package_root: &Path,
     edition: Edition,
@@ -506,7 +484,7 @@ pub fn resolve_benches(
 
     let mut inferred = || infer_from_directory(&package_root, Path::new(DEFAULT_BENCH_DIR_NAME));
 
-    let targets = resolve_targets_with_legacy_path(
+    let targets = normalize_targets_with_legacy_path(
         "benchmark",
         "bench",
         toml_benches,
@@ -534,7 +512,7 @@ fn to_bench_targets(
 
     let mut result = Vec::new();
     for toml in targets {
-        let path = package_root.join(&toml.path.as_ref().expect("previously resolved").0);
+        let path = package_root.join(&toml.path.as_ref().expect("previously normalized").0);
         let mut target = Target::bench_target(
             name_or_panic(&toml),
             path,
@@ -548,7 +526,7 @@ fn to_bench_targets(
     Ok(result)
 }
 
-fn is_resolved(toml_targets: Option<&Vec<TomlTarget>>, autodiscover: Option<bool>) -> bool {
+fn is_normalized(toml_targets: Option<&Vec<TomlTarget>>, autodiscover: Option<bool>) -> bool {
     if autodiscover != Some(false) {
         return false;
     }
@@ -561,7 +539,7 @@ fn is_resolved(toml_targets: Option<&Vec<TomlTarget>>, autodiscover: Option<bool
         .all(|t| t.name.is_some() && t.path.is_some())
 }
 
-fn resolve_targets(
+fn normalize_targets(
     target_kind_human: &str,
     target_kind: &str,
     toml_targets: Option<&Vec<TomlTarget>>,
@@ -573,7 +551,7 @@ fn resolve_targets(
     errors: &mut Vec<String>,
     autodiscover_flag_name: &str,
 ) -> CargoResult<Vec<TomlTarget>> {
-    resolve_targets_with_legacy_path(
+    normalize_targets_with_legacy_path(
         target_kind_human,
         target_kind,
         toml_targets,
@@ -588,7 +566,7 @@ fn resolve_targets(
     )
 }
 
-fn resolve_targets_with_legacy_path(
+fn normalize_targets_with_legacy_path(
     target_kind_human: &str,
     target_kind: &str,
     toml_targets: Option<&Vec<TomlTarget>>,
@@ -601,7 +579,7 @@ fn resolve_targets_with_legacy_path(
     legacy_path: &mut dyn FnMut(&TomlTarget) -> Option<PathBuf>,
     autodiscover_flag_name: &str,
 ) -> CargoResult<Vec<TomlTarget>> {
-    if is_resolved(toml_targets, autodiscover) {
+    if is_normalized(toml_targets, autodiscover) {
         let toml_targets = toml_targets.cloned().unwrap_or_default();
         for target in &toml_targets {
             // Check early to improve error messages
@@ -869,16 +847,13 @@ fn configure(toml: &TomlTarget, target: &mut Target) -> CargoResult<()> {
             Some(false) => RustdocScrapeExamples::Disabled,
             Some(true) => RustdocScrapeExamples::Enabled,
         })
-        .set_for_host(match (toml.plugin, toml.proc_macro()) {
-            (None, None) => t2.for_host(),
-            (Some(true), _) | (_, Some(true)) => true,
-            (Some(false), _) | (_, Some(false)) => false,
-        });
+        .set_for_host(toml.proc_macro().unwrap_or_else(|| t2.for_host()));
+
     if let Some(edition) = toml.edition.clone() {
         target.set_edition(
             edition
                 .parse()
-                .with_context(|| "failed to parse the `edition` key")?,
+                .context("failed to parse the `edition` key")?,
         );
     }
     Ok(())
@@ -1025,7 +1000,7 @@ Cargo doesn't know which to use because multiple target files found at `{}` and 
 
 /// Returns the path to the build script if one exists for this crate.
 #[tracing::instrument(skip_all)]
-pub fn resolve_build(build: Option<&StringOrBool>, package_root: &Path) -> Option<StringOrBool> {
+pub fn normalize_build(build: Option<&StringOrBool>, package_root: &Path) -> Option<StringOrBool> {
     const BUILD_RS: &str = "build.rs";
     match build {
         None => {

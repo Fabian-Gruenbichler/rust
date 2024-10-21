@@ -22,8 +22,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 
 extern crate thin_vec;
-#[macro_use]
-extern crate tracing;
 
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
@@ -75,13 +73,15 @@ extern crate jemalloc_sys;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
-use rustc_errors::{ErrorGuaranteed, FatalError};
+use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, FatalError};
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
 use rustc_session::{getopts, EarlyDiagCtxt};
+use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 
@@ -555,6 +555,14 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("no-run", |o| {
             o.optflagmulti("", "no-run", "Compile doctests without running them")
         }),
+        unstable("remap-path-prefix", |o| {
+            o.optmulti(
+                "",
+                "remap-path-prefix",
+                "Remap source names in compiler messages",
+                "FROM=TO",
+            )
+        }),
         unstable("show-type-layout", |o| {
             o.optflagmulti("", "show-type-layout", "Include the memory layout of types in the docs")
         }),
@@ -662,7 +670,7 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-pub(crate) fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
+pub(crate) fn wrap_return(dcx: DiagCtxtHandle<'_>, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
         Err(err) => Err(dcx.err(err)),
@@ -724,12 +732,13 @@ fn main_args(
         None => return Ok(()),
     };
 
-    let diag =
+    let dcx =
         core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
+    let dcx = dcx.handle();
 
     match (options.should_test, options.markdown_input()) {
-        (true, Some(_)) => return wrap_return(&diag, doctest::test_markdown(options)),
-        (true, None) => return doctest::run(&diag, options),
+        (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(options)),
+        (true, None) => return doctest::run(dcx, options),
         (false, Some(input)) => {
             let input = input.to_owned();
             let edition = options.edition;
@@ -739,7 +748,7 @@ fn main_args(
             // requires session globals and a thread pool, so we use
             // `run_compiler`.
             return wrap_return(
-                &diag,
+                dcx,
                 interface::run_compiler(config, |_compiler| {
                     markdown::render(&input, render_options, edition)
                 }),

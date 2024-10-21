@@ -2,29 +2,6 @@
 
 use std::ops::ControlFlow;
 
-use super::specialization_graph;
-use super::translate_args;
-use super::util;
-use super::MismatchedProjectionTypes;
-use super::Obligation;
-use super::ObligationCause;
-use super::PredicateObligation;
-use super::Selection;
-use super::SelectionContext;
-use super::SelectionError;
-use super::{Normalized, NormalizedTerm, ProjectionCacheEntry, ProjectionCacheKey};
-use rustc_infer::traits::ObligationCauseCode;
-use rustc_middle::traits::BuiltinImplSource;
-use rustc_middle::traits::ImplSource;
-use rustc_middle::traits::ImplSourceUserDefinedData;
-use rustc_middle::{bug, span_bug};
-
-use crate::errors::InherentProjectionNormalizationOverflow;
-use crate::infer::{BoundRegionConversionTime, InferOk};
-use crate::traits::normalize::normalize_with_depth;
-use crate::traits::normalize::normalize_with_depth_to;
-use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -32,13 +9,27 @@ use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::select::OverflowError;
+pub use rustc_middle::traits::Reveal;
+use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{MaxUniverse, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Term, Ty, TyCtxt, Upcast};
+use rustc_middle::{bug, span_bug};
 use rustc_span::symbol::sym;
+use tracing::{debug, instrument};
 
-pub use rustc_middle::traits::Reveal;
+use super::{
+    specialization_graph, translate_args, util, MismatchedProjectionTypes, Normalized,
+    NormalizedTerm, Obligation, ObligationCause, PredicateObligation, ProjectionCacheEntry,
+    ProjectionCacheKey, Selection, SelectionContext, SelectionError,
+};
+use crate::errors::InherentProjectionNormalizationOverflow;
+use crate::infer::{BoundRegionConversionTime, InferOk};
+use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
+use crate::traits::select::ProjectionMatchesProjection;
 
 pub type PolyProjectionObligation<'tcx> = Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
 
@@ -727,10 +718,12 @@ fn project<'cx, 'tcx>(
         ProjectionCandidateSet::None => {
             let tcx = selcx.tcx();
             let term = match tcx.def_kind(obligation.predicate.def_id) {
-                DefKind::AssocTy => {
-                    Ty::new_projection(tcx, obligation.predicate.def_id, obligation.predicate.args)
-                        .into()
-                }
+                DefKind::AssocTy => Ty::new_projection_from_args(
+                    tcx,
+                    obligation.predicate.def_id,
+                    obligation.predicate.args,
+                )
+                .into(),
                 DefKind::AssocConst => ty::Const::new_unevaluated(
                     tcx,
                     ty::UnevaluatedConst::new(
@@ -1015,6 +1008,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // not eligible.
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
+                let tcx = selcx.tcx();
                 let lang_items = selcx.tcx().lang_items();
                 if [
                     lang_items.coroutine_trait(),
@@ -1031,7 +1025,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 .contains(&Some(trait_ref.def_id))
                 {
                     true
-                } else if lang_items.async_fn_kind_helper() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFnKindHelper) {
                     // FIXME(async_closures): Validity constraints here could be cleaned up.
                     if obligation.predicate.args.type_at(0).is_ty_var()
                         || obligation.predicate.args.type_at(4).is_ty_var()
@@ -1043,7 +1037,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
                             && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
                     }
-                } else if lang_items.discriminant_kind_trait() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::DiscriminantKind) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1080,7 +1074,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(..)
                         | ty::Error(_) => false,
                     }
-                } else if lang_items.async_destruct_trait() == Some(trait_ref.def_id) {
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncDestruct) {
                     match self_ty.kind() {
                         ty::Bool
                         | ty::Char
@@ -1116,8 +1110,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Infer(_)
                         | ty::Error(_) => false,
                     }
-                } else if lang_items.pointee_trait() == Some(trait_ref.def_id) {
-                    let tail = selcx.tcx().struct_tail_with_normalize(
+                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
+                    let tail = selcx.tcx().struct_tail_raw(
                         self_ty,
                         |ty| {
                             // We throw away any obligations we get from this, since we normalize
@@ -1156,10 +1150,10 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Never
                         // Extern types have unit metadata, according to RFC 2850
                         | ty::Foreign(_)
-                        // If returned by `struct_tail_without_normalization` this is a unit struct
+                        // If returned by `struct_tail` this is a unit struct
                         // without any fields, or not a struct, and therefore is Sized.
                         | ty::Adt(..)
-                        // If returned by `struct_tail_without_normalization` this is the empty tuple.
+                        // If returned by `struct_tail` this is the empty tuple.
                         | ty::Tuple(..)
                         // Integers and floats are always Sized, and so have unit type metadata.
                         | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..)) => true,
@@ -1199,6 +1193,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             false
                         }
                     }
+                } else if tcx.trait_is_auto(trait_ref.def_id) {
+                    tcx.dcx().span_delayed_bug(
+                        tcx.def_span(obligation.predicate.def_id),
+                        "associated types not allowed on auto traits",
+                    );
+                    false
                 } else {
                     bug!("unexpected builtin trait with associated type: {trait_ref:?}")
                 }
@@ -1300,15 +1300,15 @@ fn confirm_select_candidate<'cx, 'tcx>(
     match impl_source {
         ImplSource::UserDefined(data) => confirm_impl_candidate(selcx, obligation, data),
         ImplSource::Builtin(BuiltinImplSource::Misc, data) => {
-            let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
-            let lang_items = selcx.tcx().lang_items();
-            if lang_items.coroutine_trait() == Some(trait_def_id) {
+            let tcx = selcx.tcx();
+            let trait_def_id = obligation.predicate.trait_def_id(tcx);
+            if tcx.is_lang_item(trait_def_id, LangItem::Coroutine) {
                 confirm_coroutine_candidate(selcx, obligation, data)
-            } else if lang_items.future_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::Future) {
                 confirm_future_candidate(selcx, obligation, data)
-            } else if lang_items.iterator_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::Iterator) {
                 confirm_iterator_candidate(selcx, obligation, data)
-            } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncIterator) {
                 confirm_async_iterator_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure()
@@ -1320,7 +1320,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 }
             } else if selcx.tcx().async_fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 confirm_async_closure_candidate(selcx, obligation, data)
-            } else if lang_items.async_fn_kind_helper() == Some(trait_def_id) {
+            } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncFnKindHelper) {
                 confirm_async_fn_kind_helper_candidate(selcx, obligation, data)
             } else {
                 confirm_builtin_candidate(selcx, obligation, data)
@@ -1373,20 +1373,24 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
         coroutine_sig,
     );
 
-    let name = tcx.associated_item(obligation.predicate.def_id).name;
-    let ty = if name == sym::Return {
+    let ty = if tcx.is_lang_item(obligation.predicate.def_id, LangItem::CoroutineReturn) {
         return_ty
-    } else if name == sym::Yield {
+    } else if tcx.is_lang_item(obligation.predicate.def_id, LangItem::CoroutineYield) {
         yield_ty
     } else {
         span_bug!(
             tcx.def_span(obligation.predicate.def_id),
-            "unexpected associated type: `Coroutine::{name}`"
+            "unexpected associated type: `Coroutine::{}`",
+            tcx.item_name(obligation.predicate.def_id),
         );
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: ty.into(),
     };
 
@@ -1430,7 +1434,11 @@ fn confirm_future_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: return_ty.into(),
     };
 
@@ -1472,7 +1480,11 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: yield_ty.into(),
     };
 
@@ -1522,7 +1534,11 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     let item_ty = args.type_at(0);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, obligation.predicate.def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(
+            tcx,
+            obligation.predicate.def_id,
+            trait_ref.args,
+        ),
         term: item_ty.into(),
     };
 
@@ -1538,21 +1554,20 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
     let self_ty = obligation.predicate.self_ty();
-    let lang_items = tcx.lang_items();
     let item_def_id = obligation.predicate.def_id;
     let trait_def_id = tcx.trait_of_item(item_def_id).unwrap();
     let args = tcx.mk_args(&[self_ty.into()]);
-    let (term, obligations) = if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
+    let (term, obligations) = if tcx.is_lang_item(trait_def_id, LangItem::DiscriminantKind) {
         let discriminant_def_id = tcx.require_lang_item(LangItem::Discriminant, None);
         assert_eq!(discriminant_def_id, item_def_id);
 
         (self_ty.discriminant_ty(tcx).into(), Vec::new())
-    } else if lang_items.async_destruct_trait() == Some(trait_def_id) {
+    } else if tcx.is_lang_item(trait_def_id, LangItem::AsyncDestruct) {
         let destructor_def_id = tcx.associated_item_def_ids(trait_def_id)[0];
         assert_eq!(destructor_def_id, item_def_id);
 
         (self_ty.async_destructor_ty(tcx).into(), Vec::new())
-    } else if lang_items.pointee_trait() == Some(trait_def_id) {
+    } else if tcx.is_lang_item(trait_def_id, LangItem::PointeeTrait) {
         let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
         assert_eq!(metadata_def_id, item_def_id);
 
@@ -1592,7 +1607,7 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, item_def_id, args),
+        projection_term: ty::AliasTerm::new_from_args(tcx, item_def_id, args),
         term,
     };
 
@@ -1622,7 +1637,7 @@ fn confirm_fn_pointer_candidate<'cx, 'tcx>(
             .generics_of(def_id)
             .host_effect_index
             .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
-        ty::FnPtr(_) => tcx.consts.true_,
+        ty::FnPtr(..) => tcx.consts.true_,
         _ => unreachable!("only expected FnPtr or FnDef in `confirm_fn_pointer_candidate`"),
     };
 
@@ -1753,7 +1768,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         fn_host_effect,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(tcx, fn_once_output_def_id, trait_ref.args),
+        projection_term: ty::AliasTerm::new_from_args(tcx, fn_once_output_def_id, trait_ref.args),
         term: ret_type.into(),
     });
 
@@ -1937,7 +1952,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new(
+        projection_term: ty::AliasTerm::new_from_args(
             selcx.tcx(),
             obligation.predicate.def_id,
             obligation.predicate.args,

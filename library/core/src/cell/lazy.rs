@@ -1,7 +1,6 @@
+use super::UnsafeCell;
 use crate::ops::Deref;
 use crate::{fmt, mem};
-
-use super::UnsafeCell;
 
 enum State<T, F> {
     Uninit(F),
@@ -67,7 +66,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell_consume)]
+    /// #![feature(lazy_cell_into_inner)]
     ///
     /// use std::cell::LazyCell;
     ///
@@ -78,7 +77,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// assert_eq!(LazyCell::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
     /// ```
-    #[unstable(feature = "lazy_cell_consume", issue = "125623")]
+    #[unstable(feature = "lazy_cell_into_inner", issue = "125623")]
     pub fn into_inner(this: Self) -> Result<T, F> {
         match this.state.into_inner() {
             State::Init(data) => Ok(data),

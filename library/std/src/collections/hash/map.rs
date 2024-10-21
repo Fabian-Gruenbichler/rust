@@ -1,13 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use self::Entry::*;
-
 use hashbrown::hash_map as base;
 
+use self::Entry::*;
 use crate::borrow::Borrow;
-use crate::collections::TryReserveError;
-use crate::collections::TryReserveErrorKind;
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::error::Error;
 use crate::fmt::{self, Debug};
 use crate::hash::{BuildHasher, Hash, RandomState};
@@ -1018,7 +1016,7 @@ where
         K: Borrow<Q>,
         Q: Hash + Eq,
     {
-        self.base.get_many_unchecked_mut(ks)
+        unsafe { self.base.get_many_unchecked_mut(ks) }
     }
 
     /// Returns `true` if the map contains a value for the specified key.

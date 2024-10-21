@@ -6,6 +6,7 @@ use rustc_data_structures::graph::DirectedGraph;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::{CounterId, CovTerm, Expression, ExpressionId, Op};
+use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, TraverseCoverageGraphWithLoops};
 
@@ -166,11 +167,6 @@ impl CoverageCounters {
 
     pub(super) fn num_counters(&self) -> usize {
         self.counter_increment_sites.len()
-    }
-
-    #[cfg(test)]
-    pub(super) fn num_expressions(&self) -> usize {
-        self.expressions.len()
     }
 
     fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> BcbCounter {

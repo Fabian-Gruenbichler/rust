@@ -1,11 +1,10 @@
+use super::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
-
-use super::once::ExclusiveState;
 
 // We use the state of a Once as discriminant value. Upon creation, the state is
 // "incomplete" and `f` contains the initialization closure. In the first call to
@@ -107,7 +106,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(lazy_cell_consume)]
+    /// #![feature(lazy_cell_into_inner)]
     ///
     /// use std::sync::LazyLock;
     ///
@@ -118,7 +117,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// assert_eq!(&*lazy, "HELLO, WORLD!");
     /// assert_eq!(LazyLock::into_inner(lazy).ok(), Some("HELLO, WORLD!".to_string()));
     /// ```
-    #[unstable(feature = "lazy_cell_consume", issue = "125623")]
+    #[unstable(feature = "lazy_cell_into_inner", issue = "125623")]
     pub fn into_inner(mut this: Self) -> Result<T, F> {
         let state = this.once.state();
         match state {
@@ -175,7 +174,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
 }
 
 impl<T, F> LazyLock<T, F> {
-    /// Get the inner value if it has already been initialized.
+    /// Gets the inner value if it has already been initialized.
     fn get(&self) -> Option<&T> {
         if self.once.is_completed() {
             // SAFETY:

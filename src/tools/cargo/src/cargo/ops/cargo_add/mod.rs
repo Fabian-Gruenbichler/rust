@@ -78,7 +78,7 @@ pub fn add(workspace: &Workspace<'_>, options: &AddOptions<'_>) -> CargoResult<(
         );
     }
 
-    let mut registry = PackageRegistry::new(options.gctx)?;
+    let mut registry = workspace.package_registry()?;
 
     let deps = {
         let _lock = options
@@ -349,11 +349,8 @@ fn resolve_dependency(
             }
             selected
         } else {
-            let source = crate::sources::PathSource::new(&path, src.source_id()?, gctx);
-            let package = source
-                .read_packages()?
-                .pop()
-                .expect("read_packages errors when no packages");
+            let mut source = crate::sources::PathSource::new(&path, src.source_id()?, gctx);
+            let package = source.root_package()?;
             Dependency::from(package.summary())
         };
         selected
@@ -1088,10 +1085,9 @@ fn find_workspace_dep(toml_key: &str, root_manifest: &Path) -> CargoResult<Depen
         .context("could not find `dependencies` table in `workspace`")?
         .as_table_like()
         .context("could not make `dependencies` into a table")?;
-    let dep_item = dependencies.get(toml_key).context(format!(
-        "could not find {} in `workspace.dependencies`",
-        toml_key
-    ))?;
+    let dep_item = dependencies
+        .get(toml_key)
+        .with_context(|| format!("could not find {toml_key} in `workspace.dependencies`"))?;
     Dependency::from_toml(root_manifest.parent().unwrap(), toml_key, dep_item)
 }
 

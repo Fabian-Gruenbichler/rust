@@ -500,8 +500,8 @@ automatically with the `x test --bless` option.
 
 The `run-rustfix` header will cause *all* suggestions to be applied, even
 if they are not [`MachineApplicable`](../diagnostics.md#suggestions).
-If this is a problem, then you can instead use the `rustfix-only-machine-applicable`
-header.
+If this is a problem, then you can add the `rustfix-only-machine-applicable`
+header in addition to `run-rustfix`.
 This should be used if there is a mixture of different suggestion levels, and
 some of the non-machine-applicable ones do not apply cleanly.
 
@@ -530,3 +530,16 @@ run something like the following to generate the alternate stderr file:
 ```
 
 Currently none of the compare modes are checked in CI for UI tests.
+
+## `rustc_*` TEST attributes
+
+The compiler defines several perma-unstable `#[rustc_*]` attributes gated behind the internal feature
+`rustc_attrs` that dump extra compiler-internal information. See the analogous subsection in
+[compiler debugging] for more details.
+
+They can be used in tests to more precisely, legibly and easily test internal compiler state in cases
+where it would otherwise be very hard to do the same with "user-facing" Rust alone. Indeed, one could
+say that this slightly abuses the term "UI" (*user* interfacing) and turns such UI tests from black-box
+tests into white-box ones. Use them carefully and sparingly.
+
+[compiler debugging]: ../compiler-debugging.md#rustc_-attributes

@@ -1,11 +1,9 @@
 //! Operations on ASCII `[u8]`.
 
-use crate::ascii;
-use crate::fmt::{self, Write};
-use crate::iter;
-use crate::mem;
-use crate::ops;
 use core::ascii::EscapeDefault;
+
+use crate::fmt::{self, Write};
+use crate::{ascii, iter, mem, ops};
 
 #[cfg(not(test))]
 impl [u8] {
@@ -108,7 +106,7 @@ impl [u8] {
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
-        EscapeAscii { inner: self.iter().flat_map(|byte| byte.escape_ascii()) }
+        EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
     }
 
     /// Returns a byte slice with leading ASCII whitespace bytes removed.
@@ -190,7 +188,12 @@ impl [u8] {
     }
 }
 
-type EscapeByte = impl (Fn(&u8) -> ascii::EscapeDefault) + Copy;
+impl_fn_for_zst! {
+    #[derive(Clone)]
+    struct EscapeByte impl Fn = |byte: &u8| -> ascii::EscapeDefault {
+        ascii::escape_default(*byte)
+    };
+}
 
 /// An iterator over the escaped version of a byte slice.
 ///

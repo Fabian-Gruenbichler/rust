@@ -8,23 +8,19 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::cmp::{self, Ordering};
-use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_n, repeat_with, ByRefSized};
-use core::mem::{ManuallyDrop, SizedTypeProperties};
-use core::ops::{Index, IndexMut, Range, RangeBounds};
-use core::ptr;
-use core::slice;
-
 // This is used in a bunch of intra-doc links.
 // FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
 // failures in linkchecker even though rustdoc built the docs just fine.
 #[allow(unused_imports)]
 use core::mem;
+use core::mem::{ManuallyDrop, SizedTypeProperties};
+use core::ops::{Index, IndexMut, Range, RangeBounds};
+use core::{fmt, ptr, slice};
 
 use crate::alloc::{Allocator, Global};
-use crate::collections::TryReserveError;
-use crate::collections::TryReserveErrorKind;
+use crate::collections::{TryReserveError, TryReserveErrorKind};
 use crate::raw_vec::RawVec;
 use crate::vec::Vec;
 
@@ -162,6 +158,20 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     fn ptr(&self) -> *mut T {
         self.buf.ptr()
+    }
+
+    /// Appends an element to the buffer.
+    ///
+    /// # Safety
+    ///
+    /// May only be called if `deque.len() < deque.capacity()`
+    #[inline]
+    unsafe fn push_unchecked(&mut self, element: T) {
+        // SAFETY: Because of the precondition, it's guaranteed that there is space
+        // in the logical array after the last element.
+        unsafe { self.buffer_write(self.to_physical_idx(self.len), element) };
+        // This can't overflow because `deque.len() < deque.capacity() <= usize::MAX`.
+        self.len += 1;
     }
 
     /// Moves an element out of the buffer
@@ -2911,6 +2921,14 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
     }
+
+    #[inline]
+    unsafe fn extend_one_unchecked(&mut self, item: T) {
+        // SAFETY: Our preconditions ensure the space has been reserved, and `extend_reserve` is implemented correctly.
+        unsafe {
+            self.push_unchecked(item);
+        }
+    }
 }
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
@@ -2927,6 +2945,14 @@ impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     #[inline]
     fn extend_reserve(&mut self, additional: usize) {
         self.reserve(additional);
+    }
+
+    #[inline]
+    unsafe fn extend_one_unchecked(&mut self, &item: &'a T) {
+        // SAFETY: Our preconditions ensure the space has been reserved, and `extend_reserve` is implemented correctly.
+        unsafe {
+            self.push_unchecked(item);
+        }
     }
 }
 

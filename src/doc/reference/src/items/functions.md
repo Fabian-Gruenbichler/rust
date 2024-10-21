@@ -8,7 +8,10 @@
 > &nbsp;&nbsp; &nbsp;&nbsp; ( [_BlockExpression_] | `;` )
 >
 > _FunctionQualifiers_ :\
-> &nbsp;&nbsp; `const`<sup>?</sup> `async`[^async-edition]<sup>?</sup> `unsafe`<sup>?</sup> (`extern` _Abi_<sup>?</sup>)<sup>?</sup>
+> &nbsp;&nbsp; `const`<sup>?</sup> `async`[^async-edition]<sup>?</sup> _ItemSafety_<sup>?</sup> (`extern` _Abi_<sup>?</sup>)<sup>?</sup>
+>
+> _ItemSafety_ :\
+> &nbsp;&nbsp; `safe`[^extern-safe] | `unsafe`
 >
 > _Abi_ :\
 > &nbsp;&nbsp; [STRING_LITERAL] | [RAW_STRING_LITERAL]
@@ -39,12 +42,16 @@
 >
 > [^async-edition]: The `async` qualifier is not allowed in the 2015 edition.
 >
+> [^extern-safe]: The `safe` function qualifier is only allowed semantically within
+>   `extern` blocks.
+>
 > [^fn-param-2015]: Function parameters with only a type are only allowed
 >   in an associated function of a [trait item] in the 2015 edition.
 
-A _function_ consists of a [block], along with a name, a set of parameters, and an output type.
+A _function_ consists of a [block] (that's the _body_ of the function),
+along with a name, a set of parameters, and an output type.
 Other than a name, all these are optional.
-Functions are declared with the keyword `fn`.
+Functions are declared with the keyword `fn` which defines the given name in the [value namespace] of the module or block where it is located.
 Functions may declare a set of *input* [*variables*][variables] as parameters, through which the caller passes arguments into the function, and the *output* [*type*][type] of the value the function will return to its caller on completion.
 If the output type is not explicitly stated, it is the [unit type].
 
@@ -56,6 +63,8 @@ fn answer_to_life_the_universe_and_everything() -> i32 {
     return 42;
 }
 ```
+
+The `safe` function is semantically only allowed when used in an [`extern` block].
 
 ## Function parameters
 
@@ -76,8 +85,8 @@ parameter may have an optional identifier, such as `args: ...`.
 
 ## Function body
 
-The block of a function is conceptually wrapped in a block that binds the
-argument patterns and then `return`s the value of the function's block. This
+The body block of a function is conceptually wrapped in another block that first binds the
+argument patterns and then `return`s the value of the function's body. This
 means that the tail expression of the block, if evaluated, ends up being
 returned to the caller. As usual, an explicit return expression within
 the body of the function will short-cut that implicit return, if reached.
@@ -156,10 +165,12 @@ their _definition_:
 
 <!-- ignore: fake ABI -->
 ```rust,ignore
-extern "ABI" {
-  fn foo(); /* no body */
+unsafe extern "ABI" {
+  unsafe fn foo(); /* no body */
+  safe fn bar(); /* no body */
 }
-unsafe { foo() }
+unsafe { foo() };
+bar();
 ```
 
 When `"extern" Abi?*` is omitted from `FunctionQualifiers` in function items,
@@ -321,7 +332,7 @@ responsibility to ensure that.
 ## Attributes on functions
 
 [Outer attributes][attributes] are allowed on functions. [Inner
-attributes][attributes] are allowed directly after the `{` inside its [block].
+attributes][attributes] are allowed directly after the `{` inside its body [block].
 
 This example shows an inner attribute on a function. The function is documented
 with just the word "Example".
@@ -407,9 +418,11 @@ fn foo_oof(#[some_inert_attribute] arg: u8) {
 [`export_name`]: ../abi.md#the-export_name-attribute
 [`link_section`]: ../abi.md#the-link_section-attribute
 [`no_mangle`]: ../abi.md#the-no_mangle-attribute
-[built-in attributes]: ../attributes.html#built-in-attributes-index
+[built-in attributes]: ../attributes.md#built-in-attributes-index
 [trait item]: traits.md
 [method]: associated-items.md#methods
 [associated function]: associated-items.md#associated-functions-and-methods
 [implementation]: implementations.md
+[value namespace]: ../names/namespaces.md
 [variadic function]: external-blocks.md#variadic-functions
+[`extern` block]: external-blocks.md

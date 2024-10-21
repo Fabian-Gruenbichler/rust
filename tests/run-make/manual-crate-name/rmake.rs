@@ -1,6 +1,6 @@
-use run_make_support::{rustc, tmp_dir};
+use run_make_support::{path, rustc};
 
 fn main() {
     rustc().input("bar.rs").crate_name("foo").run();
-    assert!(tmp_dir().join("libfoo.rlib").is_file());
+    assert!(path("libfoo.rlib").is_file());
 }

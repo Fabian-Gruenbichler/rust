@@ -111,7 +111,7 @@ You may want to run unit tests on a specific file with following:
 ./x test compiler/rustc_data_structures/src/thin_vec/tests.rs
 ```
 
-But unfortunately, it's impossible. You should invoke following instead:
+But unfortunately, it's impossible. You should invoke the following instead:
 
 ```bash
 ./x test compiler/rustc_data_structures/ --test-args thin_vec
@@ -212,6 +212,22 @@ rustc +stage1 tests/ui/issue-1234.rs
 This is much faster, but doesn't always work. For example, some tests
 include directives that specify specific compiler flags, or which rely
 on other crates, and they may not run the same without those options.
+
+## Running `run-make` tests
+
+### Windows
+
+Running the `run-make` test suite on Windows is a bit more involved. There are numerous
+prerequisites and environmental requirements:
+
+- Install msys2: <https://www.msys2.org/>
+- Specify `MSYS2_PATH_TYPE=inherit` in `msys2.ini` in the msys2 installation directory, run the
+  following with `MSYS2 MSYS`:
+  - `pacman -Syuu`
+  - `pacman -S make`
+  - `pacman -S diffutils`
+  - `pacman -S binutils`
+  - `./x test run-make` (`./x test tests/run-make` doesn't work)
 
 
 ## Running tests on a remote machine

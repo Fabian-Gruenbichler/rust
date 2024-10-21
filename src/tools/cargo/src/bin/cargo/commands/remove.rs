@@ -51,6 +51,7 @@ pub fn cli() -> clap::Command {
         ])
         .arg_package("Package to remove from")
         .arg_manifest_path()
+        .arg_lockfile_path()
         .after_help(color_print::cstr!(
             "Run `<cyan,bold>cargo help remove</>` for more detailed information.\n"
         ))
@@ -121,7 +122,7 @@ pub fn exec(gctx: &mut GlobalContext, args: &ArgMatches) -> CliResult {
             ws.gctx()
                 .shell()
                 .set_verbosity(cargo::core::Verbosity::Quiet);
-            let resolve = resolve_ws(&ws);
+            let resolve = resolve_ws(&ws, dry_run);
             ws.gctx().shell().set_verbosity(verbosity);
             resolve?.1
         };
@@ -129,7 +130,7 @@ pub fn exec(gctx: &mut GlobalContext, args: &ArgMatches) -> CliResult {
         // Attempt to gc unused patches and re-resolve if anything is removed
         if gc_unused_patches(&workspace, &resolve)? {
             let ws = args.workspace(gctx)?;
-            resolve_ws(&ws)?;
+            resolve_ws(&ws, dry_run)?;
         }
     }
     Ok(())

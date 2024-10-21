@@ -45,6 +45,7 @@
     * [SemVer Compatibility](reference/semver.md)
     * [Future incompat report](reference/future-incompat-report.md)
     * [Reporting build timings](reference/timings.md)
+    * [Lints](reference/lints.md)
     * [Unstable Features](reference/unstable.md)
 
 * [Cargo Commands](commands/index.md)
@@ -68,6 +69,7 @@
     * [Manifest Commands](commands/manifest-commands.md)
         * [cargo add](commands/cargo-add.md)
         * [cargo generate-lockfile](commands/cargo-generate-lockfile.md)
+        * [cargo info](commands/cargo-info.md)
         * [cargo locate-project](commands/cargo-locate-project.md)
         * [cargo metadata](commands/cargo-metadata.md)
         * [cargo pkgid](commands/cargo-pkgid.md)

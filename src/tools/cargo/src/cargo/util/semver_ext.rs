@@ -111,13 +111,17 @@ impl OptVersionReq {
         }
     }
 
-    /// Since Semver does not support prerelease versions,
-    /// the simplest implementation is taken here without comparing the prerelease section.
-    /// The logic here is temporary, we'll have to consider more boundary conditions later,
-    /// and we're not sure if this part of the functionality should be implemented in semver or cargo.
+    /// An interim approach allows to update to SemVer-Compatible prerelease version.
     pub fn matches_prerelease(&self, version: &Version) -> bool {
+        // Others Non `OptVersionReq::Req` have their own implementation.
+        if !matches!(self, OptVersionReq::Req(_)) {
+            return self.matches(version);
+        }
+
+        // TODO: In the future we have a prerelease semantic to be implemented.
         if version.is_prerelease() {
-            let mut version = version.clone();
+            let mut version: Version = version.clone();
+            // Ignores the Prerelease tag to unlock the limit of non prerelease unpdate to prerelease.
             version.pre = semver::Prerelease::EMPTY;
             return self.matches(&version);
         }
@@ -173,5 +177,87 @@ impl Display for OptVersionReq {
 impl From<VersionReq> for OptVersionReq {
     fn from(req: VersionReq) -> Self {
         OptVersionReq::Req(req)
+    }
+}
+
+#[cfg(test)]
+mod matches_prerelease {
+    use semver::VersionReq;
+
+    use super::OptVersionReq;
+    use super::Version;
+
+    #[test]
+    fn prerelease() {
+        // As of the writing, this test is not the final semantic of pre-release
+        // semver matching. Part of the behavior is buggy. This test just tracks
+        // the current behavior of the unstable `--precise <prerelease>`.
+        //
+        // The below transformation proposed in the RFC is hard to implement
+        // outside the semver crate.
+        //
+        // ```
+        // >=1.2.3, <2.0.0 -> >=1.2.3, <2.0.0-0
+        // ```
+        //
+        // The upper bound semantic is also not resolved. So, at least two
+        // outstanding issues are required to be fixed before the stabilization:
+        //
+        // * Bug 1: `x.y.z-pre.0` shouldn't match `x.y.z`.
+        // * Upper bound: Whether `>=x.y.z-0, <x.y.z` should match `x.y.z-0`.
+        //
+        // See the RFC 3493 for the unresolved upper bound issue:
+        // https://rust-lang.github.io/rfcs/3493-precise-pre-release-cargo-update.html#version-ranges-with-pre-release-upper-bounds
+        let cases = [
+            //
+            ("1.2.3", "1.2.3-0", true), // bug, must be false
+            ("1.2.3", "1.2.3-1", true), // bug, must be false
+            ("1.2.3", "1.2.4-0", true),
+            //
+            (">=1.2.3", "1.2.3-0", true), // bug, must be false
+            (">=1.2.3", "1.2.3-1", true), // bug, must be false
+            (">=1.2.3", "1.2.4-0", true),
+            //
+            (">1.2.3", "1.2.3-0", false),
+            (">1.2.3", "1.2.3-1", false),
+            (">1.2.3", "1.2.4-0", true),
+            //
+            (">1.2.3, <1.2.4", "1.2.3-0", false),
+            (">1.2.3, <1.2.4", "1.2.3-1", false),
+            (">1.2.3, <1.2.4", "1.2.4-0", false), // upper bound semantic
+            //
+            (">=1.2.3, <1.2.4", "1.2.3-0", true), // bug, must be false
+            (">=1.2.3, <1.2.4", "1.2.3-1", true), // bug, must be false
+            (">=1.2.3, <1.2.4", "1.2.4-0", false), // upper bound semantic
+            //
+            (">1.2.3, <=1.2.4", "1.2.3-0", false),
+            (">1.2.3, <=1.2.4", "1.2.3-1", false),
+            (">1.2.3, <=1.2.4", "1.2.4-0", true),
+            //
+            (">=1.2.3-0, <1.2.3", "1.2.3-0", false), // upper bound semantic
+            (">=1.2.3-0, <1.2.3", "1.2.3-1", false), // upper bound semantic
+            (">=1.2.3-0, <1.2.3", "1.2.4-0", false),
+        ];
+        for (req, ver, expected) in cases {
+            let version_req = req.parse().unwrap();
+            let version = ver.parse().unwrap();
+            let matched = OptVersionReq::Req(version_req).matches_prerelease(&version);
+            assert_eq!(expected, matched, "req: {req}; ver: {ver}");
+        }
+    }
+
+    #[test]
+    fn opt_version_req_matches_prerelease() {
+        let req_ver: VersionReq = "^1.2.3-rc.0".parse().unwrap();
+        let to_ver: Version = "1.2.3-rc.0".parse().unwrap();
+
+        let req = OptVersionReq::Req(req_ver.clone());
+        assert!(req.matches_prerelease(&to_ver));
+
+        let req = OptVersionReq::Locked(to_ver.clone(), req_ver.clone());
+        assert!(req.matches_prerelease(&to_ver));
+
+        let req = OptVersionReq::Precise(to_ver.clone(), req_ver.clone());
+        assert!(req.matches_prerelease(&to_ver));
     }
 }
