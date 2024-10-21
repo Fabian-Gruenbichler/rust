@@ -14,6 +14,7 @@ for i in "$scriptdir/debian/patches"/prune/d-00*.patch; do
 	"$scriptdir/debian/ensure-patch" -N "$i"
 done
 
+# keep in sync with d/rules
 workspaces=". src/bootstrap library src/tools/rust-analyzer src/tools/cargo src/tools/rustbook"
 for ws in $workspaces; do
 	test -f "$ws/Cargo.lock.org" || cp "$ws/Cargo.lock" "$ws/Cargo.lock.orig"
