@@ -978,13 +978,6 @@ Copyright: 2019-2023 Robert Vojta <rvojta@me.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/zrzka/anes-rs
 
-Files: vendor/ansi_term-*/*
-Copyright: 2014-2019 ogham@bsago.me
-           2014-2019 Ryan Scheel (Havvy) <ryan.havvy@gmail.com>
-           2014-2019 Josh Triplett <josh@joshtriplett.org>
-License: MIT
-Comment: see https://github.com/ogham/rust-ansi-term
-
 Files:
  vendor/anstream-*/*
  vendor/anstyle-*/*
@@ -1015,11 +1008,6 @@ Copyright: 2017-2024 The Rust-Fuzz Project Developers
            2017-2024 Corey Farwell <coreyf@rwell.org>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-fuzz/arbitrary/
-
-Files: vendor/askama*/*
-Copyright: 2016-2022 Dirkjan Ochtman
-License: MIT OR Apache-2.0
-Comment: see https://github.com/djc/askama
 
 Files:
  vendor/bitflags-*/*
@@ -1066,8 +1054,15 @@ Copyright: 2023-2023 Jacob Pratt <jacob@jhpratt.dev>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/jhpratt/num-conv
 
-Files: vendor/num-traits-*/*
-Copyright: 2014-2018 The Rust Project Developers
+Files:
+ vendor/num-0.*/*
+ vendor/num-bigint-0.*/*
+ vendor/num-complex-0.*/*
+ vendor/num-integer-0.*/*
+ vendor/num-iter-0.*/*
+ vendor/num-rational-0.*/*
+ vendor/num-traits-*/*
+Copyright: 2014-2024 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-num/num
 
@@ -1188,12 +1183,6 @@ Files: vendor/arc-swap-*/*
 Copyright: 2018-2024 Michal 'vorner' Vaner <vorner@vorner.cz>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/vorner/arc-swap
-
-Files: vendor/assert_cmd-*/*
-Copyright: 2018-2024 Pascal Hertleif <killercup@gmail.com>
-           2018-2024 Ed Page <eopage@gmail.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/assert-rs/assert_cmd.git
 
 Files: vendor/autocfg-*/*
 Copyright: 2018-2020 Josh Stone <cuviper@gmail.com>
@@ -1487,6 +1476,11 @@ Copyright: 2017-2024 Ted Driggs <ted.driggs@outlook.com>
 License: MIT
 Comment: see https://github.com/TedDriggs/darling
 
+Files: vendor/dashmap-5.*/*
+Copyright: 2019-2024 Acrimon <joel.wejdenstal@gmail.com>
+License: MIT
+Comment: see https://github.com/xacrimon/dashmap
+
 Files: vendor/datafrog-*/*
 Copyright:
  2018 Frank McSherry <fmcsherry@me.com>
@@ -1506,11 +1500,6 @@ Files: vendor/deranged-*/*
 Copyright: 2020-2023 Jacob Pratt <jacob@jhpratt.dev>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/jhpratt/deranged
-
-Files: vendor/derivative-*/*
-Copyright: 2016-2021 mcarton <cartonmartin+git@gmail.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/mcarton/rust-derivative
 
 Files:
  vendor/derive_builder-*/*
@@ -1533,15 +1522,15 @@ Copyright: 2019-2023 Lymia Aluysia <lymia@lymiahugs.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Lymia/derive_setters
 
+Files: vendor/derive-where-1.*/*
+Copyright: 2021 Roland Fredenhagen
+License: MIT OR Apache-2.0
+Comment: see https://github.com/ModProg/derive-where
+
 Files: vendor/diff-*/*
 Copyright: 2015-2017 Utkarsh Kukreti <utkarshkukreti@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/utkarshkukreti/diff.rs
-
-Files: vendor/difflib-*/*
-Copyright: 2016-2018 Dima Kudosh <dimakudosh@gmail.com>
-License: MIT
-Comment: see https://github.com/DimaKudosh/difflib
 
 Files: vendor/directories-5.0.1/*
 Copyright: 2017-2023 Simon Ochsenreither <simon@ochsenreither.de>
@@ -1904,6 +1893,11 @@ Copyright: 2020-2023 Magic Len <len@magiclen.org>
 License: MIT
 Comment: see https://github.com/magiclen/html-escape
 
+Files: vendor/html_parser-0.*/*
+Copyright: 2020-2023 Mathias Iversen <work@mathiasiversen.com>
+License: MIT
+Comment: see https://github.com/mathiversen/html-parser
+
 Files: vendor/http-auth-*/*
 Copyright: 2021-2023 Scott Lamp <slamb@slamb.org>
 License: MIT or Apache-2.0
@@ -2134,11 +2128,6 @@ Copyright: 2018-2019 Thomas Hurst <tom@hur.st>
 License: MIT
 Comment: see https://github.com/Freaky/rust-linereader.git
 
-Files: vendor/line-wrap-*/*
-Copyright: 2018-2024 Marshall Pierce <marshall@mpierce.org>
-License: Apache-2.0
-Comment: see https://bitbucket.org/marshallpierce/line-wrap-rs/src
-
 Files: vendor/linked-hash-map-*/*
 Copyright: 2015-2022 Stepan Koltsov <stepan.koltsov@gmail.com>
            2015-2022 Andrew Paseltiner <apaseltiner@gmail.com>
@@ -2297,6 +2286,11 @@ Files: vendor/once_cell-*/*
 Copyright: 2018-2019 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/matklad/once_cell
+
+Files: vendor/once_map-0.*/*
+Copyright: 2022 Benoît du Garreau
+License: MIT OR Apache-2.0
+Comment: see https://github.com/a1phyr/once_map
 
 Files:
  vendor/onig-*/*
@@ -2483,14 +2477,6 @@ Copyright: 2017-2017 Emilio Cobos Álvarez <emilio@crisal.io>
 License: MIT
 Comment: see https://github.com/emilio/precomputed-hash
 
-Files:
- vendor/predicates-3.*/*
- vendor/predicates-core-*/*
- vendor/predicates-tree-*/*
-Copyright: 2017-2024 Nick Stevens <nick@bitcurry.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/assert-rs/predicates-rs
-
 Files: vendor/pretty_assertions-*/*
 Copyright: 2017-2022 Colin Kiegel <kiegel@gmx.de>
            2017-2022 Florent Fayolle <florent.fayolle69@gmail.com>
@@ -2608,6 +2594,14 @@ Copyright: 2018-2020 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense or MIT
 Comment: see https://github.com/BurntSushi/regex-automata
 
+Files:
+ vendor/rinja-0.*/*
+ vendor/rinja_derive-0.*/*
+ vendor/rinja_parser-0.*/*
+Copyright: 2017-2020 Dirkjan Ochtman
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rinja-rs/rinja
+
 Files: vendor/rowan-*/*
 Copyright: 2018-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
@@ -2627,11 +2621,6 @@ Files: vendor/rustc_tools_util-*/*
 Copyright: 2014-2022 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust-clippy/tree/master/rustc_tools_util
-
-Files: vendor/rustc-semver-*/*
-Copyright: 2020-2020 flip1995 <hello@philkrones.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/flip1995/rustc-semver
 
 Files: vendor/rustc_version-*/*
 Copyright: 2015-2021 Dirkjan Ochtman <dirkjan@ochtman.nl>
@@ -2820,6 +2809,11 @@ Comment:
  see https://github.com/doubleopen-project/spdx-expression
  see https://github.com/doubleopen-project/spdx-rs
 
+Files: vendor/sptr-0.*/*
+Copyright: 2022 Ralf Jung
+License: MIT OR Apache-2.0
+Comment: see https://github.com/Gankra/sptr
+
 Files: vendor/stable_deref_trait-*/*
 Copyright: 2017-2017 Robert Grosse <n210241048576@gmail.com>
 License: MIT or Apache-2.0
@@ -2920,13 +2914,6 @@ Files: vendor/termize-*/*
 Copyright: 2016-2020 Yuki Okushi <huyuumi.dev@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/JohnTitor/termize
-
-Files: vendor/termtree-0.*/*
-Copyright:
- 2015-2024 Doug Tangren <d.tangren@gmail.com>
- 2021-2024 Ed Page <eopage@gmail.com>
-License: MIT
-Comment: see https://github.com/rust-cli/termtree
 
 Files: vendor/text-size-*/*
 Copyright: 2018-2021 Aleksey Kladov <aleksey.kladov@gmail.com>
@@ -3265,11 +3252,6 @@ Files: vendor/xattr-*/*
 Copyright: 2015-2017 Steven Allen <steven@stebalien.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Stebalien/xattr
-
-Files: vendor/xmlparser-0.*/*
-Copyright: 2017-2024 Yevhenii Reizner <razrfalcon@gmail.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/RazrFalcon/xmlparser
 
 Files: vendor/yaml-rust-0.*/*
 Copyright: 2015-2021 Yuheng Chen <yuhengchen@sensetime.com>
