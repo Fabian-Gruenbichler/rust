@@ -490,7 +490,7 @@ override_dh_install-indep:
 	dh_install
 	$(RM) -rf $(SRC_CLEAN:%=debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION)/%)
 	# Get rid of lintian warnings
-	find debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION) \
+	find debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION) -type f \
 		\( -name .gitignore \
 		-o -name 'LICENSE*' \
 		-o -name 'LICENCE' \
