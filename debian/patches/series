@@ -41,3 +41,4 @@ ubuntu/ubuntu-disable-ppc64el-asm-tests.patch
 ubuntu/ubuntu-ignore-arm-doctest.patch
 vendor/onig_sys-use-system-lib.patch
 vendor/libz-sys-allow-cross-building.patch
+build/bootstrap-tests-disable-compiler-rt-optimizing.patch
