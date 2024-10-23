@@ -1,3 +1,10 @@
+rustc (1.82.0+dfsg1-1~exp2) experimental; urgency=medium
+
+  * fix some test breakage
+  * riscv64: unbreak compiler_builtin build
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 23 Oct 2024 18:03:55 +0200
+
 rustc (1.82.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
