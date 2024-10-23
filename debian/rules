@@ -23,6 +23,10 @@ export TARGET_LDFLAGS = $(LDFLAGS)
 unexport CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 export CARGO_HOME = $(CURDIR)/debian/cargo
 
+# temporary fix to build 1.82 with 1.82
+# see https://github.com/rust-lang/rust/issues/129268#issuecomment-2430156277
+export CARGO_FEATURE_NO_F16_F128=1
+
 # Defines DEB_*_RUST_TYPE triples
 include debian/architecture.mk
 # for dh_install substitution variable
