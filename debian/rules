@@ -280,10 +280,11 @@ debian/dh_auto_configure.stamp: debian/config.toml check-no-old-llvm extra-vendo
 	# work around #842634
 	if test $$(grep "127.0.0.1\s*localhost" /etc/hosts | wc -l) -gt 1; then \
 	  debian/ensure-patch -N debian/patches-unused/d-test-host-duplicates.patch; fi
-	# don't care about lock changes
+
+	# allow lock changes during build, but keep originals around in case we need them for rust-src
 	# keep in sync with d/prune-unused-deps
 	for ws in . src/bootstrap library src/tools/rust-analyzer src/tools/cargo src/tools/rustbook; do \
-	  rm -f "$$ws/Cargo.lock"; \
+	  if [ -f "$$ws/Cargo.lock" ]; then mv "$$ws/Cargo.lock" "$$ws/Cargo.lock.orig"; fi \
 	done
 	# We patched some crates so have to rm the checksums
 	find vendor -name .cargo-checksum.json -execdir "$(CURDIR)/debian/prune-checksums" "{}" +
@@ -495,6 +496,9 @@ endif
 override_dh_install-indep:
 	dh_install
 	$(RM) -rf $(SRC_CLEAN:%=debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION)/%)
+
+	mv debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION)/library/Cargo.lock.orig \
+		debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION)/library/Cargo.lock
 	# Get rid of lintian warnings
 	find debian/rust-src/usr/src/rustc-$(RUST_LONG_VERSION) -type f \
 		\( -name .gitignore \
