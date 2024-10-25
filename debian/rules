@@ -60,9 +60,10 @@ ifeq (armhf,$(DEB_TARGET_ARCH))
 CLANG_RT_ARCH = armhf
 endif
 
-ifneq (,$(filter $(DEB_TARGET_ARCH),sparc64 mips64el hurd-i386 hurd-amd64))
+ifneq (,$(filter $(DEB_TARGET_ARCH),sparc64 mips64el hurd-i386 hurd-amd64 armel armhf))
 # sparc64: see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1061125
 # mips64el: has profiler, but buggy atm (32-bit overflow in some counter?)
+# armel/armhf: temp disabled, out-of-sync with rest of llvm-19 on thsoe archs
 CLANG_RT_ARCH =
 PROFILER = "false"
 PROFILER_PATH = ""
