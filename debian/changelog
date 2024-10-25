@@ -1,3 +1,13 @@
+rustc (1.82.0+dfsg1-1) unstable; urgency=medium
+
+  * rust-src: ship original Cargo.lock file to fix rust-analyzer for libstd,
+    and allow `-Z build-std`
+  * build: disable profiler support on armel/armhf
+  * build: extend riscv64 workaround to loong64
+  * cargo wrapper: fix LTO position in argument lists (Closes: #1086025)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 25 Oct 2024 16:21:38 +0200
+
 rustc (1.82.0+dfsg1-1~exp3) experimental; urgency=medium
 
   * conditonalize riscv64 workaround
