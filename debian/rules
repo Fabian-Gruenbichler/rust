@@ -23,7 +23,7 @@ export TARGET_LDFLAGS = $(LDFLAGS)
 unexport CFLAGS CXXFLAGS CPPFLAGS LDFLAGS
 export CARGO_HOME = $(CURDIR)/debian/cargo
 
-ifeq (riscv64,$(DEB_BUILD_ARCH))
+ifneq (,$(filter $(DEB_BUILD_ARCH), loong64 riscv64))
 # temporary fix to build 1.82 with 1.82
 # see https://github.com/rust-lang/rust/issues/129268#issuecomment-2430156277
 export CARGO_FEATURE_NO_F16_F128=1
