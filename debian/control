@@ -21,9 +21,8 @@ Build-Depends:
  gcc-mingw-w64-x86-64-posix:native [amd64] <!nowindows>,
  gcc-mingw-w64-i686-posix:native [i386] <!nowindows>,
  libllvm19 (>= 1:19.0.0),
-# temp. disabled for armel/armhf
- libclang-rt-19-dev:native [!armhf !armel],
- libclang-rt-19-dev [!armhf !armel],
+ libclang-rt-19-dev:native,
+ libclang-rt-19-dev,
  cmake (>= 3.0),
 # needed by some vendor crates
  pkgconf:native,
