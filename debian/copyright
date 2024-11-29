@@ -34,6 +34,7 @@ Files-Excluded:
 # Embedded GH pages
  src/tools/clippy/util/gh-pages
 # Embedded C libraries
+ vendor/blake3-*/c
  vendor/curl-sys-*/curl
  vendor/libdbus-sys-*/vendor
  vendor/libgit2-sys-*/libgit2
@@ -50,6 +51,7 @@ Files-Excluded:
 # test binary files
  vendor/libloading-*/tests/*.dll
 # Misc
+ vendor/blake3-*/media
  vendor/*/icon_CLion.svg
  vendor/prettydiff-*/screens/*.png
  vendor/wasm-bindgen-*/guide
