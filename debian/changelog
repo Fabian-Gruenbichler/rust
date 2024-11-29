@@ -1,3 +1,9 @@
+rustc (1.83.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream release
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 29 Nov 2024 21:22:37 +0100
+
 rustc (1.82.0+dfsg1-2) unstable; urgency=medium
 
   * build: re-enable clang-rt on armel/armhf
