@@ -1121,6 +1121,12 @@ Copyright: 2020-2021 Jonas Schievink <jonasschievink@gmail.com>
 License: 0BSD or MIT or Apache-2.0
 Comment: see https://github.com/jonas-schievink/adler.git
 
+Files: vendor/adler2-*/*
+Copyright: 2020-2024 Jonas Schievink <jonasschievink@gmail.com>
+           2020-2024 oyvindln <oyvindln@users.noreply.github.com>
+License: 0BSD OR MIT OR Apache-2.0
+Comment: see https://github.com/oyvindln/adler2
+
 Files: vendor/allocator-api2-*/*
 Copyright: 2023-2024 Zakarum <zaq.dev@icloud.com>
 License: MIT OR Apache-2.0
@@ -1159,6 +1165,11 @@ Files: vendor/arc-swap-*/*
 Copyright: 2018-2024 Michal 'vorner' Vaner <vorner@vorner.cz>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/vorner/arc-swap
+
+Files: vendor/arrayref-*/*
+Copyright: 2015-2024 David Roundy <roundyd@physics.oregonstate.edu>
+License: BSD-2-Clause
+Comment: see https://github.com/droundy/arrayref
 
 Files: vendor/autocfg-*/*
 Copyright: 2018-2020 Josh Stone <cuviper@gmail.com>
@@ -1241,6 +1252,17 @@ Comment:
  see https://github.com/RustCrypto/utils
  see https://github.com/RustCrypto/KDFs
  see https://github.com/RustCrypto/MACs
+
+Files: vendor/blake3-*/*
+Copyright: 2019-2024 Jack O'Connor <oconnor663@gmail.com>
+           2019-2024 Samuel Neves
+License: CC0-1.0 OR Apache-2.0 OR Apache-2.0 with LLVM exception
+Comment: see https://github.com/BLAKE3-team/BLAKE3
+
+Files: vendor/borsh-*/*
+Copyright: 2019-2024 Near Inc <hello@near.org>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/near/borsh-rs
 
 Files:
  vendor/bstr-*/*
@@ -1379,6 +1401,11 @@ Copyright: 2019-2023 Ethan McTague <ethan@tague.me>
 License: MIT
 Comment: see https://github.com/emctague/comma
 
+Files: vendor/constant_time_eq-*/*
+Copyright: 2015-2024 Cesar Eduardo Barros <cesarb@cesarb.eti.br>
+License: CC0-1.0 OR MIT-0 OR Apache-2.0
+Comment: see https://github.com/cesarb/constant_time_eq
+
 Files:
  vendor/console-*/*
  vendor/indicatif-*/*
@@ -1465,6 +1492,11 @@ Copyright:
 License: Apache-2.0 or MIT
 Comment: see https://github.com/rust-lang-nursery/datafrog
 
+Files: vendor/dateparser-*/*
+Copyright: 2021-2024 Rollie Ma <rollie@rollie.dev>
+License: MIT
+Comment: see https://github.com/waltzofpearls/dateparser
+
 Files:
  vendor/dbus-*/*
  vendor/libdbus-sys-*/*
@@ -1487,11 +1519,6 @@ Copyright: 2016-2024 Colin Kiegel <kiegel@gmx.de>
            2016-2024 Ted Driggs <ted.driggs@outlook.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/colin-kiegel/rust-derive-builder
-
-Files: vendor/derive_more-*/*
-Copyright: 2016-2023 Jelte Fennema <github-tech@jeltef.nl>
-License: MIT
-Comment: see https://github.com/JelteF/derive_more
 
 Files: vendor/derive_setters-*/*
 Copyright: 2019-2023 Lymia Aluysia <lymia@lymiahugs.com>
@@ -1960,6 +1987,11 @@ Copyright: 2018-2021 Kekoa Riggin <kekoariggin@gmail.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/zbraniecki/pluralrules
 
+Files: vendor/is_executable-*/*
+Copyright: 2017-2024 Nick Fitzgerald <fitzgen@gmail.com>
+License: Apache-2.0 or MIT
+Comment: see https://github.com/fitzgen/is_executable
+
 Files: vendor/is-terminal-*/*
 Copyright: 2022-2023 softprops <d.tangren@gmail.com>
            2022-2023 Dan Gohman <dev@sunfishcode.online>
@@ -2420,11 +2452,6 @@ License: Apache-2.0 or MIT
 Comment:
  see https://github.com/taiki-e/pin-project-lite
 
-Files: vendor/plist-*/*
-Copyright: 2015-2024 Ed Barnard <eabarnard@gmail.com>
-License: MIT
-Comment: see https://github.com/ebarnard/rust-plist/
-
 Files:
  vendor/plotters-*/*
  vendor/plotters-backend-*/*
@@ -2510,11 +2537,6 @@ Copyright:
 License: MIT or Apache-2.0
 Comment: see http://github.com/tailhook/quick-error
 
-Files: vendor/quick-xml-*/*
-Copyright: 2016-2024 Johann Tuffe <tafia973@gmail.com>
-License: MIT
-Comment: see https://github.com/tafia/quick-xml
-
 Files: vendor/quine-mc_cluskey-*/*
 Copyright: 2016-2016 Oliver Schneider <git-spam-no-reply9815368754983@oli-obk.de>
 License: MIT
@@ -2565,7 +2587,6 @@ Files:
  vendor/regex-automata-*/*
  vendor/regex-automata-0.1.*/*
  vendor/regex-automata-0.2.*/*
- vendor/regex-automata-0.3.*/*
 Copyright: 2018-2020 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense or MIT
 Comment: see https://github.com/BurntSushi/regex-automata
@@ -3228,11 +3249,6 @@ Files: vendor/xattr-*/*
 Copyright: 2015-2017 Steven Allen <steven@stebalien.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/Stebalien/xattr
-
-Files: vendor/yaml-rust-0.*/*
-Copyright: 2015-2021 Yuheng Chen <yuhengchen@sensetime.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/chyh1990/yaml-rust
 
 Files: vendor/yansi-*/*
 Copyright: 2017-2022 Sergio Benitez <sb@sergio.bz>
