@@ -1,3 +1,10 @@
+rustc (1.83.0+dfsg1-1) unstable; urgency=medium
+
+  * upload to unstable
+  * fix/ignore some test failures
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 04 Dec 2024 18:07:54 +0100
+
 rustc (1.83.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
