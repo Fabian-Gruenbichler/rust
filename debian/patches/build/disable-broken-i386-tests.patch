@@ -11,14 +11,14 @@ Signed-off-by: Fabian Grünbichler <git@fabian.gruenbichler.email>
  1 file changed, 2 insertions(+)
 
 diff --git a/tests/ui/traits/object/print_vtable_sizes.rs b/tests/ui/traits/object/print_vtable_sizes.rs
-index 2b1745d..5f1b61c 100644
+index 2b1745d..fd94386 100644
 --- a/tests/ui/traits/object/print_vtable_sizes.rs
 +++ b/tests/ui/traits/object/print_vtable_sizes.rs
 @@ -1,5 +1,7 @@
  //@ check-pass
  //@ compile-flags: -Z print-vtable-sizes
 +//Debian: broken floats break the expected output on i386
-+//@ ignore-i686
++//@ ignore-i686-unknown-linux-gnu
  #![crate_type = "lib"]
  
  trait A<T: help::V>: AsRef<[T::V]> + AsMut<[T::V]> {}
