@@ -1,1 +1,2 @@
 usr/lib/rustlib/${env:DEB_HOST_RUST_TYPE}/bin/wasm-component-ld
+usr/lib/rustlib/${env:DEB_HOST_RUST_TYPE}/bin/rust-objcopy
