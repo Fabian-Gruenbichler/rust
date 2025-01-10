@@ -50,9 +50,6 @@ linker = "DEB_TARGET_GNU_TYPE-gcc"
 PROFILER_PATH
 
 )dnl
-[target.wasm32-wasi]
-wasi-root = "/usr"
-profiler = false
 [target.wasm32-wasip1]
 wasi-root = "/usr"
 profiler = false
