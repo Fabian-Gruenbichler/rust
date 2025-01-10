@@ -362,6 +362,29 @@ Description: Rust formatting helper
  style guidelines, as well as 'cargo-fmt', a helper enabling running rustfmt
  directly with 'cargo fmt'.
 
+Package: rust-analyzer
+Architecture: any
+Multi-Arch: allowed
+Depends: ${misc:Depends}, ${shlibs:Depends},
+ libstd-rust-1.84 (= ${binary:Version}),
+Recommends: cargo
+Description: Rust Language Server Protocol (LSP) implementation
+ Rust is a curly-brace, block-structured expression language.  It
+ visually resembles the C language family, but differs significantly
+ in syntactic and semantic details.  Its design is oriented toward
+ concerns of "programming in the large", that is, of creating and
+ maintaining boundaries - both abstract and operational - that
+ preserve large-system integrity, availability and concurrency.
+ .
+ It supports a mixture of imperative procedural, concurrent actor,
+ object-oriented and pure functional styles.  Rust also supports
+ generic programming and meta-programming, in both static and dynamic
+ styles.
+ .
+ This package contains 'rust-analyzer', an implementation of the Language
+ Server Protocol for the Rust language. It provides features like completion
+ and goto definition for many editors, like Emacs and (Neo)Vim.
+
 Package: rust-all
 Architecture: all
 Depends: ${misc:Depends}, ${shlibs:Depends},
