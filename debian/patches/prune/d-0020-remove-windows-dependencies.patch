@@ -355,10 +355,10 @@ index f823aa1..c82566f 100644
  cpu_profiler = []
  
 diff --git a/src/tools/rust-analyzer/crates/rust-analyzer/Cargo.toml b/src/tools/rust-analyzer/crates/rust-analyzer/Cargo.toml
-index 50a4bab..6397b99 100644
+index f63798d..7a8a3f3 100644
 --- a/src/tools/rust-analyzer/crates/rust-analyzer/Cargo.toml
 +++ b/src/tools/rust-analyzer/crates/rust-analyzer/Cargo.toml
-@@ -71,9 +71,6 @@ vfs-notify.workspace = true
+@@ -70,9 +70,6 @@ vfs-notify.workspace = true
  vfs.workspace = true
  paths.workspace = true
  
