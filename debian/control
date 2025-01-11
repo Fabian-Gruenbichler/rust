@@ -390,8 +390,10 @@ Architecture: all
 Depends: ${misc:Depends}, ${shlibs:Depends},
  rustc (>= ${binary:Version}),
  rustfmt (>= ${binary:Version}),
+ rust-analyzer (>= ${binary:Version}),
  rust-clippy (>= ${binary:Version}),
  rust-gdb (>= ${binary:Version}) | rust-lldb (>= ${binary:Version}),
+ rust-llvm (>= ${binary:Version}),
  cargo,
 Recommends:
  cargo (= ${binary:Version})
