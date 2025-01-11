@@ -1,8 +1,12 @@
-rustc (1.84.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.84.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release.
+  * Stop building wasm32-wasi target
+  * Build rust-analyzer (Closes: #1052319)
+  * rust-llvm: ship rust-objcopy helper
+  * rust-all: add rust-llvm and rust-analyzer packages
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 10 Jan 2025 13:33:24 +0100
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sat, 11 Jan 2025 16:04:50 +0100
 
 rustc (1.83.0+dfsg1-1) unstable; urgency=medium
 
