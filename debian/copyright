@@ -909,6 +909,7 @@ Files: C*.md
        library/*
        src/README.md
        src/bootstrap/*
+       src/build_helper/*
        src/ci/*
        src/doc/*
        src/etc/*
@@ -1100,6 +1101,16 @@ Copyright: 2014-2020 Alex Crichton <alex@alexcrichton.com>
            2015-2017 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/alexcrichton/
+
+Files:
+ vendor/chalk-derive-0.*/*
+ vendor/chalk-ir-0.*/*
+ vendor/chalk-recursive-0.*/*
+ vendor/chalk-solve-0.*/*
+Copyright: 2015-2025 Rust Compiler Team
+           2015-2025 Chalk developers
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-lang/chalk
 
 Files: vendor/crunchy-*/*
 Copyright: 2018-2024 Vurich <jackefransham@hotmail.co.uk>
@@ -1616,10 +1627,21 @@ Copyright: 2018-2020 Guillaume Gomez <guillaume1.gomez@gmail.com>
 License: MIT
 Comment: see https://github.com/GuillaumeGomez/doc-comment
 
+Files: vendor/dot-0.*/*
+Copyright: 2015-2023 The Rust Project Developers
+           2015-2023 Graham Dennis <graham.dennis@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/GrahamDennis/dot-rust
+
 Files: vendor/dunce-*/*
 Copyright: 2017-2023 Kornel <kornel@geekhood.net>
 License: CC0-1.0
 Comment: see https://gitlab.com/kornelski/dunce
+
+Files: vendor/dyn-clone-1.*/*
+Copyright: 2018-2024 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/dyn-clone
 
 Files: vendor/ed25519-compact-*/*
 Copyright: 2020-2024 Frank Denis <github@pureftpd.org>
@@ -1718,6 +1740,11 @@ Copyright: 2016-2023 Diggory Blake <diggsey@googlemail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/Diggsey/rust-field-offset
 
+Files: vendor/fixedbitset-0.*/*
+Copyright: 2015-2024 bluss
+License: MIT or Apache-2.0
+Comment: see https://github.com/petgraph/fixedbitset
+
 Files: 
  vendor/fluent-bundle-*/*
  vendor/fluent-syntax-*/*
@@ -1732,6 +1759,11 @@ Files: vendor/fluent-langneg-*/*
 Copyright: 2017-2021 Zibi Braniecki <gandalf@mozilla.com>
 License: Apache-2.0
 Comment: see https://github.com/projectfluent/fluent-langneg-rs
+
+Files: vendor/foldhash-0.*/*
+Copyright: 2024-2024 Orson Peters <orsonpeters@gmail.com>
+License: Zlib
+Comment: see https://github.com/orlp/foldhash
 
 Files:
  vendor/foreign-types-*/*
@@ -1749,6 +1781,12 @@ Files: vendor/fs-err-*/*
 Copyright: 2020-2020 Andrew Hickman <andrew.hickman1@sky.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/andrewhickman/fs-err
+
+
+Files: vendor/fsevent-sys-*/*
+Copyright: 2014-2019 Pierre Baillet <pierre@baillet.name>
+License: MIT
+Comment: see https://github.com/octplane/fsevent-rust/
 
 Files: vendor/fs_extra-*/*
 Copyright: 2017-2023 Denis Kurilenko <webdesus@gmail.com>
@@ -1813,7 +1851,6 @@ Files:
  vendor/gix-ignore-*/*
  vendor/gix-index-*/*
  vendor/gix-lock-*/*
- vendor/gix-macros-*/*
  vendor/gix-negotiate-*/*
  vendor/gix-object-*/*
  vendor/gix-odb-*/*
@@ -1984,6 +2021,19 @@ Copyright: 2016-2022 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/dtolnay/indoc
 
+Files: vendor/inotify-0.*/*
+Copyright: 2014-2025 Hanno Braun <mail@hannobraun.de>
+           2014-2025 Félix Saparelli <me@passcod.name>
+           2014-2025 Cristian Kubis <cristian.kubis@tsunix.de>
+           2014-2025 Frank Denis <github@pureftpd.org>
+License: ISC
+Comment: see https://github.com/hannobraun/inotify
+
+Files: vendor/inotify-sys-0.*/*
+Copyright: 2017-2021 Hanno Braun <hb@hannobraun.de>
+License: ISC
+Comment: see https://github.com/hannobraun/inotify-sys
+
 Files: vendor/instant-*/*
 Copyright: 2019-2020 sebcrozet <developer@crozet.re>
 License: BSD-3-Clause
@@ -2010,6 +2060,11 @@ Files: vendor/is_terminal_polyfill-*/*
 Copyright: 2023-2024 Ed Page <eopage@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/polyfill-rs/is_terminal_polyfill
+
+Files: vendor/jiff-0.*/*
+Copyright: 2024-2025 Andrew Gallant <jamslam@gmail.com>
+License: Unlicense OR MIT
+Comment: see https://github.com/BurntSushi/jiff
 
 Files: vendor/jod-thread-*/*
 Copyright: 2019-2020 Aleksey Kladov <aleksey.kladov@gmail.com>
@@ -2062,6 +2117,17 @@ Files: vendor/jsonpath_lib-*/*
 Copyright: 2018-2021 Changseok Han <freestrings@gmail.com>
 License: MIT
 Comment: see https://github.com/freestrings/jsonpath
+
+Files: vendor/kqueue-1.*/*
+Copyright: 2016-2024 William Orr <will@worrbase.com>
+License: MIT
+Comment: see https://gitlab.com/rust-kqueue/rust-kqueue
+
+Files: vendor/kqueue-sys-1.*/*
+Copyright: 2016-2023 William Orr <will@worrbase.com>
+           2016-2023 Daniel (dmilith) Dettlaff <dmilith@me.com>
+License: MIT
+Comment: see https://gitlab.com/rust-kqueue/rust-kqueue-sys
 
 Files: vendor/kstring-*/*
 Copyright: 2014-2024 Ed Page <eopage@gmail.com>
@@ -2232,6 +2298,13 @@ Copyright: 2017-2020 Frommi <daniil.liferenko@gmail.com>
 License: MIT
 Comment: see https://github.com/Frommi/miniz_oxide
 
+Files: vendor/mio-0.*/*
+Copyright: 2014-2024 Carl Lerche <me@carllerche.com>
+           2014-2024 Thomas de Zeeuw <thomasdezeeuw@gmail.com>
+           2014-2024 Tokio Contributors <team@tokio.rs>
+License: MIT
+Comment: see https://github.com/tokio-rs/mio
+
 Files: vendor/new_debug_unreachable-*/*
 Copyright: 2014-2018 Matt Brubeck <mbrubeck@limpet.net>
            2014-2018 Jonathan Reem <jonathan.reem@gmail.com>
@@ -2253,6 +2326,13 @@ Copyright: 2016-2018 Richard Dodd <richdodj@gmail.com>
 License: Apache-2.0
 Comment: see https://github.com/derekdreery/normalize-line-endings
 
+Files: vendor/notify-6.*/*
+Copyright: 2014-2025 Félix Saparelli <me@passcod.name>
+           2014-2025 Daniel Faust <hessijames@gmail.com>
+           2014-2025 Aron Heinecke <Ox0p54r36@t-online.de>
+License: CC0-1.0
+Comment: see https://github.com/notify-rs/notify.git
+
 Files: vendor/nu-ansi-term-*/*
 Copyright: 2014-2024 ogham@bsago.me
            2014-2024 Ryan Scheel (Havvy) <ryan.havvy@gmail.com>
@@ -2260,6 +2340,16 @@ Copyright: 2014-2024 ogham@bsago.me
            2014-2024 The Nushell Project Developers
 License: MIT
 Comment: see https://github.com/nushell/nu-ansi-term
+
+Files: vendor/num-modular-0.*/*
+Copyright: 2021-2023 Jacob Zhong
+License: Apache-2.0
+Comment: see https://github.com/cmpute/num-modular
+
+Files: vendor/num-order-1.*/*
+Copyright: 2021-2023 Jacob Zhong
+License: Apache-2.0
+Comment: see https://github.com/cmpute/num-order
 
 Files: vendor/num_threads-*/*
 Copyright: 2021-2024 Jacob Pratt <open-source@jhpratt.dev>
@@ -2302,11 +2392,6 @@ Files: vendor/once_cell-*/*
 Copyright: 2018-2019 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/matklad/once_cell
-
-Files: vendor/once_map-0.*/*
-Copyright: 2022 Benoît du Garreau
-License: MIT OR Apache-2.0
-Comment: see https://github.com/a1phyr/once_map
 
 Files:
  vendor/onig-*/*
@@ -2439,6 +2524,12 @@ Comment:
  see https://github.com/dragostis/pest
  see https://github.com/pest-parser/pest
 
+Files: vendor/petgraph-0.*/*
+Copyright: 2014-2025 bluss
+           2014-2025 mitchmindtree
+License: MIT OR Apache-2.0
+Comment: see https://github.com/petgraph/petgraph
+
 Files: vendor/polonius-engine-*/*
 Copyright: 2018-2018 The Rust Project Developers
            2018-2018 Polonius Developers
@@ -2505,6 +2596,11 @@ Copyright: 2016-2022 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/dtolnay/proc-macro-hack
 
+Files: vendor/process-wrap-8.*/*
+Copyright: 2021-2024 Félix Saparelli <felix@passcod.name>
+License: Apache-2.0 OR MIT
+Comment: see https://github.com/watchexec/process-wrap
+
 Files: vendor/prodash-*/*
 Copyright: 2020-2023 Sebastian Thiel <sebastian.thiel@icloud.com>
 License: MIT
@@ -2514,6 +2610,13 @@ Files: vendor/proptest-*/*
 Copyright: 2017-2024 Jason Lingle
 License: MIT or Apache-2.0
 Comment: see https://github.com/proptest-rs/proptest
+
+Files:
+ vendor/protobuf-3.*/*
+ vendor/protobuf-support-3.*/*
+Copyright: 2013-2024 Stepan Koltsov <stepan.koltsov@gmail.com>
+License: MIT
+Comment: see https://github.com/stepancheg/rust-protobuf/
 
 Files: vendor/psm-*/*
 Copyright: 2015-2020 Simonas Kazlauskas <git@kazlauskas.me>
@@ -2565,13 +2668,13 @@ Comment:
 Files: vendor/r-efi-*/*
 Copyright: 2018-2024 David Rheinsberg <david.rheinsberg@gmail.com>
            2018-2024 Tom Gundersen <teg@jklm.no>
-License: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+License: MIT OR Apache-2.0 OR LGPL-2.1+
 Comment: see https://github.com/r-efi/r-efi
 
 Files: vendor/r-efi-alloc-*/*
 Copyright: 2018-2022 David Rheinsberg <david.rheinsberg@gmail.com>
            2018-2022 Tom Gundersen <teg@jklm.no>
-License: MIT OR Apache-2.0 OR LGPL-2.1-or-later
+License: MIT OR Apache-2.0 OR LGPL-2.1+
 Comment: see https://github.com/r-efi/r-efi-alloc
 
 Files: vendor/libredox-*/*
@@ -2612,8 +2715,14 @@ Copyright: 2018-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-analyzer/rowan
 
-Files: vendor/ra-ap-rustc_lexer-*/*
-Copyright: 2010-2024 The Rust Project Developers
+Files:
+ vendor/ra-ap-rustc_abi-*/*
+ vendor/ra-ap-rustc_index-*/*
+ vendor/ra-ap-rustc_index_macros-*/*
+ vendor/ra-ap-rustc_lexer-*/*
+ vendor/ra-ap-rustc_parse_format-*/*
+ vendor/ra-ap-rustc_pattern_analysis-*/*
+Copyright: 2010-2025 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust
 
@@ -2667,6 +2776,18 @@ License: Apache-2.0 or BSL-1.0
 Comment: see https://github.com/dtolnay/ryu
 
 Files:
+ vendor/schemars-0.*/*
+ vendor/schemars_derive-0.*/*
+Copyright: 2019-2024 Graham Esau <gesau@hotmail.co.uk>
+License: MIT
+Comment: see https://github.com/GREsau/schemars
+
+Files: vendor/scip-0.*/*
+Copyright: 2022 TJ DeVries
+License: Apache-2.0
+Comment: see https://github.com/sourcegraph/scip
+
+Files:
  vendor/self_cell-*/*
  vendor/self_cell-0.*/*
 Copyright: 2020-2021 Lukas Bergdoll <lukas.bergdoll@gmail.com>
@@ -2691,9 +2812,11 @@ Comment:
  see https://github.com/serde-rs/serde
  see https://github.com/serde-rs/json
 
-Files: vendor/serde_derive-*/*
-Copyright: 2014-2017 Erick Tryzelaar <erick.tryzelaar@gmail.com>
-           2016-2017 David Tolnay <dtolnay@gmail.com>
+Files:
+ vendor/serde_derive-*/*
+ vendor/serde_derive_internals-*/*
+Copyright: 2014-2024 Erick Tryzelaar <erick.tryzelaar@gmail.com>
+           2016-2024 David Tolnay <dtolnay@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/serde-rs/serde
 
@@ -2775,11 +2898,6 @@ Files: vendor/smol_str-*/*
 Copyright: 2018-2022 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-analyzer/smol_str
-
-Files: vendor/snap-*/*
-Copyright: 2016-2020 Andrew Gallant <jamslam@gmail.com>
-License: BSD-3-Clause
-Comment: see https://github.com/BurntSushi/rust-snappy
 
 Files:
  vendor/snapbox-*/*
@@ -3041,6 +3159,11 @@ Files: vendor/twox-hash-*/*
 Copyright: 2015-2022 Jake Goulding <jake.goulding@gmail.com>
 License: MIT
 Comment: see https://github.com/shepmaster/twox-hash
+
+Files: vendor/typed-arena-2.0.2/*
+Copyright: 2015-2023 The typed-arena developers
+License: MIT
+Comment: see https://github.com/SimonSapin/rust-typed-arena
 
 Files: vendor/typeid-*/*
 Copyright: 2024-2024 David Tolnay <dtolnay@gmail.com>
@@ -3472,6 +3595,22 @@ License: ISC
  TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
  THIS SOFTWARE.
 
+License: MIT-0
+ Permission is hereby granted, free of charge, to any person obtaining a
+ copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so.
+ .
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 License: MIT
  Permission is hereby granted, free of charge, to any
  person obtaining a copy of this software and associated
@@ -3659,6 +3798,24 @@ License: SIL-OPEN-FONT
  INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
  DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  FROM, OUT OF THE USE OR INABILITY
+
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2.1 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ You should have received a copy of the GNU Lesser General Public
+ License along with this library; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ .
+ On Debian systems, see /usr/share/common-licenses/LGPL-2.1 for the full
+ text of the LGPL version 2.1.
 
 License: GPL-2+
  This program is free software; you can redistribute it and/or modify
