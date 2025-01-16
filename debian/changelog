@@ -1,3 +1,11 @@
+rustc (1.84.0+dfsg1-1) unstable; urgency=medium
+
+  * rust-analyzer: fix build on mips64el
+  * fix hurd build (Closes: #1093125)
+  * d/control: add Conflicts with rustup (Closes: #1093031)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 16 Jan 2025 20:46:05 +0100
+
 rustc (1.84.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release.
