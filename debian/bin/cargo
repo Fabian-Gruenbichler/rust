@@ -75,11 +75,12 @@ def logrun(*args, **kwargs):
     log("running subprocess", args, kwargs)
     return subprocess.run(*args, **kwargs)
 
-def sourcepath(p=None):
-    return os.path.join(os.getcwd(), p) if p else os.getcwd()
+def in_cwd(p=None):
+    cwd = os.getcwd()
+    return os.path.join(cwd, p) if p else cwd
 
 def prepare_debian(cargo_home, registry, cratespec, host_gnu_type, ldflags, link_from_system, extra_rustflags):
-    registry_path = sourcepath(registry)
+    registry_path = in_cwd(registry)
     if link_from_system:
         log("linking %s/* into %s/" % (SYSTEM_REGISTRY, registry_path))
         os.makedirs(registry_path, exist_ok=True)
@@ -100,9 +101,9 @@ def prepare_debian(cargo_home, registry, cratespec, host_gnu_type, ldflags, link
             # Note that this order is important! Rust evaluates these options in
             # priority of reverse order, so if the second option were in front,
             # it would never be used, because any paths in registry_path are
-            # also in sourcepath().
+            # also in in_cwd().
             "--remap-path-prefix", "%s=%s/%s" %
-                (sourcepath(), SYSTEM_REGISTRY, cratespec.replace("_", "-")),
+                (in_cwd(), SYSTEM_REGISTRY, cratespec.replace("_", "-")),
             "--remap-path-prefix", "%s=%s" % (registry_path, SYSTEM_REGISTRY),
         ])
     rustflags.extend(extra_rustflags.split())
@@ -137,9 +138,9 @@ def install(destdir, cratespec, host_rust_type, crate_in_registry, install_prefi
     logrun(["env", "RUST_BACKTRACE=1",
         # set CARGO_TARGET_DIR so build products are saved in target/
         # normally `cargo install` deletes them when it exits
-        "CARGO_TARGET_DIR=" + sourcepath("target"),
+        "CARGO_TARGET_DIR=" + in_cwd("target"),
         "/usr/bin/cargo"] + list(args) +
-        ([crate, "--vers", version] if crate_in_registry else ["--path", sourcepath()]) +
+        ([crate, "--vers", version] if crate_in_registry else ["--path", in_cwd()]) +
         ["--root", install_target], check=True)
     logrun(["rm", "-f", "%s/.crates.toml" % install_target])
     logrun(["rm", "-f", "%s/.crates2.json" % install_target])
