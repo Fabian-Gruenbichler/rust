@@ -82,7 +82,7 @@ def in_cwd(p=None):
 def prepare_debian(cargo_home, registry, cratespec, host_gnu_type, ldflags, link_from_system, extra_rustflags):
     registry_path = in_cwd(registry)
     if link_from_system:
-        log("linking %s/* into %s/" % (SYSTEM_REGISTRY, registry_path))
+        log(f'linking {SYSTEM_REGISTRY}/* into {registry_path}/')
         os.makedirs(registry_path, exist_ok=True)
         crates = os.listdir(SYSTEM_REGISTRY) if os.path.isdir(SYSTEM_REGISTRY) else []
         for c in crates:
@@ -90,21 +90,20 @@ def prepare_debian(cargo_home, registry, cratespec, host_gnu_type, ldflags, link
             if not os.path.islink(target):
                 os.symlink(os.path.join(SYSTEM_REGISTRY, c), target)
     elif not os.path.exists(registry_path):
-        raise ValueError("non-existent registry: %s" % registry)
+        raise ValueError(f'non-existent registry: {registry}')
 
     rustflags = "-C debuginfo=2 -C strip=none --cap-lints warn".split()
-    rustflags.extend(["-C", "linker=%s-gcc" % host_gnu_type])
+    rustflags.extend(["-C", f'linker={host_gnu_type}-gcc'])
     for f in ldflags:
-        rustflags.extend(["-C", "link-arg=%s" % f])
+        rustflags.extend(["-C", f'link-arg={f}'])
     if link_from_system:
         rustflags.extend([
             # Note that this order is important! Rust evaluates these options in
             # priority of reverse order, so if the second option were in front,
             # it would never be used, because any paths in registry_path are
             # also in in_cwd().
-            "--remap-path-prefix", "%s=%s/%s" %
-                (in_cwd(), SYSTEM_REGISTRY, cratespec.replace("_", "-")),
-            "--remap-path-prefix", "%s=%s" % (registry_path, SYSTEM_REGISTRY),
+            "--remap-path-prefix", f'{in_cwd()}={SYSTEM_REGISTRY}/{cratespec.replace("_", "-")}',
+            "--remap-path-prefix", f'{registry_path}={SYSTEM_REGISTRY}',
         ])
     rustflags.extend(extra_rustflags.split())
 
@@ -115,7 +114,7 @@ def prepare_debian(cargo_home, registry, cratespec, host_gnu_type, ldflags, link
     #rustflags.extend(["-C", "prefer-dynamic"])
 
     os.makedirs(cargo_home, exist_ok=True)
-    with open("%s/config.toml" % cargo_home, "w") as fp:
+    with open(os.path.join(cargo_home, 'config.toml'), "w") as fp:
         fp.write("""[source.crates-io]
 replace-with = "dh-cargo-registry"
 
@@ -133,7 +132,7 @@ debug = true
 
 def install(destdir, cratespec, host_rust_type, crate_in_registry, install_prefix, *args):
     crate, version = cratespec.rsplit("_", 1)
-    log("installing into destdir '%s' prefix '%s'" % (destdir, install_prefix))
+    log(f"installing into destdir '{destdir}' prefix '{install_prefix}'")
     install_target = destdir + install_prefix
     logrun(["env", "RUST_BACKTRACE=1",
         # set CARGO_TARGET_DIR so build products are saved in target/
@@ -160,10 +159,10 @@ def main(*args):
         os.execv("/usr/bin/cargo", ["cargo"] + list(args))
 
     if any(f not in os.environ for f in FLAGS):
-        raise ValueError("not all of %s set; did you call dpkg-buildflags?" % FLAGS)
+        raise ValueError(f'not all of {FLAGS} set; did you call dpkg-buildflags?')
 
     if any(f not in os.environ for f in ARCHES):
-        raise ValueError("not all of %s set; did you include architecture.mk?" % ARCHES)
+        raise ValueError(f'not all of {ARCHES} set; did you include architecture.mk?')
 
     build_options = os.getenv("DEB_BUILD_OPTIONS", "").split()
     build_profiles = os.getenv("DEB_BUILD_PROFILES", "").split()
@@ -242,9 +241,9 @@ def main(*args):
             shutil.rmtree(cargo_home)
         return 0
 
-    cargo_config = "%s/config.toml" % cargo_home
+    cargo_config = os.path.join(cargo_home, 'config.toml')
     if not os.path.exists(cargo_config):
-        raise ValueError("does not exist: %s, did you run `cargo prepare-debian <registry>`?" % cargo_config)
+        raise ValueError(f'does not exist: {cargo_config}, did you run `cargo prepare-debian <registry>`?')
 
     if subcmd == "install":
         return install(os.getenv("DESTDIR", ""),
