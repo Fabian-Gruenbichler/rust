@@ -1,3 +1,10 @@
+rustc (1.84.0+dfsg1-2) unstable; urgency=medium
+
+  * revert upstream commit breaking cross builds
+  * rust-llvm: ship symlink to llvm-objcopy instead of copy of binary
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 21 Jan 2025 11:38:15 +0100
+
 rustc (1.84.0+dfsg1-1) unstable; urgency=medium
 
   * rust-analyzer: fix build on mips64el
