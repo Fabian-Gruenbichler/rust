@@ -39,7 +39,7 @@ gbp import-orig "../rustc_${ver}${dfsg}.orig.tar.xz" \
   --no-sign-tags --no-pristine-tar --no-symlink-orig
 
 if [ "$imported" == "" ]; then
-    gbp pq import --no-patch-numbers
+    gbp pq import --no-patch-numbers || ( git tag -d "${upstream_tag}" && false)
 fi
 
 # rebase here
