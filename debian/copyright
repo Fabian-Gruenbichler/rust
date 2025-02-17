@@ -4,7 +4,6 @@ Source: https://www.rust-lang.org
 Files-Excluded:
  .gitmodules
  *.min.js
- src/gcc
  src/llvm-project
 # Pre-generated docs
  src/tools/rustfmt/docs
