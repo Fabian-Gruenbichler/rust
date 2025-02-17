@@ -18,8 +18,8 @@ Build-Depends:
  rustc:native (<= 1.85.0~beta.999++)    <!pkg.rustc.dlstage0>,
  llvm-19-dev:native,
  llvm-19-tools:native,
- gcc-mingw-w64-x86-64-posix:native [amd64] <!nowindows>,
- gcc-mingw-w64-i686-posix:native [i386] <!nowindows>,
+ gcc-mingw-w64-x86-64-posix:native [amd64] <pkg.rustc.windows>,
+ gcc-mingw-w64-i686-posix:native [i386] <pkg.rustc.windows>,
  libllvm19 (>= 1:19.0.0),
  libclang-rt-19-dev:native,
  libclang-rt-19-dev,
@@ -145,7 +145,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends:
  gcc-mingw-w64-x86-64-posix [amd64],
  gcc-mingw-w64-i686-posix [i386],
-Build-Profiles: <!nowindows>
+Build-Profiles: <pkg.rustc.windows>
 Description: Rust standard libraries - development files
  Rust is a curly-brace, block-structured expression language.  It
  visually resembles the C language family, but differs significantly
@@ -403,7 +403,6 @@ Suggests:
  rust-doc (>= ${binary:Version}),
  rust-src (>= ${binary:Version}),
  libstd-rust-dev-wasm32 (>= ${binary:Version}),
- libstd-rust-dev-windows (>= ${binary:Version}),
 Description: Rust systems programming language - all developer tools
  Rust is a curly-brace, block-structured expression language.  It
  visually resembles the C language family, but differs significantly

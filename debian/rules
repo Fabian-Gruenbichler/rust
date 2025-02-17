@@ -155,16 +155,16 @@ ifneq (,$(findstring nowasm,$(DEB_BUILD_PROFILES)))
 endif
 
 WINDOWS_SUPPORT := amd64 i386
-BUILD_WINDOWS := true
-ifneq (,$(findstring nowindows,$(DEB_BUILD_PROFILES)))
-  BUILD_WINDOWS := false
+BUILD_WINDOWS := false
+ifneq (,$(findstring pkg.rustc.windows,$(DEB_BUILD_PROFILES)))
+  BUILD_WINDOWS := true
 endif
 ifeq (,$(filter $(DEB_HOST_ARCH), $(WINDOWS_SUPPORT)))
   BUILD_WINDOWS := false
 else
   ifeq (,$(filter $(DEB_BUILD_ARCH), $(WINDOWS_SUPPORT)))
     ifeq (true,$(BUILD_WINDOWS))
-      $(error cannot cross-compile from $(DEB_BUILD_ARCH) to $(DEB_HOST_ARCH), unless "nowindows" is in DEB_BUILD_PROFILES)
+      $(error cannot cross-compile from $(DEB_BUILD_ARCH) to $(DEB_HOST_ARCH) with "pkg.rustc.windows" in DEB_BUILD_PROFILES)
     endif
   endif
   ifeq (i386,$(DEB_HOST_ARCH))
