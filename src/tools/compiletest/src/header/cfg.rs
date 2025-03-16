@@ -40,8 +40,8 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 }
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
-/// or `normalize-stderr-32bit`.
-pub(super) fn parse_cfg_name_directive<'a>(
+/// or `only-windows`.
+fn parse_cfg_name_directive<'a>(
     config: &Config,
     line: &'a str,
     prefix: &str,
@@ -202,9 +202,14 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when running tests remotely",
     }
     condition! {
-        name: "debug",
-        condition: config.with_debug_assertions,
-        message: "when running tests with `ignore-debug` header",
+        name: "rustc-debug-assertions",
+        condition: config.with_rustc_debug_assertions,
+        message: "when rustc is built with debug assertions",
+    }
+    condition! {
+        name: "std-debug-assertions",
+        condition: config.with_std_debug_assertions,
+        message: "when std is built with debug assertions",
     }
     condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),

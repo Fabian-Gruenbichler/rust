@@ -73,7 +73,7 @@ pub use self::build_context::{
     BuildContext, FileFlavor, FileType, RustDocFingerprint, RustcTargetData, TargetInfo,
 };
 use self::build_plan::BuildPlan;
-pub use self::build_runner::{BuildRunner, Metadata};
+pub use self::build_runner::{BuildRunner, Metadata, UnitHash};
 pub use self::compilation::{Compilation, Doctest, UnitOutput};
 pub use self::compile_kind::{CompileKind, CompileTarget};
 pub use self::crate_type::CrateType;
@@ -91,6 +91,7 @@ pub use crate::core::compiler::unit::{Unit, UnitInterner};
 use crate::core::manifest::TargetSourcePath;
 use crate::core::profiles::{PanicStrategy, Profile, StripInner};
 use crate::core::{Feature, PackageId, Target, Verbosity};
+use crate::util::context::WarningHandling;
 use crate::util::errors::{CargoResult, VerboseError};
 use crate::util::interning::InternedString;
 use crate::util::machine_message::{self, Message};
@@ -202,13 +203,15 @@ fn compile<'gctx>(
         } else {
             // We always replay the output cache,
             // since it might contain future-incompat-report messages
+            let show_diagnostics = unit.show_warnings(bcx.gctx)
+                && build_runner.bcx.gctx.warning_handling()? != WarningHandling::Allow;
             let work = replay_output_cache(
                 unit.pkg.package_id(),
                 PathBuf::from(unit.pkg.manifest_path()),
                 &unit.target,
                 build_runner.files().message_cache_path(unit),
                 build_runner.bcx.build_config.message_format,
-                unit.show_warnings(bcx.gctx),
+                show_diagnostics,
             );
             // Need to link targets on both the dirty and fresh.
             work.then(link_targets(build_runner, unit, true)?)
@@ -276,15 +279,12 @@ fn rustc(
     // don't pass the `-l` flags.
     let pass_l_flag = unit.target.is_lib() || !unit.pkg.targets().iter().any(|t| t.is_lib());
 
-    let dep_info_name = if build_runner.files().use_extra_filename(unit) {
-        format!(
-            "{}-{}.d",
-            unit.target.crate_name(),
-            build_runner.files().metadata(unit)
-        )
-    } else {
-        format!("{}.d", unit.target.crate_name())
-    };
+    let dep_info_name =
+        if let Some(c_extra_filename) = build_runner.files().metadata(unit).c_extra_filename() {
+            format!("{}-{}.d", unit.target.crate_name(), c_extra_filename)
+        } else {
+            format!("{}.d", unit.target.crate_name())
+        };
     let rustc_dep_info_loc = root.join(dep_info_name);
     let dep_info_loc = fingerprint::dep_info_loc(build_runner, unit);
 
@@ -330,7 +330,7 @@ fn rustc(
     if hide_diagnostics_for_scrape_unit {
         output_options.show_diagnostics = false;
     }
-
+    let env_config = Arc::clone(build_runner.bcx.gctx.env_config()?);
     return Ok(Work::new(move |state| {
         // Artifacts are in a different location than typical units,
         // hence we must assure the crate- and target-dependent
@@ -459,6 +459,7 @@ fn rustc(
                 &rustc,
                 // Do not track source files in the fingerprint for registry dependencies.
                 is_local,
+                &env_config,
             )
             .with_context(|| {
                 internal(format!(
@@ -695,10 +696,8 @@ fn prepare_rustc(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> CargoResult
     base.inherit_jobserver(&build_runner.jobserver);
     build_deps_args(&mut base, build_runner, unit)?;
     add_cap_lints(build_runner.bcx, unit, &mut base);
-    if cargo_rustc_higher_args_precedence(build_runner) {
-        if let Some(args) = build_runner.bcx.extra_args_for(unit) {
-            base.args(args);
-        }
+    if let Some(args) = build_runner.bcx.extra_args_for(unit) {
+        base.args(args);
     }
     base.args(&unit.rustflags);
     if build_runner.bcx.gctx.cli_unstable().binary_dep_depinfo {
@@ -715,16 +714,6 @@ fn prepare_rustc(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> CargoResult
     if unit.target.is_test() || unit.target.is_bench() {
         let tmp = build_runner.files().layout(unit.kind).prepare_tmp()?;
         base.env("CARGO_TARGET_TMPDIR", tmp.display().to_string());
-    }
-    if build_runner.bcx.gctx.nightly_features_allowed {
-        // This must come after `build_base_args` (which calls `add_path_args`) so that the `cwd`
-        // is set correctly.
-        base.env(
-            "CARGO_RUSTC_CURRENT_DIR",
-            base.get_cwd()
-                .map(|c| c.display().to_string())
-                .unwrap_or(String::new()),
-        );
     }
 
     Ok(base)
@@ -763,14 +752,10 @@ fn prepare_rustdoc(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> CargoResu
 
     rustdoc.args(unit.pkg.manifest().lint_rustflags());
 
-    if !cargo_rustc_higher_args_precedence(build_runner) {
-        if let Some(args) = build_runner.bcx.extra_args_for(unit) {
-            rustdoc.args(args);
-        }
-    }
-
     let metadata = build_runner.metadata_for_doc_units[unit];
-    rustdoc.arg("-C").arg(format!("metadata={}", metadata));
+    rustdoc
+        .arg("-C")
+        .arg(format!("metadata={}", metadata.c_metadata()));
 
     if unit.mode.is_doc_scrape() {
         debug_assert!(build_runner.bcx.scrape_units.contains(unit));
@@ -807,10 +792,8 @@ fn prepare_rustdoc(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> CargoResu
 
     rustdoc::add_output_format(build_runner, unit, &mut rustdoc)?;
 
-    if cargo_rustc_higher_args_precedence(build_runner) {
-        if let Some(args) = build_runner.bcx.extra_args_for(unit) {
-            rustdoc.args(args);
-        }
+    if let Some(args) = build_runner.bcx.extra_args_for(unit) {
+        rustdoc.args(args);
     }
     rustdoc.args(&unit.rustdocflags);
 
@@ -848,7 +831,7 @@ fn rustdoc(build_runner: &mut BuildRunner<'_, '_>, unit: &Unit) -> CargoResult<W
                 .iter()
                 .map(|unit| {
                     Ok((
-                        build_runner.files().metadata(unit),
+                        build_runner.files().metadata(unit).unit_id(),
                         scrape_output_path(build_runner, unit)?,
                     ))
                 })
@@ -1114,11 +1097,6 @@ fn build_base_args(
 
     cmd.args(unit.pkg.manifest().lint_rustflags());
     cmd.args(&profile_rustflags);
-    if !cargo_rustc_higher_args_precedence(build_runner) {
-        if let Some(args) = build_runner.bcx.extra_args_for(unit) {
-            cmd.args(args);
-        }
-    }
 
     // `-C overflow-checks` is implied by the setting of `-C debug-assertions`,
     // so we only need to provide `-C overflow-checks` if it differs from
@@ -1162,9 +1140,11 @@ fn build_base_args(
     cmd.args(&check_cfg_args(unit));
 
     let meta = build_runner.files().metadata(unit);
-    cmd.arg("-C").arg(&format!("metadata={}", meta));
-    if build_runner.files().use_extra_filename(unit) {
-        cmd.arg("-C").arg(&format!("extra-filename=-{}", meta));
+    cmd.arg("-C")
+        .arg(&format!("metadata={}", meta.c_metadata()));
+    if let Some(c_extra_filename) = meta.c_extra_filename() {
+        cmd.arg("-C")
+            .arg(&format!("extra-filename=-{c_extra_filename}"));
     }
 
     if rpath {
@@ -1315,10 +1295,16 @@ fn trim_paths_args(
 /// This remap logic aligns with rustc:
 /// <https://github.com/rust-lang/rust/blob/c2ef3516/src/bootstrap/src/lib.rs#L1113-L1116>
 fn sysroot_remap(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> OsString {
-    let sysroot = &build_runner.bcx.target_data.info(unit.kind).sysroot;
     let mut remap = OsString::from("--remap-path-prefix=");
-    remap.push(sysroot);
-    remap.push("/lib/rustlib/src/rust"); // See also `detect_sysroot_src_path()`.
+    remap.push({
+        // See also `detect_sysroot_src_path()`.
+        let mut sysroot = build_runner.bcx.target_data.info(unit.kind).sysroot.clone();
+        sysroot.push("lib");
+        sysroot.push("rustlib");
+        sysroot.push("src");
+        sysroot.push("rust");
+        sysroot
+    });
     remap.push("=");
     remap.push("/rustc/");
     if let Some(commit_hash) = build_runner.bcx.rustc().commit_hash.as_ref() {
@@ -1405,14 +1391,17 @@ fn check_cfg_args(unit: &Unit) -> Vec<OsString> {
     }
     arg_feature.push("))");
 
-    // We also include the `docsrs` cfg from the docs.rs service. We include it here
-    // (in Cargo) instead of rustc, since there is a much closer relationship between
-    // Cargo and docs.rs than rustc and docs.rs. In particular, all users of docs.rs use
-    // Cargo, but not all users of rustc (like Rust-for-Linux) use docs.rs.
+    // In addition to the package features, we also include the `test` cfg (since
+    // compiler-team#785, as to be able to someday apply yt conditionaly), as well
+    // the `docsrs` cfg from the docs.rs service.
+    //
+    // We include `docsrs` here (in Cargo) instead of rustc, since there is a much closer
+    // relationship between Cargo and docs.rs than rustc and docs.rs. In particular, all
+    // users of docs.rs use Cargo, but not all users of rustc (like Rust-for-Linux) use docs.rs.
 
     vec![
         OsString::from("--check-cfg"),
-        OsString::from("cfg(docsrs)"),
+        OsString::from("cfg(docsrs,test)"),
         OsString::from("--check-cfg"),
         arg_feature,
     ]
@@ -1524,7 +1513,7 @@ fn build_deps_args(
 fn add_custom_flags(
     cmd: &mut ProcessBuilder,
     build_script_outputs: &BuildScriptOutputs,
-    metadata: Option<Metadata>,
+    metadata: Option<UnitHash>,
 ) -> CargoResult<()> {
     if let Some(metadata) = metadata {
         if let Some(output) = build_script_outputs.get(metadata) {
@@ -1657,10 +1646,12 @@ impl OutputOptions {
         // Remove old cache, ignore ENOENT, which is the common case.
         drop(fs::remove_file(&path));
         let cache_cell = Some((path, LazyCell::new()));
+        let show_diagnostics =
+            build_runner.bcx.gctx.warning_handling().unwrap_or_default() != WarningHandling::Allow;
         OutputOptions {
             format: build_runner.bcx.build_config.message_format,
             cache_cell,
-            show_diagnostics: true,
+            show_diagnostics,
             warnings_seen: 0,
             errors_seen: 0,
         }
@@ -1987,10 +1978,7 @@ pub(crate) fn apply_env_config(
         if cmd.get_envs().contains_key(key) {
             continue;
         }
-
-        if value.is_force() || gctx.get_env_os(key).is_none() {
-            cmd.env(key, value.resolve(gctx));
-        }
+        cmd.env(key, value);
     }
     Ok(())
 }
@@ -2006,20 +1994,4 @@ fn scrape_output_path(build_runner: &BuildRunner<'_, '_>, unit: &Unit) -> CargoR
     build_runner
         .outputs(unit)
         .map(|outputs| outputs[0].path.clone())
-}
-
-/// Provides a way to change the precedence of `cargo rustc -- <flags>`.
-///
-/// This is intended to be a short-live function.
-///
-/// See <https://github.com/rust-lang/cargo/issues/14346>
-fn cargo_rustc_higher_args_precedence(build_runner: &BuildRunner<'_, '_>) -> bool {
-    build_runner.bcx.gctx.nightly_features_allowed
-        && build_runner
-            .bcx
-            .gctx
-            .get_env("__CARGO_RUSTC_ORIG_ARGS_PRIO")
-            .ok()
-            .as_deref()
-            != Some("1")
 }

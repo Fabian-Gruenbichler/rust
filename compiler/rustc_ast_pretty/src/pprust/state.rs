@@ -8,7 +8,6 @@ mod item;
 
 use std::borrow::Cow;
 
-use ast::TraitBoundModifiers;
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{
@@ -18,14 +17,15 @@ use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
-    self as ast, AttrArgs, AttrArgsEq, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
-    GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
-    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
+    self as ast, AttrArgs, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg, GenericBound,
+    InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
+    RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
+use rustc_data_structures::sync::Lrc;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
-use rustc_span::symbol::{Ident, IdentPrinter, Symbol, kw, sym};
-use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Pos, Span};
+use rustc_span::symbol::IdentPrinter;
+use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
@@ -106,7 +106,7 @@ fn split_block_comment_into_lines(text: &str, col: CharPos) -> Vec<String> {
 fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comment> {
     let sm = SourceMap::new(sm.path_mapping().clone());
     let source_file = sm.new_source_file(path, src);
-    let text = (*source_file.src.as_ref().unwrap()).clone();
+    let text = Lrc::clone(&(*source_file.src.as_ref().unwrap()));
 
     let text: &str = text.as_str();
     let start_bpos = source_file.start_pos;
@@ -359,7 +359,7 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
     }
 }
 
-fn doc_comment_to_string(
+pub fn doc_comment_to_string(
     comment_kind: CommentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,
@@ -628,6 +628,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => {
+                self.word("unsafe");
+                self.popen();
+            }
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
+        }
         match &item.args {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
@@ -641,20 +648,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             AttrArgs::Empty => {
                 self.print_path(&item.path, false, 0);
             }
-            AttrArgs::Eq(_, AttrArgsEq::Ast(expr)) => {
+            AttrArgs::Eq { expr, .. } => {
                 self.print_path(&item.path, false, 0);
                 self.space();
                 self.word_space("=");
                 let token_str = self.expr_to_string(expr);
                 self.word(token_str);
             }
-            AttrArgs::Eq(_, AttrArgsEq::Hir(lit)) => {
-                self.print_path(&item.path, false, 0);
-                self.space();
-                self.word_space("=");
-                let token_str = self.meta_item_lit_to_string(lit);
-                self.word(token_str);
-            }
+        }
+        match item.unsafety {
+            ast::Safety::Unsafe(_) => self.pclose(),
+            ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
         self.end();
     }
@@ -721,7 +725,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     // E.g. we have seen cases where a proc macro can handle `a :: b` but not
     // `a::b`. See #117433 for some examples.
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
-        let mut iter = tts.trees().peekable();
+        let mut iter = tts.iter().peekable();
         while let Some(tt) = iter.next() {
             let spacing = self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
@@ -931,9 +935,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::CloseDelim(Delimiter::Bracket) => "]".into(),
             token::OpenDelim(Delimiter::Brace) => "{".into(),
             token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible) | token::CloseDelim(Delimiter::Invisible) => {
-                "".into()
-            }
+            token::OpenDelim(Delimiter::Invisible(_))
+            | token::CloseDelim(Delimiter::Invisible(_)) => "".into(),
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
@@ -1163,6 +1166,12 @@ impl<'a> State<'a> {
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);
             }
+            ast::TyKind::PinnedRef(lifetime, mt) => {
+                self.word("&");
+                self.print_opt_lifetime(lifetime);
+                self.word("pin ");
+                self.print_mt(mt, true);
+            }
             ast::TyKind::Never => {
                 self.word("!");
             }
@@ -1182,13 +1191,23 @@ impl<'a> State<'a> {
             ast::TyKind::BareFn(f) => {
                 self.print_ty_fn(f.ext, f.safety, &f.decl, None, &f.generic_params);
             }
+            ast::TyKind::UnsafeBinder(f) => {
+                self.ibox(INDENT_UNIT);
+                self.word("unsafe");
+                self.print_generic_params(&f.generic_params);
+                self.nbsp();
+                self.print_type(&f.inner_ty);
+                self.end();
+            }
             ast::TyKind::Path(None, path) => {
                 self.print_path(path, false, 0);
             }
             ast::TyKind::Path(Some(qself), path) => self.print_qpath(path, qself, false),
             ast::TyKind::TraitObject(bounds, syntax) => {
-                if *syntax == ast::TraitObjectSyntax::Dyn {
-                    self.word_nbsp("dyn");
+                match syntax {
+                    ast::TraitObjectSyntax::Dyn => self.word_nbsp("dyn"),
+                    ast::TraitObjectSyntax::DynStar => self.word_nbsp("dyn*"),
+                    ast::TraitObjectSyntax::None => {}
                 }
                 self.print_type_bounds(bounds);
             }
@@ -1253,6 +1272,27 @@ impl<'a> State<'a> {
 
     fn print_poly_trait_ref(&mut self, t: &ast::PolyTraitRef) {
         self.print_formal_generic_params(&t.bound_generic_params);
+
+        let ast::TraitBoundModifiers { constness, asyncness, polarity } = t.modifiers;
+        match constness {
+            ast::BoundConstness::Never => {}
+            ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
+                self.word_space(constness.as_str());
+            }
+        }
+        match asyncness {
+            ast::BoundAsyncness::Normal => {}
+            ast::BoundAsyncness::Async(_) => {
+                self.word_space(asyncness.as_str());
+            }
+        }
+        match polarity {
+            ast::BoundPolarity::Positive => {}
+            ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+                self.word(polarity.as_str());
+            }
+        }
+
         self.print_trait_ref(&t.trait_ref)
     }
 
@@ -1616,11 +1656,14 @@ impl<'a> State<'a> {
                     },
                     |f| f.pat.span,
                 );
-                if *etc == ast::PatFieldsRest::Rest {
+                if let ast::PatFieldsRest::Rest | ast::PatFieldsRest::Recovered(_) = etc {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
                     self.word("..");
+                    if let ast::PatFieldsRest::Recovered(_) = etc {
+                        self.word("/* recovered parse error */");
+                    }
                 }
                 if !empty {
                     self.space();
@@ -1671,6 +1714,14 @@ impl<'a> State<'a> {
                 if let Some(e) = end {
                     self.print_expr(e, FixupContext::default());
                 }
+            }
+            PatKind::Guard(subpat, condition) => {
+                self.popen();
+                self.print_pat(subpat);
+                self.space();
+                self.word_space("if");
+                self.print_expr(condition, FixupContext::default());
+                self.pclose();
             }
             PatKind::Slice(elts) => {
                 self.word("[");
@@ -1740,31 +1791,7 @@ impl<'a> State<'a> {
             }
 
             match bound {
-                GenericBound::Trait(
-                    tref,
-                    TraitBoundModifiers { constness, asyncness, polarity },
-                ) => {
-                    match constness {
-                        ast::BoundConstness::Never => {}
-                        ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
-                            self.word_space(constness.as_str());
-                        }
-                    }
-
-                    match asyncness {
-                        ast::BoundAsyncness::Normal => {}
-                        ast::BoundAsyncness::Async(_) => {
-                            self.word_space(asyncness.as_str());
-                        }
-                    }
-
-                    match polarity {
-                        ast::BoundPolarity::Positive => {}
-                        ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
-                            self.word(polarity.as_str());
-                        }
-                    }
-
+                GenericBound::Trait(tref) => {
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => self.print_lifetime(*lt),

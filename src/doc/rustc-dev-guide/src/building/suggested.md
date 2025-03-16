@@ -37,13 +37,36 @@ checking time. For example, if you are working on the compiler, you can override
 the command to `x check compiler --json-output` to only check the compiler part.
 You can run `x check --help --verbose` to see the available parts.
 
-If you have enough free disk space and you would like to be able to run `x`
-commands while rust-analyzer runs in the background, you can also add
-`--build-dir build-rust-analyzer` to the `overrideCommand` to avoid x locking.
-
 Running `./x setup editor` will prompt you to create a project-local LSP config
 file for one of the supported editors. You can also create the config file as a
 step of running `./x setup`.
+
+### Using a separate build directory for rust-analyzer
+
+By default, when rust-analyzer runs a check or format command, it will share
+the same build directory as manual command-line builds. This can be inconvenient
+for two reasons:
+- Each build will lock the build directory and force the other to wait, so it
+  becomes impossible to run command-line builds while rust-analyzer is running
+  commands in the background.
+- There is an increased risk of one of the builds deleting previously-built
+  artifacts due to conflicting compiler flags or other settings, forcing
+  additional rebuilds in some cases.
+
+To avoid these problems:
+- Add `--build-dir=build-rust-analyzer` to all of the custom `x` commands in
+  your editor's rust-analyzer configuration.
+  (Feel free to choose a different directory name if desired.)
+- Modify the `rust-analyzer.rustfmt.overrideCommand` setting so that it points
+  to the copy of `rustfmt` in that other build directory.
+- Modify the `rust-analyzer.procMacro.server` setting so that it points to the
+  copy of `rust-analyzer-proc-macro-srv` in that other build directory.
+
+Using separate build directories for command-line builds and rust-analyzer
+requires extra disk space, and also means that running `./x clean` on the
+command-line will not clean out the separate build directory. To clean the
+separate build directory, run `./x clean --build-dir=build-rust-analyzer`
+instead.
 
 ### Visual Studio Code
 
@@ -231,6 +254,12 @@ You can also use `--keep-stage 1` when running tests. Something like this:
 - Initial test run: `./x test tests/ui`
 - Subsequent test run: `./x test tests/ui --keep-stage 1`
 
+### Iterating the standard library with `--keep-stage`
+
+If you are making changes to the standard library, you can use `./x build
+--keep-stage 0 library` to iteratively rebuild the standard library without
+rebuilding the compiler.
+
 ## Using incremental compilation
 
 You can further enable the `--incremental` flag to save additional time in
@@ -347,11 +376,9 @@ pkgs.mkShell {
 
 ## Shell Completions
 
-If you use Bash, Fish or PowerShell, you can find automatically-generated shell
+If you use Bash, Zsh, Fish or PowerShell, you can find automatically-generated shell
 completion scripts for `x.py` in
 [`src/etc/completions`](https://github.com/rust-lang/rust/tree/master/src/etc/completions).
-Zsh support will also be included once issues with
-[`clap_complete`](https://crates.io/crates/clap_complete) have been resolved.
 
 You can use `source ./src/etc/completions/x.py.<extension>` to load completions
 for your shell of choice, or `& .\src\etc\completions\x.py.ps1` for PowerShell.

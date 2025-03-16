@@ -203,10 +203,8 @@ fn rm_rf(path: &Path) {
 
             do_op(path, "remove dir", |p| match fs::remove_dir(p) {
                 // Check for dir not empty on Windows
-                // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
-                // match on `e.kind()` instead.
                 #[cfg(windows)]
-                Err(e) if e.raw_os_error() == Some(145) => Ok(()),
+                Err(e) if e.kind() == ErrorKind::DirectoryNotEmpty => Ok(()),
                 r => r,
             });
         }
@@ -226,6 +224,8 @@ where
         Err(ref e) if e.kind() == ErrorKind::PermissionDenied => {
             let m = t!(path.symlink_metadata());
             let mut p = m.permissions();
+            // this os not unix, so clippy gives FP
+            #[expect(clippy::permissions_set_readonly_false)]
             p.set_readonly(false);
             t!(fs::set_permissions(path, p));
             f(path).unwrap_or_else(|e| {

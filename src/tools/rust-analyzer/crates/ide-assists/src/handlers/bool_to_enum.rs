@@ -1,5 +1,6 @@
 use either::Either;
 use hir::ModuleDef;
+use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{AssistId, AssistKind},
     defs::Definition,
@@ -19,7 +20,6 @@ use syntax::{
     },
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
-use text_edit::TextRange;
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -512,9 +512,11 @@ fn make_bool_enum(make_pub: bool) -> ast::Enum {
     let enum_def = make::enum_(
         if make_pub { Some(make::visibility_pub()) } else { None },
         make::name("Bool"),
+        None,
+        None,
         make::variant_list(vec![
-            make::variant(make::name("True"), None),
-            make::variant(make::name("False"), None),
+            make::variant(None, make::name("True"), None, None),
+            make::variant(None, make::name("False"), None, None),
         ]),
     )
     .clone_for_update();
@@ -1095,6 +1097,7 @@ fn main() {
 
     #[test]
     fn field_enum_cross_file() {
+        // FIXME: The import is missing
         check_assist(
             bool_to_enum,
             r#"
@@ -1132,7 +1135,7 @@ fn foo() {
 }
 
 //- /main.rs
-use foo::{Bool, Foo};
+use foo::Foo;
 
 mod foo;
 

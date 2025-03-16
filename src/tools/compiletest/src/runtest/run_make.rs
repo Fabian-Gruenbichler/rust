@@ -2,7 +2,9 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
-use super::{ProcRes, TestCx};
+use build_helper::fs::{ignore_not_found, recursive_remove};
+
+use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
@@ -22,10 +24,13 @@ impl TestCx<'_> {
         let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
         let src_root = cwd.join(&src_root);
 
+        // FIXME(Zalathar): This should probably be `output_base_dir` to avoid
+        // an unnecessary extra subdirectory, but since legacy Makefile tests
+        // are hopefully going away, it seems safer to leave this perilous code
+        // as-is until it can all be deleted.
         let tmpdir = cwd.join(self.output_base_name());
-        if tmpdir.exists() {
-            self.aggressive_rm_rf(&tmpdir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&tmpdir)).unwrap();
+
         fs::create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
@@ -213,10 +218,9 @@ impl TestCx<'_> {
         // `rmake_out/` directory.
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
-        let base_dir = self.output_base_name();
-        if base_dir.exists() {
-            self.aggressive_rm_rf(&base_dir).unwrap();
-        }
+        let base_dir = self.output_base_dir();
+        ignore_not_found(|| recursive_remove(&base_dir)).unwrap();
+
         let rmake_out_dir = base_dir.join("rmake_out");
         fs::create_dir_all(&rmake_out_dir).unwrap();
 
@@ -325,6 +329,7 @@ impl TestCx<'_> {
             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
             .arg("--edition=2021")
             .arg(&self.testpaths.file.join("rmake.rs"))
+            .arg("-Cprefer-dynamic")
             // Provide necessary library search paths for rustc.
             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
@@ -510,16 +515,15 @@ impl TestCx<'_> {
             }
         }
 
-        let (Output { stdout, stderr, status }, truncated) =
-            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `rmake`"));
+        let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
+        let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
+        let stdout = String::from_utf8_lossy(&stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&stderr).into_owned();
+        // This conditions on `status.success()` so we don't print output twice on error.
+        // NOTE: this code is called from a libtest thread, so it's hidden by default unless --nocapture is passed.
+        self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
         if !status.success() {
-            let res = ProcRes {
-                status,
-                stdout: String::from_utf8_lossy(&stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&stderr).into_owned(),
-                truncated,
-                cmdline: format!("{:?}", cmd),
-            };
+            let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
             self.fatal_proc_rec("rmake recipe failed to complete", &res);
         }
     }

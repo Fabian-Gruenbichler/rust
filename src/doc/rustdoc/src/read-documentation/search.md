@@ -130,29 +130,35 @@ pub trait MyTrait {
 /// This function can be found using the following search queries:
 ///
 ///     MyTrait<First=u8, Second=u32> -> bool
-///     MyTrait<u32, First=u8> -> bool
 ///     MyTrait<Second=u32> -> bool
-///     MyTrait<u32, u8> -> bool
 ///
 /// The following queries, however, will *not* match it:
 ///
 ///     MyTrait<First=u32> -> bool
 ///     MyTrait<u32, u32> -> bool
+///     MyTrait<u32, First=u8> -> bool
+///     MyTrait<u32, u8> -> bool
 pub fn my_fn(x: impl MyTrait<First=u8, Second=u32>) -> bool { true }
 ```
 
-Generics and function parameters are order-agnostic, but sensitive to nesting
+Function parameters are order-agnostic, but sensitive to nesting
 and number of matches. For example, a function with the signature
 `fn read_all(&mut self: impl Read) -> Result<Vec<u8>, Error>`
 will match these queries:
 
 * `&mut Read -> Result<Vec<u8>, Error>`
 * `Read -> Result<Vec<u8>, Error>`
-* `Read -> Result<Error, Vec>`
 * `Read -> Result<Vec<u8>>`
-* `Read -> u8`
+* `Read -> Vec<u8>`
 
-But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
+But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`,
+because those are nested incorrectly, and it does not match
+`Result<Error, Vec<u8>>` or `Result<Error>`, because those are
+in the wrong order. It also does not match `Read -> u8`, because
+only [certain generic wrapper types] can be left out, and `Vec` isn't
+one of them.
+
+[certain generic wrapper types]: #wrappers-that-can-be-omitted
 
 To search for a function that accepts a function as a parameter,
 like `Iterator::all`, wrap the nested signature in parenthesis,
@@ -162,6 +168,18 @@ such as `Iterator<T>, (FnMut(T) -> bool) -> bool`,
 but you need to know which one you want.
 
 [iterator-all]: ../../std/vec/struct.Vec.html?search=Iterator<T>%2C+(T+->+bool)+->+bool&filter-crate=std
+
+### Wrappers that can be omitted
+
+* References
+* Box
+* Rc
+* Arc
+* Option
+* Result
+* From
+* Into
+* Future
 
 ### Primitives with Special Syntax
 
@@ -231,11 +249,6 @@ Most of these limitations should be addressed in future version of Rustdoc.
     as a type parameter even if a matching name is found. If you know
     that you don't want a type parameter, you can force it to match
     something else by giving it a different prefix like `struct:T`.
-
-  * It's impossible to search for references or pointers. The
-    wrapped types can be searched for, so a function that takes `&File` can
-    be found with `File`, but you'll get a parse error when typing an `&`
-    into the search field.
 
   * Searching for lifetimes is not supported.
 

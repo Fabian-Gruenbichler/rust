@@ -121,6 +121,7 @@
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt::{self, Write};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::{bail, Error};
@@ -136,7 +137,7 @@ pub const SEE_CHANNELS: &str =
     "See https://doc.rust-lang.org/book/appendix-07-nightly-rust.html for more information \
      about Rust release channels.";
 
-/// Value of [`allow-features`](CliUnstable::allow_features]
+/// Value of [`allow-features`](CliUnstable::allow_features)
 pub type AllowFeatures = BTreeSet<String>;
 
 /// The edition of the compiler ([RFC 2052])
@@ -161,6 +162,7 @@ pub type AllowFeatures = BTreeSet<String>;
 /// - Set [`LATEST_UNSTABLE`] to None.
 /// - Set [`LATEST_STABLE`] to the new version.
 /// - Update [`is_stable`] to `true`.
+/// - Set [`first_version`] to the version it will be released.
 /// - Set the editionNNNN feature to stable in the [`features!`] macro invocation below.
 /// - Update any tests that are affected.
 /// - Update the man page for the `--edition` flag.
@@ -177,6 +179,7 @@ pub type AllowFeatures = BTreeSet<String>;
 /// [`LATEST_UNSTABLE`]: Edition::LATEST_UNSTABLE
 /// [`LATEST_STABLE`]: Edition::LATEST_STABLE
 /// [this example]: https://github.com/rust-lang/cargo/blob/3ebb5f15a940810f250b68821149387af583a79e/src/doc/src/reference/unstable.md?plain=1#L1238-L1264
+/// [`first_version`]: Edition::first_version
 /// [`is_stable`]: Edition::is_stable
 /// [`toml`]: crate::util::toml
 /// [`features!`]: macro.features.html
@@ -199,9 +202,9 @@ impl Edition {
     /// The latest edition that is unstable.
     ///
     /// This is `None` if there is no next unstable edition.
-    pub const LATEST_UNSTABLE: Option<Edition> = Some(Edition::Edition2024);
+    pub const LATEST_UNSTABLE: Option<Edition> = None;
     /// The latest stable edition.
-    pub const LATEST_STABLE: Edition = Edition::Edition2021;
+    pub const LATEST_STABLE: Edition = Edition::Edition2024;
     pub const ALL: &'static [Edition] = &[
         Self::Edition2015,
         Self::Edition2018,
@@ -222,7 +225,7 @@ impl Edition {
             Edition2015 => None,
             Edition2018 => Some(semver::Version::new(1, 31, 0)),
             Edition2021 => Some(semver::Version::new(1, 56, 0)),
-            Edition2024 => None,
+            Edition2024 => Some(semver::Version::new(1, 85, 0)),
         }
     }
 
@@ -233,7 +236,7 @@ impl Edition {
             Edition2015 => true,
             Edition2018 => true,
             Edition2021 => true,
-            Edition2024 => false,
+            Edition2024 => true,
         }
     }
 
@@ -506,7 +509,7 @@ features! {
     (stable, workspace_inheritance, "1.64", "reference/unstable.html#workspace-inheritance"),
 
     /// Support for 2024 edition.
-    (unstable, edition2024, "", "reference/unstable.html#edition-2024"),
+    (stable, edition2024, "1.85", "reference/manifest.html#the-edition-field"),
 
     /// Allow setting trim-paths in a profile to control the sanitisation of file paths in build outputs.
     (unstable, trim_paths, "", "reference/unstable.html#profile-trim-paths-option"),
@@ -756,7 +759,6 @@ unstable_cli_options!(
     avoid_dev_deps: bool = ("Avoid installing dev-dependencies if possible"),
     binary_dep_depinfo: bool = ("Track changes to dependency artifacts"),
     bindeps: bool = ("Allow Cargo packages to depend on bin, cdylib, and staticlib crates, and use the artifacts built by those crates"),
-    #[serde(deserialize_with = "deserialize_build_std")]
     build_std: Option<Vec<String>>  = ("Enable Cargo to compile the standard library itself as part of a crate graph compilation"),
     build_std_features: Option<Vec<String>>  = ("Configure features enabled for the standard library itself when building the standard library"),
     cargo_lints: bool = ("Enable the `[lints.cargo]` table"),
@@ -783,6 +785,7 @@ unstable_cli_options!(
     profile_rustflags: bool = ("Enable the `rustflags` option in profiles in .cargo/config.toml file"),
     public_dependency: bool = ("Respect a dependency's `public` field in Cargo.toml to control public/private dependencies"),
     publish_timeout: bool = ("Enable the `publish.timeout` key in .cargo/config.toml file"),
+    root_dir: Option<PathBuf> = ("Set the root directory relative to which paths are printed (defaults to workspace root)"),
     rustdoc_map: bool = ("Allow passing external documentation mappings to rustdoc"),
     rustdoc_scrape_examples: bool = ("Allows Rustdoc to scrape code examples from reverse-dependencies"),
     script: bool = ("Enable support for single-file, `.rs` packages"),
@@ -791,6 +794,7 @@ unstable_cli_options!(
     target_applies_to_host: bool = ("Enable the `target-applies-to-host` key in the .cargo/config.toml file"),
     trim_paths: bool = ("Enable the `trim-paths` option in profiles"),
     unstable_options: bool = ("Allow the usage of unstable options"),
+    warnings: bool = ("Allow use of the build.warnings config key"),
 );
 
 const STABILIZED_COMPILE_PROGRESS: &str = "The progress bar is now always \
@@ -867,19 +871,6 @@ const STABILIZED_LINTS: &str = "The `[lints]` table is now always available.";
 
 const STABILIZED_CHECK_CFG: &str =
     "Compile-time checking of conditional (a.k.a. `-Zcheck-cfg`) is now always enabled.";
-
-fn deserialize_build_std<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let Some(crates) = <Option<Vec<String>>>::deserialize(deserializer)? else {
-        return Ok(None);
-    };
-    let v = crates.join(",");
-    Ok(Some(
-        crate::core::compiler::standard_lib::parse_unstable_flag(Some(&v)),
-    ))
-}
 
 #[derive(Debug, Copy, Clone, Default, Deserialize, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(default)]
@@ -1143,7 +1134,8 @@ impl CliUnstable {
             }
         }
 
-        fn parse_features(value: Option<&str>) -> Vec<String> {
+        /// Parse a comma-separated list
+        fn parse_list(value: Option<&str>) -> Vec<String> {
             match value {
                 None => Vec::new(),
                 Some("") => Vec::new(),
@@ -1192,7 +1184,7 @@ impl CliUnstable {
         match k {
             // Permanently unstable features
             // Sorted alphabetically:
-            "allow-features" => self.allow_features = Some(parse_features(v).into_iter().collect()),
+            "allow-features" => self.allow_features = Some(parse_list(v).into_iter().collect()),
             "print-im-a-teapot" => self.print_im_a_teapot = parse_bool(k, v)?,
 
             // Stabilized features
@@ -1211,7 +1203,7 @@ impl CliUnstable {
                 // until we feel confident to remove entirely.
                 //
                 // See rust-lang/cargo#11168
-                let feats = parse_features(v);
+                let feats = parse_list(v);
                 let stab_is_not_empty = feats.iter().any(|feat| {
                     matches!(
                         feat.as_str(),
@@ -1251,10 +1243,8 @@ impl CliUnstable {
             "avoid-dev-deps" => self.avoid_dev_deps = parse_empty(k, v)?,
             "binary-dep-depinfo" => self.binary_dep_depinfo = parse_empty(k, v)?,
             "bindeps" => self.bindeps = parse_empty(k, v)?,
-            "build-std" => {
-                self.build_std = Some(crate::core::compiler::standard_lib::parse_unstable_flag(v))
-            }
-            "build-std-features" => self.build_std_features = Some(parse_features(v)),
+            "build-std" => self.build_std = Some(parse_list(v)),
+            "build-std-features" => self.build_std_features = Some(parse_list(v)),
             "cargo-lints" => self.cargo_lints = parse_empty(k, v)?,
             "codegen-backend" => self.codegen_backend = parse_empty(k, v)?,
             "config-include" => self.config_include = parse_empty(k, v)?,
@@ -1287,6 +1277,7 @@ impl CliUnstable {
             "profile-rustflags" => self.profile_rustflags = parse_empty(k, v)?,
             "trim-paths" => self.trim_paths = parse_empty(k, v)?,
             "publish-timeout" => self.publish_timeout = parse_empty(k, v)?,
+            "root-dir" => self.root_dir = v.map(|v| v.into()),
             "rustdoc-map" => self.rustdoc_map = parse_empty(k, v)?,
             "rustdoc-scrape-examples" => self.rustdoc_scrape_examples = parse_empty(k, v)?,
             "separate-nightlies" => self.separate_nightlies = parse_empty(k, v)?,
@@ -1295,6 +1286,7 @@ impl CliUnstable {
             "script" => self.script = parse_empty(k, v)?,
             "target-applies-to-host" => self.target_applies_to_host = parse_empty(k, v)?,
             "unstable-options" => self.unstable_options = parse_empty(k, v)?,
+            "warnings" => self.warnings = parse_empty(k, v)?,
             _ => bail!("\
             unknown `-Z` flag specified: {k}\n\n\
             For available unstable features, see https://doc.rust-lang.org/nightly/cargo/reference/unstable.html\n\

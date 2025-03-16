@@ -5,14 +5,17 @@
 
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
+use crate::documentation::{Documentation, HasDocs};
+use crate::famous_defs::FamousDefs;
+use crate::RootDatabase;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
     Adt, AsAssocItem, AsExternAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType,
     Const, Crate, DefWithBody, DeriveHelper, DocLinkDef, ExternAssocItem, ExternCrateDecl, Field,
     Function, GenericParam, HasVisibility, HirDisplay, Impl, InlineAsmOperand, Label, Local, Macro,
-    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, ToolModule, Trait,
-    TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
+    Module, ModuleDef, Name, PathResolution, Semantics, Static, StaticLifetime, Struct, ToolModule,
+    Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef, Visibility,
 };
 use span::Edition;
 use stdx::{format_to, impl_from};
@@ -20,10 +23,6 @@ use syntax::{
     ast::{self, AstNode},
     match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
 };
-
-use crate::documentation::{Documentation, HasDocs};
-use crate::famous_defs::FamousDefs;
-use crate::RootDatabase;
 
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -179,7 +178,19 @@ impl Definition {
             Definition::Static(it) => it.docs(db),
             Definition::Trait(it) => it.docs(db),
             Definition::TraitAlias(it) => it.docs(db),
-            Definition::TypeAlias(it) => it.docs(db),
+            Definition::TypeAlias(it) => {
+                it.docs(db).or_else(|| {
+                    // docs are missing, try to fall back to the docs of the aliased item.
+                    let adt = it.ty(db).as_adt()?;
+                    let docs = adt.docs(db)?;
+                    let docs = format!(
+                        "*This is the documentation for* `{}`\n\n{}",
+                        adt.display(db, edition),
+                        docs.as_str()
+                    );
+                    Some(Documentation::new(docs))
+                })
+            }
             Definition::BuiltinType(it) => {
                 famous_defs.and_then(|fd| {
                     // std exposes prim_{} modules with docstrings on the root to document the builtins
@@ -319,6 +330,8 @@ impl IdentClass {
                         .map(IdentClass::NameClass)
                         .or_else(|| NameRefClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameRefClass))
                 },
+                ast::RangePat(range_pat) => OperatorClass::classify_range_pat(sema, &range_pat).map(IdentClass::Operator),
+                ast::RangeExpr(range_expr) => OperatorClass::classify_range_expr(sema, &range_expr).map(IdentClass::Operator),
                 ast::AwaitExpr(await_expr) => OperatorClass::classify_await(sema, &await_expr).map(IdentClass::Operator),
                 ast::BinExpr(bin_expr) => OperatorClass::classify_bin(sema, &bin_expr).map(IdentClass::Operator),
                 ast::IndexExpr(index_expr) => OperatorClass::classify_index(sema, &index_expr).map(IdentClass::Operator),
@@ -372,6 +385,9 @@ impl IdentClass {
                 | OperatorClass::Index(func)
                 | OperatorClass::Try(func),
             ) => res.push(Definition::Function(func)),
+            IdentClass::Operator(OperatorClass::Range(struct0)) => {
+                res.push(Definition::Adt(Adt::Struct(struct0)))
+            }
         }
         res
     }
@@ -546,6 +562,7 @@ impl NameClass {
 
 #[derive(Debug)]
 pub enum OperatorClass {
+    Range(Struct),
     Await(Function),
     Prefix(Function),
     Index(Function),
@@ -554,6 +571,20 @@ pub enum OperatorClass {
 }
 
 impl OperatorClass {
+    pub fn classify_range_pat(
+        sema: &Semantics<'_, RootDatabase>,
+        range_pat: &ast::RangePat,
+    ) -> Option<OperatorClass> {
+        sema.resolve_range_pat(range_pat).map(OperatorClass::Range)
+    }
+
+    pub fn classify_range_expr(
+        sema: &Semantics<'_, RootDatabase>,
+        range_expr: &ast::RangeExpr,
+    ) -> Option<OperatorClass> {
+        sema.resolve_range_expr(range_expr).map(OperatorClass::Range)
+    }
+
     pub fn classify_await(
         sema: &Semantics<'_, RootDatabase>,
         await_expr: &ast::AwaitExpr,
@@ -702,6 +733,12 @@ impl NameRefClass {
                     }
                     None
                 },
+                ast::UseBoundGenericArgs(_) => {
+                    sema.resolve_use_type_arg(name_ref)
+                        .map(GenericParam::TypeParam)
+                        .map(Definition::GenericParam)
+                        .map(NameRefClass::Definition)
+                },
                 ast::ExternCrate(extern_crate_ast) => {
                     let extern_crate = sema.to_def(&extern_crate_ast)?;
                     let krate = extern_crate.resolved_crate(sema.db)?;
@@ -733,6 +770,7 @@ impl NameRefClass {
                 sema.resolve_label(lifetime).map(Definition::Label).map(NameRefClass::Definition)
             }
             SyntaxKind::LIFETIME_ARG
+            | SyntaxKind::USE_BOUND_GENERIC_ARGS
             | SyntaxKind::SELF_PARAM
             | SyntaxKind::TYPE_BOUND
             | SyntaxKind::WHERE_PRED
@@ -741,16 +779,6 @@ impl NameRefClass {
                 .map(GenericParam::LifetimeParam)
                 .map(Definition::GenericParam)
                 .map(NameRefClass::Definition),
-            // lifetime bounds, as in the 'b in 'a: 'b aren't wrapped in TypeBound nodes so we gotta check
-            // if our lifetime is in a LifetimeParam without being the constrained lifetime
-            _ if ast::LifetimeParam::cast(parent).and_then(|param| param.lifetime()).as_ref()
-                != Some(lifetime) =>
-            {
-                sema.resolve_lifetime_param(lifetime)
-                    .map(GenericParam::LifetimeParam)
-                    .map(Definition::GenericParam)
-                    .map(NameRefClass::Definition)
-            }
             _ => None,
         }
     }

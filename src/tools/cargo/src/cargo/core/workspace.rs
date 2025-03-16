@@ -306,31 +306,12 @@ impl<'gctx> Workspace<'gctx> {
                 }
             }
         }
-        match self.gctx().get::<CargoResolverConfig>("resolver") {
-            Ok(CargoResolverConfig {
-                incompatible_rust_versions: Some(incompatible_rust_versions),
-            }) => {
-                if self.gctx().cli_unstable().msrv_policy {
-                    self.resolve_honors_rust_version =
-                        incompatible_rust_versions == IncompatibleRustVersions::Fallback;
-                } else {
-                    self.gctx()
-                        .shell()
-                        .warn("ignoring `resolver` config table without `-Zmsrv-policy`")?;
-                }
-            }
-            Ok(CargoResolverConfig {
-                incompatible_rust_versions: None,
-            }) => {}
-            Err(err) => {
-                if self.gctx().cli_unstable().msrv_policy {
-                    return Err(err);
-                } else {
-                    self.gctx()
-                        .shell()
-                        .warn("ignoring `resolver` config table without `-Zmsrv-policy`")?;
-                }
-            }
+        if let CargoResolverConfig {
+            incompatible_rust_versions: Some(incompatible_rust_versions),
+        } = self.gctx().get::<CargoResolverConfig>("resolver")?
+        {
+            self.resolve_honors_rust_version =
+                incompatible_rust_versions == IncompatibleRustVersions::Fallback;
         }
 
         Ok(())
@@ -415,7 +396,7 @@ impl<'gctx> Workspace<'gctx> {
             .unwrap_or(&self.current_manifest)
     }
 
-    /// Returns the root Package or VirtualManifest.
+    /// Returns the root Package or `VirtualManifest`.
     pub fn root_maybe(&self) -> &MaybePackage {
         self.packages.get(self.root_manifest())
     }
@@ -608,6 +589,11 @@ impl<'gctx> Workspace<'gctx> {
     /// Returns true if the package is a member of the workspace.
     pub fn is_member(&self, pkg: &Package) -> bool {
         self.member_ids.contains(&pkg.package_id())
+    }
+
+    /// Returns true if the given package_id is a member of the workspace.
+    pub fn is_member_id(&self, package_id: PackageId) -> bool {
+        self.member_ids.contains(&package_id)
     }
 
     pub fn is_ephemeral(&self) -> bool {

@@ -10,6 +10,9 @@ macro_rules! simd_ty {
 
         #[allow(clippy::use_self)]
         impl $id {
+            /// A value of this type where all elements are zeroed out.
+            pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
+
             #[inline(always)]
             pub(crate) const fn new($($param_name: $elem_type),*) -> Self {
                 $id([$($param_name),*])
@@ -472,7 +475,6 @@ simd_m_ty!(
     x6,
     x7
 );
-
 
 // 512-bit wide types:
 
@@ -965,6 +967,6 @@ pub(crate) fn debug_simd_finish<T: crate::fmt::Debug, const N: usize>(
     crate::fmt::Formatter::debug_tuple_fields_finish(
         formatter,
         type_name,
-        &crate::array::from_fn::<&dyn crate::fmt::Debug, N, _>(|i| &array[i])
+        &crate::array::from_fn::<&dyn crate::fmt::Debug, N, _>(|i| &array[i]),
     )
 }

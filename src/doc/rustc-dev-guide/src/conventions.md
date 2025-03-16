@@ -3,7 +3,7 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
 [structuring your PR for easy review](#er).
 
-<a name="formatting"></a>
+<a id="formatting"></a>
 
 # Formatting and the tidy script
 
@@ -27,11 +27,24 @@ pass the <!-- date-check: nov 2022 --> `--edition=2021` argument yourself when c
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
 [`rustfmt`]:https://github.com/rust-lang/rustfmt
 
-<a name="copyright"></a>
+## Formatting C++ code
+
+The compiler contains some C++ code for interfacing with parts of LLVM that
+don't have a stable C API.
+When modifying that code, use this command to format it:
+
+```sh
+./x test tidy --extra-checks=cpp:fmt --bless
+```
+
+This uses a pinned version of `clang-format`, to avoid relying on the local
+environment.
+
+<a id="copyright"></a>
 
 <!-- REUSE-IgnoreStart -->
 <!-- Prevent REUSE from interpreting the heading as a copyright notice -->
-### Copyright notice
+## Copyright notice
 <!-- REUSE-IgnoreEnd -->
 
 In the past, files began with a copyright and license notice. Please **omit**
@@ -58,7 +71,7 @@ that case, you can add a comment towards the top of the file like so:
 
 Prefer 4-space indent.
 
-<a name="cc"></a>
+<a id="cc"></a>
 
 # Coding for correctness
 
@@ -100,13 +113,13 @@ if foo {
 }
 ```
 
-<a name="cio"></a>
+<a id="cio"></a>
 
 # Using crates from crates.io
 
 See the [crates.io dependencies][crates] section.
 
-<a name="er"></a>
+<a id="er"></a>
 
 # How to structure your PR
 

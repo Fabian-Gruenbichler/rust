@@ -3,18 +3,15 @@ use std::collections::BTreeMap;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, ImplSubject, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast,
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
-
-use super::{NormalizeExt, ObligationCause, PredicateObligation, SelectionContext};
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator
@@ -166,34 +163,6 @@ impl<'tcx> Iterator for TraitAliasExpander<'tcx> {
 // Other
 ///////////////////////////////////////////////////////////////////////////
 
-/// Instantiate all bound parameters of the impl subject with the given args,
-/// returning the resulting subject and all obligations that arise.
-/// The obligations are closed under normalization.
-pub(crate) fn impl_subject_and_oblig<'a, 'tcx>(
-    selcx: &SelectionContext<'a, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: DefId,
-    impl_args: GenericArgsRef<'tcx>,
-    cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
-    let subject = selcx.tcx().impl_subject(impl_def_id);
-    let subject = subject.instantiate(selcx.tcx(), impl_args);
-
-    let InferOk { value: subject, obligations: normalization_obligations1 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
-
-    let predicates = selcx.tcx().predicates_of(impl_def_id);
-    let predicates = predicates.instantiate(selcx.tcx(), impl_args);
-    let InferOk { value: predicates, obligations: normalization_obligations2 } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
-    let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);
-
-    let impl_obligations =
-        impl_obligations.chain(normalization_obligations1).chain(normalization_obligations2);
-
-    (subject, impl_obligations)
-}
-
 /// Casts a trait reference into a reference to one of its super
 /// traits; returns `None` if `target_trait_def_id` is not a
 /// supertrait.
@@ -215,22 +184,13 @@ pub(crate) fn closure_trait_ref_and_return_type<'tcx>(
     self_ty: Ty<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
-    fn_host_effect: ty::Const<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
-    let trait_ref = if tcx.has_host_param(fn_trait_def_id) {
-        ty::TraitRef::new(tcx, fn_trait_def_id, [
-            ty::GenericArg::from(self_ty),
-            ty::GenericArg::from(arguments_tuple),
-            ty::GenericArg::from(fn_host_effect),
-        ])
-    } else {
-        ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple])
-    };
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 

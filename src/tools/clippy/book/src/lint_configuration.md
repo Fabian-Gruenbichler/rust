@@ -81,6 +81,16 @@ Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 * [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
 
 
+## `allow-indexing-slicing-in-tests`
+Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`indexing_slicing`](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
+
+
 ## `allow-mixed-uninlined-format-args`
 Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
 
@@ -329,7 +339,7 @@ arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
 ## `array-size-threshold`
 The maximum allowed size for arrays on the stack
 
-**Default Value:** `512000`
+**Default Value:** `16384`
 
 ---
 **Affected lints:**
@@ -456,7 +466,7 @@ default configuration of Clippy. By default, any configuration will replace the 
 * `doc-valid-idents = ["ClipPy"]` would replace the default list with `["ClipPy"]`.
 * `doc-valid-idents = ["ClipPy", ".."]` would append `ClipPy` to the default list.
 
-**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "AccessKit", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
+**Default Value:** `["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "MHz", "GHz", "THz", "AccessKit", "CoAP", "CoreFoundation", "CoreGraphics", "CoreText", "DevOps", "Direct2D", "Direct3D", "DirectWrite", "DirectX", "ECMAScript", "GPLv2", "GPLv3", "GitHub", "GitLab", "IPv4", "IPv6", "ClojureScript", "CoffeeScript", "JavaScript", "PostScript", "PureScript", "TypeScript", "WebAssembly", "NaN", "NaNs", "OAuth", "GraphQL", "OCaml", "OpenAL", "OpenDNS", "OpenGL", "OpenMP", "OpenSSH", "OpenSSL", "OpenStreetMap", "OpenTelemetry", "OpenType", "WebGL", "WebGL2", "WebGPU", "WebRTC", "WebSocket", "WebTransport", "WebP", "OpenExr", "YCbCr", "sRGB", "TensorFlow", "TrueType", "iOS", "macOS", "FreeBSD", "NetBSD", "OpenBSD", "TeX", "LaTeX", "BibTeX", "BibLaTeX", "MinGW", "CamelCase"]`
 
 ---
 **Affected lints:**
@@ -666,6 +676,16 @@ crate. For example, `pub(crate)` items.
 * [`missing_docs_in_private_items`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
 
 
+## `module-item-order-groupings`
+The named groupings of different source item kinds within modules.
+
+**Default Value:** `[["modules", ["extern_crate", "mod", "foreign_mod"]], ["use", ["use"]], ["macros", ["macro"]], ["global_asm", ["global_asm"]], ["UPPER_SNAKE_CASE", ["static", "const"]], ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]], ["lower_snake_case", ["fn"]]]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `msrv`
 The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
 
@@ -710,6 +730,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_try_fold`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_try_fold)
 * [`map_clone`](https://rust-lang.github.io/rust-clippy/master/index.html#map_clone)
 * [`map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or)
+* [`map_with_unused_argument_over_ranges`](https://rust-lang.github.io/rust-clippy/master/index.html#map_with_unused_argument_over_ranges)
 * [`match_like_matches_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#match_like_matches_macro)
 * [`mem_replace_with_default`](https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_with_default)
 * [`missing_const_for_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn)
@@ -781,6 +802,16 @@ The maximum number of single char bindings a scope may have
 ---
 **Affected lints:**
 * [`many_single_char_names`](https://rust-lang.github.io/rust-clippy/master/index.html#many_single_char_names)
+
+
+## `source-item-ordering`
+Which kind of elements should be ordered internally, possible values being `enum`, `impl`, `module`, `struct`, `trait`.
+
+**Default Value:** `["enum", "impl", "module", "struct", "trait"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
 
 
 ## `stack-size-threshold`
@@ -862,9 +893,19 @@ The maximum number of lines a function or method can have
 * [`too_many_lines`](https://rust-lang.github.io/rust-clippy/master/index.html#too_many_lines)
 
 
+## `trait-assoc-item-kinds-order`
+The order of associated items in traits.
+
+**Default Value:** `["const", "type", "fn"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `trivial-copy-size-limit`
 The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
-reference. By default there is no limit
+reference.
 
 **Default Value:** `target_pointer_width * 2`
 

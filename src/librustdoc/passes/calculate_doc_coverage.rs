@@ -20,7 +20,7 @@ use crate::visit::DocVisitor;
 
 pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
-    run: calculate_doc_coverage,
+    run: Some(calculate_doc_coverage),
     description: "counts the number of items with and without documentation",
 };
 
@@ -118,7 +118,7 @@ fn limit_filename_len(filename: String) -> String {
     }
 }
 
-impl<'a, 'b> CoverageCalculator<'a, 'b> {
+impl CoverageCalculator<'_, '_> {
     fn to_json(&self) -> String {
         serde_json::to_string(
             &self
@@ -132,6 +132,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
 
     fn print_results(&self) {
         let output_format = self.ctx.output_format;
+        // In this case we want to ensure that the `OutputFormat` is JSON and NOT the `DocContext`.
         if output_format.is_json() {
             println!("{}", self.to_json());
             return;
@@ -187,7 +188,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DocVisitor<'_> for CoverageCalculator<'a, 'b> {
+impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
     fn visit_item(&mut self, i: &clean::Item) {
         if !i.item_id.is_local() {
             // non-local items are skipped because they can be out of the users control,

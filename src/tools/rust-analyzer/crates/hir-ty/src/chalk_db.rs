@@ -22,7 +22,6 @@ use hir_def::{
 
 use crate::{
     db::{HirDatabase, InternedCoroutine},
-    display::HirDisplay,
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     generics::generics,
     make_binders, make_single_type_binders,
@@ -381,8 +380,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         TyKind::Error.intern(Interner)
     }
 
+    // object safety was renamed to dyn-compatibility but still remains here in chalk.
+    // This will be removed since we are going to migrate to next-gen trait solver.
     fn is_object_safe(&self, trait_id: chalk_ir::TraitId<Interner>) -> bool {
-        // FIXME: When cargo is updated, change to dyn_compatibility
         let trait_ = from_chalk_trait_id(trait_id);
         crate::dyn_compatibility::dyn_compatibility(self.db, trait_).is_none()
     }
@@ -521,7 +521,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
     }
 }
 
-impl<'a> ChalkContext<'a> {
+impl ChalkContext<'_> {
     fn edition(&self) -> Edition {
         self.db.crate_graph()[self.krate].edition
     }
@@ -615,8 +615,9 @@ pub(crate) fn associated_ty_data_query(
     let type_alias_data = db.type_alias_data(type_alias);
     let generic_params = generics(db.upcast(), type_alias.into());
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db.upcast());
-    let ctx = crate::TyLoweringContext::new(db, &resolver, type_alias.into())
-        .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
+    let mut ctx =
+        crate::TyLoweringContext::new(db, &resolver, &type_alias_data.types_map, type_alias.into())
+            .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
 
     let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
@@ -626,14 +627,16 @@ pub(crate) fn associated_ty_data_query(
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
 
-    let mut bounds: Vec<_> = type_alias_data
-        .bounds
-        .iter()
-        .flat_map(|bound| ctx.lower_type_bound(bound, self_ty.clone(), false))
-        .filter_map(|pred| generic_predicate_to_inline_bound(db, &pred, &self_ty))
-        .collect();
+    let mut bounds = Vec::new();
+    for bound in &type_alias_data.bounds {
+        ctx.lower_type_bound(bound, self_ty.clone(), false).for_each(|pred| {
+            if let Some(pred) = generic_predicate_to_inline_bound(db, &pred, &self_ty) {
+                bounds.push(pred);
+            }
+        });
+    }
 
-    if !ctx.unsized_types.borrow().contains(&self_ty) {
+    if !ctx.unsized_types.contains(&self_ty) {
         let sized_trait = db
             .lang_item(resolver.krate(), LangItem::Sized)
             .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
@@ -819,13 +822,12 @@ pub(crate) fn impl_datum_query(
     let _p = tracing::info_span!("impl_datum_query").entered();
     debug!("impl_datum {:?}", impl_id);
     let impl_: hir_def::ImplId = from_chalk(db, impl_id);
-    impl_def_datum(db, krate, impl_id, impl_)
+    impl_def_datum(db, krate, impl_)
 }
 
 fn impl_def_datum(
     db: &dyn HirDatabase,
     krate: CrateId,
-    chalk_id: ImplId,
     impl_id: hir_def::ImplId,
 ) -> Arc<ImplDatum> {
     let trait_ref = db
@@ -846,13 +848,6 @@ fn impl_def_datum(
     };
     let where_clauses = convert_where_clauses(db, impl_id.into(), &bound_vars);
     let negative = impl_data.is_negative;
-    debug!(
-        "impl {:?}: {}{} where {:?}",
-        chalk_id,
-        if negative { "!" } else { "" },
-        trait_ref.display(db, db.crate_graph()[krate].edition),
-        where_clauses
-    );
 
     let polarity = if negative { rust_ir::Polarity::Negative } else { rust_ir::Polarity::Positive };
 

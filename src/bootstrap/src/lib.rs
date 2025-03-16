@@ -77,14 +77,13 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 #[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
+    // #[cfg(bootstrap)] to be removed when Cargo is updated
+    (None, "test", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),
-    (Some(Mode::Rustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
-    (Some(Mode::Codegen), "parallel_compiler", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
     // in the appropriate `library/{std,alloc,core}/Cargo.toml`
@@ -161,7 +160,7 @@ pub struct Build {
     initial_rustc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
-    initial_libdir: PathBuf,
+    initial_relative_libdir: PathBuf,
     initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
@@ -315,46 +314,19 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str = if config.dry_run() {
-            "/dummy/lib/path/to/lib/".to_string()
-        } else {
-            output(
-                Command::new(&config.initial_rustc)
-                    .arg("--target")
-                    .arg(config.build.rustc_target_arg())
-                    .arg("--print")
-                    .arg("target-libdir"),
-            )
-        };
+        let initial_target_libdir_str =
+            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_sysroot = if config.dry_run() {
-            "/dummy".to_string()
-        } else {
-            output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        }
-        .trim()
-        .to_string();
-
-        // FIXME(Zalathar): Determining this path occasionally fails locally for
-        // unknown reasons, so we print some extra context to help track down why.
-        let find_initial_libdir = || {
-            let initial_libdir =
-                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
-            Some(initial_libdir.to_path_buf())
-        };
-        let Some(initial_libdir) = find_initial_libdir() else {
-            panic!(
-                "couldn't determine `initial_libdir`:
-- config.initial_rustc:      {rustc:?}
-- initial_target_libdir_str: {initial_target_libdir_str:?}
-- initial_target_dir:        {initial_target_dir:?}
-- initial_sysroot:           {initial_sysroot:?}
-",
-                rustc = config.initial_rustc,
-            );
-        };
+        let initial_relative_libdir = initial_target_dir
+            .ancestors()
+            .nth(2)
+            .unwrap()
+            .strip_prefix(&config.initial_sysroot)
+            .expect("Couldn’t determine initial relative libdir.")
+            .to_path_buf();
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -383,11 +355,11 @@ impl Build {
         }
 
         let mut build = Build {
+            initial_lld,
+            initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
-            initial_lld,
-            initial_libdir,
-            initial_sysroot: initial_sysroot.into(),
+            initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -541,27 +513,32 @@ impl Build {
         }
         let output = helpers::git(Some(&self.src))
             .args(["config", "--file"])
-            .arg(self.config.src.join(".gitmodules"))
+            .arg(".gitmodules")
             .args(["--get-regexp", "path"])
             .run_capture(self)
             .stdout();
-        for line in output.lines() {
+        std::thread::scope(|s| {
             // Look for `submodule.$name.path = $path`
             // Sample output: `submodule.src/rust-installer.path src/tools/rust-installer`
-            let submodule = line.split_once(' ').unwrap().1;
-            self.update_existing_submodule(submodule);
-        }
+            for line in output.lines() {
+                let submodule = line.split_once(' ').unwrap().1;
+                let config = self.config.clone();
+                s.spawn(move || {
+                    Self::update_existing_submodule(&config, submodule);
+                });
+            }
+        });
     }
 
     /// Updates the given submodule only if it's initialized already; nothing happens otherwise.
-    pub fn update_existing_submodule(&self, submodule: &str) {
+    pub fn update_existing_submodule(config: &Config, submodule: &str) {
         // Avoid running git when there isn't a git checkout.
-        if !self.config.submodules() {
+        if !config.submodules() {
             return;
         }
 
         if GitInfo::new(false, Path::new(submodule)).is_managed_git_subrepository() {
-            self.config.update_submodule(submodule);
+            config.update_submodule(submodule);
         }
     }
 
@@ -660,11 +637,12 @@ impl Build {
         if self.config.backtrace {
             features.insert("backtrace");
         }
+
         if self.config.profiler_enabled(target) {
             features.insert("profiler");
         }
-        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
-        // automatically detects this target.
+
+        // If zkvm target, generate memcpy, etc.
         if target.contains("zkvm") {
             features.insert("compiler-builtins-mem");
         }
@@ -690,9 +668,6 @@ impl Build {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rustc_parallel && check("rustc_use_parallel_compiler") {
-            features.push("rustc_use_parallel_compiler");
-        }
         if self.config.rust_randomize_layout {
             features.push("rustc_randomized_layouts");
         }
@@ -1575,9 +1550,11 @@ Executed at: {executed_at}"#,
     fn rust_version(&self) -> String {
         let mut version = self.rust_info().version(self, &self.version);
         if let Some(ref s) = self.config.description {
-            version.push_str(" (");
-            version.push_str(s);
-            version.push(')');
+            if !s.is_empty() {
+                version.push_str(" (");
+                version.push_str(s);
+                version.push(')');
+            }
         }
         version
     }
@@ -1680,6 +1657,14 @@ Executed at: {executed_at}"#,
         paths
     }
 
+    /// Copies a file from `src` to `dst`.
+    ///
+    /// If `src` is a symlink, `src` will be resolved to the actual path
+    /// and copied to `dst` instead of the symlink itself.
+    pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
+        self.copy_link_internal(src, dst, true);
+    }
+
     /// Links a file from `src` to `dst`.
     /// Attempts to use hard links if possible, falling back to copying.
     /// You can neither rely on this being a copy nor it being a link,
@@ -1716,7 +1701,7 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // Attempt to "easy copy" by creating a hard link (symlinks are privileged on windows),
             // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {

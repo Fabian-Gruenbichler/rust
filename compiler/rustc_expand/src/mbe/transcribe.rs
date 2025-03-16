@@ -5,13 +5,15 @@ use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, sym};
-use rustc_span::{Span, Symbol, SyntaxContext, with_metavar_spans};
+use rustc_span::{
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+};
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
@@ -293,7 +295,7 @@ pub(super) fn transcribe<'a>(
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            TokenTree::token_alone(token::Interpolated(nt.clone()), sp)
+                            TokenTree::token_alone(token::Interpolated(Lrc::clone(nt)), sp)
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -570,7 +572,7 @@ fn lockstep_iter_size(
     }
 }
 
-/// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
+/// Used solely by the `count` meta-variable expression, counts the outermost repetitions at a
 /// given optional nested depth.
 ///
 /// For example, a macro parameter of `$( { $( $foo:ident ),* } )*` called with `{ a, b } { c }`:
@@ -695,8 +697,10 @@ fn transcribe_metavar_expr<'a>(
                     MetaVarExprConcatElem::Var(ident) => {
                         match matched_from_ident(dcx, *ident, interp)? {
                             NamedMatch::MatchedSeq(named_matches) => {
-                                let curr_idx = repeats.last().unwrap().0;
-                                match &named_matches[curr_idx] {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
                                     // FIXME(c410-f3r) Nested repetitions are unimplemented
                                     MatchedSeq(_) => unimplemented!(),
                                     MatchedSingle(pnr) => {

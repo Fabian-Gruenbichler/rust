@@ -58,6 +58,7 @@ mod tests {
             r"fn my_fn() { unsafe $0 }",
             expect![[r#"
                 kw async
+                kw extern
                 kw fn
                 kw impl
                 kw trait
@@ -77,19 +78,19 @@ fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
-                kw await                  expr.await
-                sn box                    Box::new(expr)
-                sn call                   function(expr)
-                sn dbg                    dbg!(expr)
-                sn dbgr                   dbg!(&expr)
-                sn deref                  *expr
-                sn let                    let
-                sn letm                   let mut
-                sn match                  match expr {}
-                sn ref                    &expr
-                sn refm                   &mut expr
-                sn return                 return expr
-                sn unsafe                 unsafe {}
+                kw await                                                           expr.await
+                sn box                                                         Box::new(expr)
+                sn call                                                        function(expr)
+                sn dbg                                                             dbg!(expr)
+                sn dbgr                                                           dbg!(&expr)
+                sn deref                                                                *expr
+                sn let                                                                    let
+                sn letm                                                               let mut
+                sn match                                                        match expr {}
+                sn ref                                                                  &expr
+                sn refm                                                             &mut expr
+                sn return                                                         return expr
+                sn unsafe                                                           unsafe {}
             "#]],
         );
 
@@ -104,19 +105,19 @@ fn foo() {
 "#,
             expect![[r#"
                 me into_future() (use core::future::IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
-                kw await                  expr.await
-                sn box                    Box::new(expr)
-                sn call                   function(expr)
-                sn dbg                    dbg!(expr)
-                sn dbgr                   dbg!(&expr)
-                sn deref                  *expr
-                sn let                    let
-                sn letm                   let mut
-                sn match                  match expr {}
-                sn ref                    &expr
-                sn refm                   &mut expr
-                sn return                 return expr
-                sn unsafe                 unsafe {}
+                kw await                                                                          expr.await
+                sn box                                                                        Box::new(expr)
+                sn call                                                                       function(expr)
+                sn dbg                                                                            dbg!(expr)
+                sn dbgr                                                                          dbg!(&expr)
+                sn deref                                                                               *expr
+                sn let                                                                                   let
+                sn letm                                                                              let mut
+                sn match                                                                       match expr {}
+                sn ref                                                                                 &expr
+                sn refm                                                                            &mut expr
+                sn return                                                                        return expr
+                sn unsafe                                                                          unsafe {}
             "#]],
         );
     }
@@ -133,19 +134,19 @@ fn foo(a: A) { a.$0 }
 "#,
             expect![[r#"
                 me into_future() (as IntoFuture) fn(self) -> <Self as IntoFuture>::IntoFuture
-                kw await                  expr.await
-                sn box                    Box::new(expr)
-                sn call                   function(expr)
-                sn dbg                    dbg!(expr)
-                sn dbgr                   dbg!(&expr)
-                sn deref                  *expr
-                sn let                    let
-                sn letm                   let mut
-                sn match                  match expr {}
-                sn ref                    &expr
-                sn refm                   &mut expr
-                sn return                 return expr
-                sn unsafe                 unsafe {}
+                kw await                                                           expr.await
+                sn box                                                         Box::new(expr)
+                sn call                                                        function(expr)
+                sn dbg                                                             dbg!(expr)
+                sn dbgr                                                           dbg!(&expr)
+                sn deref                                                                *expr
+                sn let                                                                    let
+                sn letm                                                               let mut
+                sn match                                                        match expr {}
+                sn ref                                                                  &expr
+                sn refm                                                             &mut expr
+                sn return                                                         return expr
+                sn unsafe                                                           unsafe {}
             "#]],
         );
     }

@@ -1,3 +1,4 @@
+use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -8,12 +9,10 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
+use rustc_hir_pretty as pprust_hir;
 use rustc_middle::hir::nested_filter;
 use rustc_span::def_id::StableCrateId;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span};
-use rustc_target::spec::abi::Abi;
-use {rustc_ast as ast, rustc_hir_pretty as pprust_hir};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 
 use crate::hir::ModuleItems;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -329,7 +328,7 @@ impl<'hir> Map<'hir> {
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.tcx.is_constructor(def_id) => return None,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.tcx.is_const_fn_raw(def_id) => {
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.tcx.is_const_fn(def_id) => {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id) => ConstContext::ConstFn,
@@ -381,7 +380,7 @@ impl<'hir> Map<'hir> {
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
-    pub fn krate_attrs(self) -> &'hir [ast::Attribute] {
+    pub fn krate_attrs(self) -> &'hir [Attribute] {
         self.attrs(CRATE_HIR_ID)
     }
 
@@ -668,7 +667,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_foreign_abi(self, hir_id: HirId) -> Abi {
+    pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
         let parent = self.get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =
             self.tcx.hir_owner_node(parent)
@@ -792,7 +791,7 @@ impl<'hir> Map<'hir> {
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(self, id: HirId) -> &'hir [ast::Attribute] {
+    pub fn attrs(self, id: HirId) -> &'hir [Attribute] {
         self.tcx.hir_attrs(id.owner).get(id.local_id)
     }
 
@@ -947,8 +946,7 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::LetStmt(local) => local.span,
             Node::Crate(item) => item.spans.inner_span,
-            Node::WhereBoundPredicate(pred) => pred.span,
-            Node::ArrayLenInfer(inf) => inf.span,
+            Node::WherePredicate(pred) => pred.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
             Node::Synthetic => unreachable!(),
             Node::Err(span) => span,
@@ -1225,8 +1223,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
             format!("{id} (generic_param {})", path_str(param.def_id))
         }
         Node::Crate(..) => String::from("(root_crate)"),
-        Node::WhereBoundPredicate(_) => node_str("where bound predicate"),
-        Node::ArrayLenInfer(_) => node_str("array len infer"),
+        Node::WherePredicate(_) => node_str("where predicate"),
         Node::Synthetic => unreachable!(),
         Node::Err(_) => node_str("error"),
         Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),

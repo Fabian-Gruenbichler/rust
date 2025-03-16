@@ -88,7 +88,7 @@ impl<'tcx> HirCollector<'tcx> {
     }
 }
 
-impl<'tcx> HirCollector<'tcx> {
+impl HirCollector<'_> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
         name: String,
@@ -110,10 +110,22 @@ impl<'tcx> HirCollector<'tcx> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs);
+        let attrs = Attributes::from_hir(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
             let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
-            self.collector.position = span;
+            self.collector.position = if span.edition().at_least_rust_2024() {
+                span
+            } else {
+                // this span affects filesystem path resolution,
+                // so we need to keep it the same as it was previously
+                ast_attrs
+                    .iter()
+                    .find(|attr| attr.doc_str().is_some())
+                    .map(|attr| {
+                        attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span)
+                    })
+                    .unwrap_or(DUMMY_SP)
+            };
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,

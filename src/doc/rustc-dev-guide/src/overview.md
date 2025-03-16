@@ -146,7 +146,7 @@ the final binary.
 [`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/parser/struct.Parser.html
 [`Pat`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/ast/struct.Pat.html
 [`rustc_ast::ast`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_ast/index.html
-[`rustc_driver`]: rustc-driver.md
+[`rustc_driver`]: rustc-driver/intro.md
 [`rustc_interface::Config`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Config.html
 [`rustc_lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lexer/index.html
 [`rustc_parse::lexer`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_parse/lexer/index.html
@@ -284,7 +284,7 @@ queries are cached on disk so that the compiler can tell which queries' results
 changed from the last compilation and only redo those. This is how incremental
 compilation works.
 
-In principle, for the query-field steps, we do each of the above for each item
+In principle, for the query-fied steps, we do each of the above for each item
 individually. For example, we will take the `HIR` for a function and use queries
 to ask for the `LLVM-IR` for that HIR. This drives the generation of optimized
 `MIR`, which drives the borrow checker, which drives the generation of `MIR`, and
@@ -303,11 +303,11 @@ to remain to ensure that unreachable functions still have their errors emitted.
 [passes]: https://github.com/rust-lang/rust/blob/e69c7306e2be08939d95f14229e3f96566fb206c/compiler/rustc_interface/src/passes.rs#L791
 
 Moreover, the compiler wasn't originally built to use a query system; the query
-system has been retrofitted into the compiler, so parts of it are not query-field
+system has been retrofitted into the compiler, so parts of it are not query-fied
 yet. Also, LLVM isn't our code, so that isn't querified either. The plan is to
 eventually query-fy all of the steps listed in the previous section,
 but as of <!-- date-check --> November 2022, only the steps between `HIR` and
-`LLVM-IR` are query-field. That is, lexing, parsing, name resolution, and macro
+`LLVM-IR` are query-fied. That is, lexing, parsing, name resolution, and macro
 expansion are done all at once for the whole program.
 
 One other thing to mention here is the all-important "typing context",
@@ -387,7 +387,7 @@ For more details on bootstrapping, see
 # References
 
 - Command line parsing
-  - Guide: [The Rustc Driver and Interface](rustc-driver.md)
+  - Guide: [The Rustc Driver and Interface](rustc-driver/intro.md)
   - Driver definition: [`rustc_driver`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/)
   - Main entry point: [`rustc_session::config::build_session_options`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/config/fn.build_session_options.html)
 - Lexical Analysis: Lex the user program to a stream of tokens

@@ -1,6 +1,5 @@
 mod block;
 
-use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
 use test_fixture::WithFixture;
 
@@ -11,7 +10,7 @@ use super::*;
 fn lower(ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.fetch_test_crate();
     let def_map = db.crate_def_map(krate);
     let mut fn_def = None;
     'outer: for (_, module) in def_map.modules() {
@@ -369,4 +368,79 @@ fn f(a: i32, b: u32) -> String {
             };
         }"#]]
     .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}
+
+#[test]
+fn destructuring_assignment_tuple_macro() {
+    // This is a funny one. `let m!()() = Bar()` is an error in rustc, because `m!()()` isn't a valid pattern,
+    // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
+    // assignments start their lives as expressions. So we have to do the same.
+
+    let (db, body, def) = lower(
+        r#"
+struct Bar();
+
+macro_rules! m {
+    () => { Bar };
+}
+
+fn foo() {
+    m!()() = Bar();
+}
+"#,
+    );
+
+    let (_, source_map) = db.body_with_source_map(def);
+    assert_eq!(source_map.diagnostics(), &[]);
+
+    for (_, def_map) in body.blocks(&db) {
+        assert_eq!(def_map.diagnostics(), &[]);
+    }
+
+    expect![[r#"
+        fn foo() -> () {
+            Bar() = Bar();
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+}
+
+#[test]
+fn shadowing_record_variant() {
+    let (_, body, _) = lower(
+        r#"
+enum A {
+    B { field: i32 },
+}
+fn f() {
+    use A::*;
+    match () {
+        B => {}
+    };
+}
+    "#,
+    );
+    assert_eq!(body.bindings.len(), 1, "should have a binding for `B`");
+    assert_eq!(
+        body.bindings[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
+        "B",
+        "should have a binding for `B`",
+    );
+}
+
+#[test]
+fn regression_pretty_print_bind_pat() {
+    let (db, body, owner) = lower(
+        r#"
+fn foo() {
+    let v @ u = 123;
+}
+"#,
+    );
+    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
+    assert_eq!(
+        printed,
+        r#"fn foo() -> () {
+    let v @ u = 123;
+}"#
+    );
 }

@@ -260,7 +260,6 @@ fn foo() {
             *local*
 
             ```rust
-            // size = 4, align = 4
             let local: i32
             ```
         "#]],
@@ -289,20 +288,7 @@ m!(ab$0c);
             *abc*
 
             ```rust
-            test::module
-            ```
-
-            ```rust
-            fn abc()
-            ```
-
-            ---
-
-            Inner
-            ---
-
-            ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -312,6 +298,19 @@ m!(ab$0c);
             ---
 
             Outer
+            ---
+
+            ```rust
+            ra_test_fixture::module
+            ```
+
+            ```rust
+            fn abc()
+            ```
+
+            ---
+
+            Inner
         "#]],
     );
 }
@@ -328,7 +327,7 @@ fn main() {
 "#,
         expect![[r#"
             *foo*
-            test
+            ra_test_fixture
 
             pub fn foo() -> u32
         "#]],
@@ -348,9 +347,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl Fn(i32) -> i32
             ```
+            ___
+            size = 8, align = 8, niches = 1
 
             ## Captures
             * `x` by immutable borrow
@@ -370,9 +371,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 0, align = 1
+            {closure#0}
             impl Fn(i32) -> i32
             ```
+            ___
+            size = 0, align = 1
 
             ## Captures
             This closure captures nothing
@@ -403,9 +406,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 16 (0x10), align = 8, niches = 1
+            {closure#0}
             impl FnOnce()
             ```
+            ___
+            size = 16 (0x10), align = 8, niches = 1
 
             ## Captures
             * `x.f1` by move
@@ -431,9 +436,11 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl FnMut()
             ```
+            ___
+            size = 8, align = 8, niches = 1
 
             ## Captures
             * `x` by mutable borrow
@@ -455,9 +462,11 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            {closure#0} // size = 8, align = 8, niches = 1
+            {closure#0}
             impl FnOnce() -> S2
             ```
+            ___
+            size = 8, align = 8, niches = 1
             Coerced to: &impl FnOnce() -> S2
 
             ## Captures
@@ -478,7 +487,7 @@ fn main() {
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::S2",
+                            mod_path: "ra_test_fixture::S2",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -491,7 +500,7 @@ fn main() {
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -551,9 +560,12 @@ fn main() {
             *iter*
 
             ```rust
-            // size = 8, align = 4
             let mut iter: Iter<Scan<OtherStruct<OtherStruct<i32>>, impl Fn(&mut u32, &u32, &mut u32) -> Option<u32>, u32>>
             ```
+
+            ---
+
+            size = 8, align = 4
         "#]],
     );
 }
@@ -571,7 +583,7 @@ fn main() { let foo_test = fo$0o(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -593,7 +605,7 @@ fn main() { f$0oo(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -615,7 +627,7 @@ fn main() { m::f$0oo(); }
             *foo*
 
             ```rust
-            test::m
+            ra_test_fixture::m
             ```
 
             ```rust
@@ -637,7 +649,7 @@ fn main() { fo$0o(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -655,7 +667,7 @@ fn main() { fo$0o(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -679,7 +691,7 @@ fn main() { let foo_test = fo$0o(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -703,7 +715,7 @@ fn main() { }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -731,7 +743,7 @@ fn main() { }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -764,7 +776,7 @@ fn main() { }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -789,13 +801,16 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             *field_a*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 1, align = 1, offset = 6
             field_a: u8
             ```
+
+            ---
+
+            size = 1, align = 1, offset = 6
         "#]],
     );
 }
@@ -815,11 +830,10 @@ fn main() {
             *field_a*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub field_a: u32
             ```
         "#]],
@@ -838,13 +852,16 @@ fn main() {
             *field_a*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub field_a: u32
             ```
+
+            ---
+
+            size = 4, align = 4, offset = 0
         "#]],
     );
 }
@@ -863,11 +880,10 @@ fn main() {
             *0*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub 0: u32
             ```
         "#]],
@@ -884,11 +900,10 @@ fn foo(foo: Foo) {
             *0*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             pub 0: u32
             ```
         "#]],
@@ -905,15 +920,18 @@ struct Foo$0(pub u32) where u32: Copy;
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo(pub u32)
             where
                 u32: Copy,
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -928,15 +946,18 @@ struct Foo$0 { field: u32 }
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo {
                 field: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check(
@@ -947,11 +968,10 @@ struct Foo$0 where u32: Copy { field: u32 }
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo
             where
                 u32: Copy,
@@ -959,6 +979,10 @@ struct Foo$0 where u32: Copy { field: u32 }
                 field: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -974,17 +998,20 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo {
                 a: u32,
                 b: i32,
                 c: i32,
             }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -996,15 +1023,18 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             struct Foo {
                 a: u32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1016,11 +1046,10 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 16 (0x10), align = 4
             struct Foo {
                 a: u32,
                 b: i32,
@@ -1028,6 +1057,10 @@ fn hover_record_struct_limit() {
                 /* … */
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1039,13 +1072,16 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1057,13 +1093,16 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             struct Foo { /* … */ }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
 
@@ -1077,13 +1116,16 @@ fn hover_record_struct_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Foo {}
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -1099,13 +1141,16 @@ fn hover_record_variant_limit() {
             *A*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A { a: u32, b: i32, c: i32, }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1117,13 +1162,16 @@ fn hover_record_variant_limit() {
             *A*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 4
             A { a: u32, }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1135,13 +1183,16 @@ fn hover_record_variant_limit() {
             *A*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 16 (0x10), align = 4
             A { a: u32, b: i32, c: i32, /* … */ }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1153,13 +1204,16 @@ fn hover_record_variant_limit() {
             *A*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1171,13 +1225,16 @@ fn hover_record_variant_limit() {
             *A*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4
             A { /* … */ }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4
         "#]],
     );
 }
@@ -1191,16 +1248,19 @@ fn hover_enum_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo {
                 A,
                 B,
             }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1210,16 +1270,19 @@ fn hover_enum_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo {
                 A,
                 /* … */
             }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1229,13 +1292,16 @@ fn hover_enum_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo { /* … */ }
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1245,13 +1311,16 @@ fn hover_enum_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 1, align = 1, niches = 254
             enum Foo
             ```
+
+            ---
+
+            size = 1, align = 1, niches = 254
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1270,11 +1339,10 @@ fn hover_enum_limit() {
             *Enum*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 12 (0xC), align = 4, niches = 4294967288
             enum Enum {
                 Variant {},
                 Variant2 { /* … */ },
@@ -1286,6 +1354,10 @@ fn hover_enum_limit() {
                 /* … */
             }
             ```
+
+            ---
+
+            size = 12 (0xC), align = 4, niches = 4294967288
         "#]],
     );
 }
@@ -1299,16 +1371,19 @@ fn hover_union_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo {
                 a: u32,
                 b: i32,
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1318,16 +1393,19 @@ fn hover_union_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo {
                 a: u32,
                 /* … */
             }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1337,13 +1415,16 @@ fn hover_union_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo { /* … */ }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
     check_hover_fields_limit(
@@ -1353,13 +1434,16 @@ fn hover_union_limit() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             union Foo
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -1374,15 +1458,18 @@ struct Foo$0 where u32: Copy;
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Foo
             where
                 u32: Copy,
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -1397,7 +1484,7 @@ type Fo$0o: Trait = S where T: Trait;
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1417,7 +1504,7 @@ fn hover_const_static() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1435,7 +1522,7 @@ const foo$0: u32 = {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1453,11 +1540,11 @@ const foo$0: u32 = {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            static foo: u32 = 456
+            static foo: u32 = 456 (0x1C8)
             ```
         "#]],
     );
@@ -1468,7 +1555,7 @@ const foo$0: u32 = {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1486,7 +1573,7 @@ const foo$0: u32 = {
             *BAR*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1504,7 +1591,7 @@ fn hover_unsigned_max_const() {
             *A*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1525,7 +1612,7 @@ fn hover_eval_complex_constants() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1548,9 +1635,12 @@ fn main() {
             *zz*
 
             ```rust
-            // size = 8, align = 4
             let zz: Test<i32>
             ```
+
+            ---
+
+            size = 8, align = 4
         "#]],
     );
     check_hover_range(
@@ -1577,16 +1667,16 @@ use Option::Some;
 fn main() { So$0me(12); }
 "#,
         expect![[r#"
-                *Some*
+            *Some*
 
-                ```rust
-                test::Option
-                ```
+            ```rust
+            ra_test_fixture::Option
+            ```
 
-                ```rust
-                Some(T)
-                ```
-            "#]],
+            ```rust
+            Some(T)
+            ```
+        "#]],
     );
 
     check(
@@ -1600,9 +1690,12 @@ fn main() { let b$0ar = Some(12); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             let bar: Option<i32>
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -1618,20 +1711,20 @@ enum Option<T> {
 }
 "#,
         expect![[r#"
-                *None*
+            *None*
 
-                ```rust
-                test::Option
-                ```
+            ```rust
+            ra_test_fixture::Option
+            ```
 
-                ```rust
-                None
-                ```
+            ```rust
+            None
+            ```
 
-                ---
+            ---
 
-                The None variant
-            "#]],
+            The None variant
+        "#]],
     );
 
     check(
@@ -1645,20 +1738,20 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *Some*
+            *Some*
 
-                ```rust
-                test::Option
-                ```
+            ```rust
+            ra_test_fixture::Option
+            ```
 
-                ```rust
-                Some(T)
-                ```
+            ```rust
+            Some(T)
+            ```
 
-                ---
+            ---
 
-                The Some variant
-            "#]],
+            The Some variant
+        "#]],
     );
 }
 
@@ -1670,7 +1763,6 @@ fn hover_for_local_variable() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
         "#]],
@@ -1685,9 +1777,12 @@ fn hover_for_local_variable_pat() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -1700,7 +1795,6 @@ fn hover_local_var_edge() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
         "#]],
@@ -1715,9 +1809,12 @@ fn hover_for_param_edge() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             foo: i32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -1760,9 +1857,12 @@ fn main() { let foo_$0test = Thing::new(); }
             *foo_test*
 
             ```rust
-            // size = 4, align = 4
             let foo_test: Thing
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     )
 }
@@ -1785,7 +1885,7 @@ fn main() { let foo_test = wrapper::Thing::new$0(); }
             *new*
 
             ```rust
-            test::wrapper::Thing
+            ra_test_fixture::wrapper::Thing
             ```
 
             ```rust
@@ -1816,7 +1916,7 @@ fn main() {
             *C*
 
             ```rust
-            test::X
+            ra_test_fixture::X
             ```
 
             ```rust
@@ -1836,18 +1936,18 @@ impl Thing {
 }
 "#,
         expect![[r#"
-                *Self*
+            *Self*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                struct Thing {
-                    x: u32,
-                }
-                ```
-            "#]],
+            ```rust
+            struct Thing {
+                x: u32,
+            }
+            ```
+        "#]],
     );
     check_hover_fields_limit(
         None,
@@ -1858,16 +1958,16 @@ impl Thing {
 }
 "#,
         expect![[r#"
-                *Self*
+            *Self*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                struct Thing
-                ```
-            "#]],
+            ```rust
+            struct Thing
+            ```
+        "#]],
     );
     check(
         r#"
@@ -1877,18 +1977,18 @@ impl Thing {
 }
 "#,
         expect![[r#"
-                *Self*
+            *Self*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                struct Thing {
-                    x: u32,
-                }
-                ```
-            "#]],
+            ```rust
+            struct Thing {
+                x: u32,
+            }
+            ```
+        "#]],
     );
     check(
         r#"
@@ -1901,7 +2001,7 @@ impl Thing {
             *Self*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1922,7 +2022,7 @@ impl Thing {
             *Self*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1942,7 +2042,7 @@ impl usize {
             *Self*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1960,7 +2060,7 @@ impl fn() -> usize {
             *Self*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -1985,7 +2085,6 @@ fn y() {
             *x*
 
             ```rust
-            // size = 4, align = 4
             let x: i32
             ```
         "#]],
@@ -2004,7 +2103,7 @@ fn f() { fo$0o!(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2029,7 +2128,7 @@ fn f() { fo$0o!(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2073,7 +2172,7 @@ id! {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2095,7 +2194,7 @@ fn foo$0() {}
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2116,7 +2215,6 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             bar: u32
             ```
         "#]],
@@ -2135,7 +2233,6 @@ fn foo(bar:u32) { let a = id!(ba$0r); }
             *bar*
 
             ```rust
-            // size = 4, align = 4
             bar: u32
             ```
         "#]],
@@ -2155,7 +2252,7 @@ fn foo() { let a = id!([0u32, bar$0()] ); }
             *bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2181,7 +2278,7 @@ fn foo() {
             *bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2205,7 +2302,7 @@ fn foo(Foo { b$0ar }: &Foo) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Bar",
+                            mod_path: "ra_test_fixture::Bar",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -2237,7 +2334,7 @@ fn bar() { fo$0o(); }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2259,7 +2356,7 @@ fn test_hover_function_show_qualifiers() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2273,7 +2370,7 @@ fn test_hover_function_show_qualifiers() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2288,7 +2385,7 @@ fn test_hover_function_show_qualifiers() {
             *foo*
 
             ```rust
-            test::m
+            ra_test_fixture::m
             ```
 
             ```rust
@@ -2306,7 +2403,7 @@ fn test_hover_function_show_types() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2329,7 +2426,7 @@ fn main() { foo$0; }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2349,7 +2446,7 @@ fn main() { foo$0; }
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2367,13 +2464,16 @@ fn test_hover_function_pointer_show_identifiers() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 8, align = 8, niches = 1
             type foo = fn(a: i32, b: i32) -> i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -2386,13 +2486,16 @@ fn test_hover_function_pointer_no_identifier() {
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 8, align = 8, niches = 1
             type foo = fn(i32, i32) -> i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -2498,16 +2601,16 @@ mod my { pub struct Bar; }
 fn my() {}
 "#,
         expect![[r#"
-                *my*
+            *my*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                mod my
-                ```
-            "#]],
+            ```rust
+            mod my
+            ```
+        "#]],
     );
 }
 
@@ -2533,11 +2636,10 @@ fn foo() { let bar = Ba$0r; }
             *Bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -2570,11 +2672,10 @@ fn foo() { let bar = Ba$0r; }
             *Bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -2600,11 +2701,10 @@ fn foo() { let bar = Ba$0r; }
             *Bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct Bar
             ```
 
@@ -2629,13 +2729,16 @@ pub struct B$0ar
             *Bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Bar
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -2657,13 +2760,16 @@ pub struct B$0ar
             *Bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Bar
             ```
+
+            ---
+
+            size = 0, align = 1
 
             ---
 
@@ -2703,7 +2809,7 @@ pub fn fo$0o() {}
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -2747,13 +2853,16 @@ fn test_hover_layout_of_variant() {
             *Variant1*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
-            // size = 4, align = 2
             Variant1(u8, u16)
             ```
+
+            ---
+
+            size = 4, align = 2
         "#]],
     );
 }
@@ -2769,7 +2878,7 @@ fn test_hover_layout_of_variant_generic() {
             *None*
 
             ```rust
-            test::Option
+            ra_test_fixture::Option
             ```
 
             ```rust
@@ -2790,13 +2899,16 @@ struct S$0<T>(core::marker::PhantomData<T>);
             *S*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct S<T>(PhantomData<T>)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -2812,16 +2924,19 @@ fn test_hover_layout_of_enum() {
             *Foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 254
             enum Foo {
                 Variant1( /* … */ ),
                 Variant2( /* … */ ),
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 254
         "#]],
     );
 }
@@ -2834,7 +2949,7 @@ fn test_hover_no_memory_layout() {
             *field_a*
 
             ```rust
-            test::Foo
+            ra_test_fixture::Foo
             ```
 
             ```rust
@@ -2888,7 +3003,7 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
             *foo*
 
             ```rust
-            test::Bar
+            ra_test_fixture::Bar
             ```
 
             ```rust
@@ -2926,7 +3041,7 @@ fn foo() { let bar = Bar; bar.fo$0o(); }
             *foo*
 
             ```rust
-            test::Bar
+            ra_test_fixture::Bar
             ```
 
             ```rust
@@ -2954,7 +3069,7 @@ fn main() { let foo_test = unsafe { fo$0o(1, 2, 3); } }
             *foo*
 
             ```rust
-            test::<extern>
+            ra_test_fixture::<extern>
             ```
 
             ```rust
@@ -3152,7 +3267,7 @@ fn main() { let s$0t = S{ f1:0 }; }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3185,7 +3300,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Arg",
+                            mod_path: "ra_test_fixture::Arg",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3198,7 +3313,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3244,7 +3359,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Arg",
+                            mod_path: "ra_test_fixture::Arg",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3257,7 +3372,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3293,7 +3408,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::A",
+                            mod_path: "ra_test_fixture::A",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3306,7 +3421,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::B",
+                            mod_path: "ra_test_fixture::B",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3319,7 +3434,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::M::C",
+                            mod_path: "ra_test_fixture::M::C",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3353,7 +3468,7 @@ fn main() { let s$0t = foo(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3387,7 +3502,7 @@ fn main() { let s$0t = foo(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3400,7 +3515,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3434,7 +3549,7 @@ fn main() { let s$0t = foo(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Bar",
+                            mod_path: "ra_test_fixture::Bar",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3447,7 +3562,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3484,7 +3599,7 @@ fn main() { let s$0t = foo(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Bar",
+                            mod_path: "ra_test_fixture::Bar",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3497,7 +3612,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3510,7 +3625,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S1",
+                            mod_path: "ra_test_fixture::S1",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3523,7 +3638,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S2",
+                            mod_path: "ra_test_fixture::S2",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3554,7 +3669,7 @@ fn foo(ar$0g: &impl Foo) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3588,7 +3703,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Bar",
+                            mod_path: "ra_test_fixture::Bar",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3601,7 +3716,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3614,7 +3729,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3701,7 +3816,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3714,7 +3829,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3751,7 +3866,7 @@ fn main() { let s$0t = foo(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::B",
+                            mod_path: "ra_test_fixture::B",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3764,7 +3879,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3777,7 +3892,7 @@ fn main() { let s$0t = foo(); }
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3808,7 +3923,7 @@ fn foo(ar$0g: &dyn Foo) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3840,7 +3955,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3853,7 +3968,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3888,7 +4003,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::B",
+                            mod_path: "ra_test_fixture::B",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3901,7 +4016,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::DynTrait",
+                            mod_path: "ra_test_fixture::DynTrait",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3914,7 +4029,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::ImplTrait",
+                            mod_path: "ra_test_fixture::ImplTrait",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3927,7 +4042,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S",
+                            mod_path: "ra_test_fixture::S",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -3969,7 +4084,7 @@ fn main() { let s$0t = test().get(); }
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -4002,7 +4117,7 @@ impl<const BAR: Bar> Foo<BAR$0> {}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Bar",
+                            mod_path: "ra_test_fixture::Bar",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -4034,7 +4149,7 @@ fn foo<T: Foo>(t: T$0){}
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -4067,7 +4182,7 @@ impl Foo {
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -4133,19 +4248,25 @@ fn main() {
             *f*
 
             ```rust
-            // size = 8, align = 8, niches = 1
             let f: &i32
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
             ---
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             f: i32
             ```
+
+            ---
+
+            size = 4, align = 4, offset = 0
         "#]],
     );
 }
@@ -4161,13 +4282,16 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             *ST*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = 1, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4183,13 +4307,16 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             *ST*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = {const}, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4206,13 +4333,16 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             *ST*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             struct ST<const C: usize = VAL, T = Foo>(T)
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4231,9 +4361,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<1>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4252,9 +4385,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<0>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4273,9 +4409,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<-1>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4294,9 +4433,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<true>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4315,9 +4457,12 @@ fn main() {
             *value*
 
             ```rust
-            // size = 0, align = 1
             let value: Const<'🦀'>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4335,9 +4480,12 @@ impl Foo {
             *self*
 
             ```rust
-            // size = 8, align = 8, niches = 1
             self: &Foo
             ```
+
+            ---
+
+            size = 8, align = 8, niches = 1
         "#]],
     );
 }
@@ -4356,9 +4504,12 @@ impl Foo {
             *self*
 
             ```rust
-            // size = 0, align = 1
             self: Arc<Foo>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4376,21 +4527,21 @@ mod Foo$0 {
 }
 "#,
         expect![[r#"
-                *Foo*
+            *Foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                mod Foo
-                ```
+            ```rust
+            mod Foo
+            ```
 
-                ---
+            ---
 
-                Be quick;
-                time is mana
-            "#]],
+            Be quick;
+            time is mana
+        "#]],
     );
 }
 
@@ -4407,21 +4558,21 @@ mod Foo$0 {
 }
 "#,
         expect![[r#"
-                *Foo*
+            *Foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                mod Foo
-                ```
+            ```rust
+            mod Foo
+            ```
 
-                ---
+            ---
 
-                Be quick;
-                time is mana
-            "#]],
+            Be quick;
+            time is mana
+        "#]],
     );
 }
 
@@ -4441,7 +4592,7 @@ fn foo$0() {}
             *foo*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -4751,13 +4902,16 @@ type Fo$0o2 = Foo<2>;
             *Foo2*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             type Foo2 = Foo<2>
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -4794,13 +4948,16 @@ enum E {
             *A*
 
             ```rust
-            test::E
+            ra_test_fixture::E
             ```
 
             ```rust
-            // size = 1, align = 1
             A = 8
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4820,13 +4977,16 @@ enum E {
             *A*
 
             ```rust
-            test::E
+            ra_test_fixture::E
             ```
 
             ```rust
-            // size = 1, align = 1
             A = 12 (0xC)
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4847,13 +5007,16 @@ enum E {
             *B*
 
             ```rust
-            test::E
+            ra_test_fixture::E
             ```
 
             ```rust
-            // size = 1, align = 1
             B = 2
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4874,13 +5037,16 @@ enum E {
             *B*
 
             ```rust
-            test::E
+            ra_test_fixture::E
             ```
 
             ```rust
-            // size = 1, align = 1
             B = 5
             ```
+
+            ---
+
+            size = 1, align = 1
 
             ---
 
@@ -4908,7 +5074,7 @@ fn main() {
             *B*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -4945,7 +5111,7 @@ fn main() {
             *AA*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -4972,7 +5138,7 @@ fn main() {
             *B*
 
             ```rust
-            test::T
+            ra_test_fixture::T
             ```
 
             ```rust
@@ -5001,7 +5167,7 @@ fn main() {
             *B*
 
             ```rust
-            test::T
+            ra_test_fixture::T
             ```
 
             ```rust
@@ -5033,7 +5199,7 @@ fn main() {
             *B*
 
             ```rust
-            test::T
+            ra_test_fixture::T
             ```
 
             ```rust
@@ -5056,7 +5222,7 @@ const FOO$0: usize = 1 << 3;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5077,7 +5243,7 @@ const FOO$0: usize = (1 << 3) + (1 << 2);
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5099,7 +5265,7 @@ const FOO$0: usize = 2 - 3;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5121,7 +5287,7 @@ const FOO$0: i32 = 2 - 3;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5142,7 +5308,7 @@ const FOO$0: &str = "bar";
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5164,7 +5330,7 @@ const FOO$0: char = 'a';
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5186,7 +5352,7 @@ const FOO$0: char = '\x61';
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5208,7 +5374,7 @@ const FOO$0: u8 = b'a';
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5230,7 +5396,7 @@ const FOO$0: u8 = b'\x61';
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5252,7 +5418,7 @@ const FOO$0: u8 = b'\x61';
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5274,7 +5440,7 @@ const FOO$0: f32 = 1f32;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5296,7 +5462,7 @@ const FOO$0: &i32 = &2;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5318,7 +5484,7 @@ const FOO$0: f64 = 1.0f64;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5346,7 +5512,7 @@ const FOO$0: f64 = expf64(1.2);
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5364,7 +5530,7 @@ const FOO$0: f32 = 1.9999999403953552_f32;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5386,7 +5552,7 @@ const FOO$0: f16 = -1.0f16;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5407,7 +5573,7 @@ const FOO$0: f128 = -1.0f128;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5438,7 +5604,7 @@ const FOO$0: Enum = VX;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5455,7 +5621,7 @@ const FOO$0: Option<i32> = Some(2);
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5472,7 +5638,7 @@ const FOO$0: Option<&i32> = Some(2).as_ref();
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5495,7 +5661,7 @@ const FOO$0: &dyn Debug = &2i32;
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5516,7 +5682,7 @@ const FOO$0: &[i32] = &[1, 2, 3 + 4];
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5533,7 +5699,7 @@ const FOO$0: &[i32; 5] = &[12; 5];
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5554,7 +5720,7 @@ const FOO$0: (&i32, &[i32], &i32) = {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5577,7 +5743,7 @@ const FOO$0: Tree = {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5597,7 +5763,7 @@ const FOO$0: &S<[u8]> = core::mem::transmute::<&[u8], _>(&[1, 2, 3]);
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5617,7 +5783,7 @@ const FOO$0: &str = "foo";
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5640,7 +5806,7 @@ const FOO$0: X = X {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5659,7 +5825,7 @@ const FOO$0: (&str, &str) = {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5690,7 +5856,7 @@ fn test() {
             *FOO*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -5717,7 +5883,7 @@ fn foo() {
             *FOO*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5746,11 +5912,10 @@ fn foo(e: E) {
             *A*
 
             ```rust
-            test::E
+            ra_test_fixture::E
             ```
 
             ```rust
-            // size = 0, align = 1
             A = 3
             ```
 
@@ -5777,7 +5942,7 @@ pub fn the_function() -> AA {
             *CONST*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -5799,9 +5964,12 @@ fn main() {
             *tile4*
 
             ```rust
-            // size = 32 (0x20), align = 4
             let tile4: [u32; 8]
             ```
+
+            ---
+
+            size = 32 (0x20), align = 4
         "#]],
     );
 }
@@ -5816,20 +5984,20 @@ mod foo$0;
 //! For the horde!
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                mod foo
-                ```
+            ```rust
+            mod foo
+            ```
 
-                ---
+            ---
 
-                For the horde!
-            "#]],
+            For the horde!
+        "#]],
     );
 }
 
@@ -5845,20 +6013,20 @@ mod foo {
 use foo::bar::{self$0};
 "#,
         expect![[r#"
-                *self*
+            *self*
 
-                ```rust
-                test::foo
-                ```
+            ```rust
+            ra_test_fixture::foo
+            ```
 
-                ```rust
-                mod bar
-                ```
+            ```rust
+            mod bar
+            ```
 
-                ---
+            ---
 
-                But this should appear
-            "#]],
+            But this should appear
+        "#]],
     )
 }
 
@@ -5998,7 +6166,7 @@ fn main() {
             *bar*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -6032,11 +6200,10 @@ pub fn gimme() -> theitem::TheItem {
             *[`TheItem`]*
 
             ```rust
-            test::theitem
+            ra_test_fixture::theitem
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct TheItem
             ```
 
@@ -6081,7 +6248,7 @@ impl T1 for Foo {
             *Bar*
 
             ```rust
-            test::t2::T2
+            ra_test_fixture::t2::T2
             ```
 
             ```rust
@@ -6103,7 +6270,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test::A
+            ra_test_fixture::A
             ```
 
             ```rust
@@ -6124,7 +6291,7 @@ trait A {
             *Assoc*
 
             ```rust
-            test::A
+            ra_test_fixture::A
             ```
 
             ```rust
@@ -6143,7 +6310,7 @@ trait A where
             *Assoc*
 
             ```rust
-            test::A
+            ra_test_fixture::A
             ```
 
             ```rust
@@ -6185,7 +6352,6 @@ mod string {
             ```
 
             ```rust
-            // size = 0, align = 1
             struct String
             ```
 
@@ -6247,7 +6413,7 @@ fn hover_feature() {
             by the codegen backend, but not the MIR inliner.
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6257,7 +6423,7 @@ fn hover_feature() {
             Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
             ```rust
-            #![feature(rustc_attrs)]
+            #![feature(intrinsics)]
             #![allow(internal_features)]
 
             #[rustc_intrinsic]
@@ -6406,12 +6572,12 @@ fn hover_rename() {
 use self as foo$0;
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                extern crate test
-                ```
-            "#]],
+            ```rust
+            extern crate ra_test_fixture
+            ```
+        "#]],
     );
     check(
         r#"
@@ -6419,16 +6585,16 @@ mod bar {}
 use bar::{self as foo$0};
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            ra_test_fixture
+            ```
 
-                ```rust
-                mod bar
-                ```
-            "#]],
+            ```rust
+            mod bar
+            ```
+        "#]],
     );
     check(
         r#"
@@ -6437,24 +6603,24 @@ mod bar {
 }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                extern crate test
-                ```
-            "#]],
+            ```rust
+            extern crate ra_test_fixture
+            ```
+        "#]],
     );
     check(
         r#"
 use crate as foo$0;
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                extern crate test
-                ```
-            "#]],
+            ```rust
+            extern crate ra_test_fixture
+            ```
+        "#]],
     );
 }
 
@@ -6479,7 +6645,7 @@ identity!{
             *Copy*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -6503,7 +6669,7 @@ struct Foo;
             *Copy*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -6525,7 +6691,7 @@ struct Foo;
             *Copy*
 
             ```rust
-            test::foo
+            ra_test_fixture::foo
             ```
 
             ```rust
@@ -6744,7 +6910,7 @@ fn foo() {
                 GoToType(
                     [
                         HoverGotoTypeData {
-                            mod_path: "test::Foo",
+                            mod_path: "ra_test_fixture::Foo",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -6944,17 +7110,16 @@ foo_macro!(
             *[`Foo`]*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 0, align = 1
             pub struct Foo
             ```
 
             ---
 
-            Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            Doc comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html)
         "#]],
     );
 }
@@ -6970,17 +7135,16 @@ pub struct Foo(i32);
             *[`Foo`]*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 4, align = 4
             pub struct Foo(i32)
             ```
 
             ---
 
-            Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
+            Doc comment for [`Foo`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html)
         "#]],
     );
 }
@@ -6996,7 +7160,7 @@ pub struct Foo<T>(T);
             *[`Foo<T>`]*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -7005,7 +7169,7 @@ pub struct Foo<T>(T);
 
             ---
 
-            Doc comment for [`Foo<T>`](https://docs.rs/test/*/test/struct.Foo.html)
+            Doc comment for [`Foo<T>`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/struct.Foo.html)
         "#]],
     );
 }
@@ -7095,13 +7259,16 @@ enum Enum {
             *RecordV*
 
             ```rust
-            test::Enum
+            ra_test_fixture::Enum
             ```
 
             ```rust
-            // size = 4, align = 4
             RecordV { field: u32, }
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -7118,13 +7285,16 @@ enum Enum {
             *field*
 
             ```rust
-            test::RecordV
+            ra_test_fixture::RecordV
             ```
 
             ```rust
-            // size = 4, align = 4
             field: u32
             ```
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -7145,7 +7315,7 @@ impl T for () {
             *func*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -7171,11 +7341,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7191,11 +7360,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: Yes
             trait T {}
             ```
         "#]],
@@ -7215,13 +7383,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T { /* … */ }
             ```
         "#]],
@@ -7241,13 +7406,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7271,13 +7433,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7301,13 +7460,10 @@ impl T$0 for () {}
             *T*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Dyn Compatible: No
-            // - Reason: has a method `func` that is non dispatchable because of:
-            //   - missing a receiver
             trait T {
                 fn func();
                 const FLAG: i32;
@@ -7373,7 +7529,7 @@ fn f() {
             ***
 
             ```rust
-            test::Struct
+            ra_test_fixture::Struct
             ```
 
             ```rust
@@ -7402,7 +7558,7 @@ fn main() { $0V; }
             *V*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -7429,7 +7585,7 @@ fn main() { $0V; }
             *V*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -7609,7 +7765,7 @@ fn test() {
             *foo*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7638,7 +7794,7 @@ fn test() {
             *foo*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7668,7 +7824,7 @@ mod m {
             *foo*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7698,7 +7854,7 @@ fn test() {
             *A*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7727,7 +7883,7 @@ fn test() {
             *A*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7757,7 +7913,7 @@ mod m {
             *A*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -7780,11 +7936,10 @@ fn test() {
             *f*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
-            // size = 4, align = 4, offset = 0
             f: u32
             ```
         "#]],
@@ -7804,9 +7959,12 @@ fn test() {
             *s*
 
             ```rust
-            // size = 0, align = 1
             let s: S
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -7825,7 +7983,6 @@ fn test() {
             *foo*
 
             ```rust
-            // size = 4, align = 4
             let foo: i32
             ```
         "#]],
@@ -7846,7 +8003,6 @@ format_args!("{aaaaa$0}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7867,7 +8023,6 @@ format_args!("{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7888,7 +8043,6 @@ format_args!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7914,7 +8068,6 @@ foo!(r"{$0aaaaa}");
             *aaaaa*
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             let aaaaa: &str
             ```
         "#]],
@@ -7938,7 +8091,7 @@ fn main() {
             *foo*
 
             ```rust
-            test::S
+            ra_test_fixture::S
             ```
 
             ```rust
@@ -8386,10 +8539,16 @@ fn main(notable$0: u32) {}
             *notable*
 
             ```rust
-            // Implements notable traits: Notable<Assoc = &str, Assoc2 = char>
-            // size = 4, align = 4
             notable: u32
             ```
+
+            ---
+
+            Implements notable traits: Notable\<Assoc = &str, Assoc2 = char>
+
+            ---
+
+            size = 4, align = 4
         "#]],
     );
 }
@@ -8414,12 +8573,10 @@ impl Iterator for S {
             *S*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
-            // size = 0, align = 1
             struct S
             ```
         "#]],
@@ -8438,7 +8595,7 @@ extern "C" {
             *STATIC*
 
             ```rust
-            test::<extern>
+            ra_test_fixture::<extern>
             ```
 
             ```rust
@@ -8456,7 +8613,7 @@ extern "C" {
             *fun*
 
             ```rust
-            test::<extern>
+            ra_test_fixture::<extern>
             ```
 
             ```rust
@@ -8474,13 +8631,16 @@ extern "C" {
             *Ty*
 
             ```rust
-            test::<extern>
+            ra_test_fixture::<extern>
             ```
 
             ```rust
-            // size = 0, align = 1
             type Ty
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8506,9 +8666,10 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
             S
-            ```"#]],
+            ```
+            ___
+            Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>"#]],
     );
 }
 
@@ -8570,7 +8731,7 @@ impl Iterator for S {
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::Notable",
+                            mod_path: "ra_test_fixture::Notable",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -8583,7 +8744,7 @@ impl Iterator for S {
                             },
                         },
                         HoverGotoTypeData {
-                            mod_path: "test::S2",
+                            mod_path: "ra_test_fixture::S2",
                             nav: NavigationTarget {
                                 file_id: FileId(
                                     0,
@@ -8614,15 +8775,18 @@ struct Pedro$0<'a> {
             *Pedro*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
-            // size = 16 (0x10), align = 8, niches = 1
             struct Pedro<'a> {
                 hola: &str,
             }
             ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 1
         "#]],
     )
 }
@@ -8655,9 +8819,12 @@ fn main(a$0: T) {}
             *a*
 
             ```rust
-            // size = 0, align = 1
             a: T
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8678,7 +8845,6 @@ fn test() {
             *f*
 
             ```rust
-            // size = 0, align = 1
             let f: fn bar<3>(bool)
             ```
         "#]],
@@ -8706,9 +8872,12 @@ fn main() {
             *x*
 
             ```rust
-            // size = 0, align = 1
             let x: fn f<S, i32>()
             ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }
@@ -8793,7 +8962,7 @@ fn test_hover_function_with_pat_param() {
             *test_1*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8809,7 +8978,7 @@ fn test_hover_function_with_pat_param() {
             *test_2*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8825,7 +8994,7 @@ fn test_hover_function_with_pat_param() {
             *test_3*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8841,7 +9010,7 @@ fn test_hover_function_with_pat_param() {
             *test_4*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8857,7 +9026,7 @@ fn test_hover_function_with_pat_param() {
             *test_5*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8873,7 +9042,7 @@ fn test_hover_function_with_pat_param() {
             *test_6*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8889,7 +9058,7 @@ fn test_hover_function_with_pat_param() {
             *test_7*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8905,7 +9074,7 @@ fn test_hover_function_with_pat_param() {
             *test_8*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8921,7 +9090,7 @@ fn test_hover_function_with_pat_param() {
             *test_9*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8937,7 +9106,7 @@ fn test_hover_function_with_pat_param() {
             *test_10*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8953,7 +9122,7 @@ fn test_hover_function_with_pat_param() {
             *test_10*
 
             ```rust
-            test
+            ra_test_fixture
             ```
 
             ```rust
@@ -8979,12 +9148,356 @@ mod m {
             *C*
 
             ```rust
-            test::m::m2
+            ra_test_fixture::m::m2
             ```
 
             ```rust
             const C: () = ()
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn regression_18238() {
+    check(
+        r#"
+macro_rules! foo {
+    ($name:ident) => {
+        pub static $name = Foo::new(|| {
+            $crate;
+        });
+    };
+}
+
+foo!(BAR_$0);
+"#,
+        expect![[r#"
+            *BAR_*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub static BAR_: {error} = Foo::new(||{
+                crate;
+            })
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn type_alias_without_docs() {
+    // Simple.
+    check(
+        r#"
+/// Docs for B
+struct B;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type A = B
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            *This is the documentation for* `struct B`
+
+            Docs for B
+        "#]],
+    );
+
+    // Nested.
+    check(
+        r#"
+/// Docs for C
+struct C;
+
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type A = B
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            *This is the documentation for* `struct C`
+
+            Docs for C
+        "#]],
+    );
+
+    // Showing the docs for aliased struct instead of intermediate type.
+    check(
+        r#"
+/// Docs for C
+struct C;
+
+/// Docs for B
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type A = B
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            *This is the documentation for* `struct C`
+
+            Docs for C
+        "#]],
+    );
+
+    // No docs found.
+    check(
+        r#"
+struct C;
+
+type B = C;
+
+type A$0 = B;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type A = B
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+
+    // Multiple nested crate.
+    check(
+        r#"
+//- /lib.rs crate:c
+/// Docs for C
+pub struct C;
+
+//- /lib.rs crate:b deps:c
+pub use c::C;
+pub type B = C;
+
+//- /lib.rs crate:a deps:b
+pub use b::B;
+pub type A = B;
+
+//- /main.rs crate:main deps:a
+use a::A$0;
+"#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            a
+            ```
+
+            ```rust
+            pub type A = B
+            ```
+
+            ---
+
+            *This is the documentation for* `pub struct C`
+
+            Docs for C
+        "#]],
+    );
+}
+
+#[test]
+fn dyn_compat() {
+    check(
+        r#"
+trait Compat$0 {}
+"#,
+        expect![[r#"
+            *Compat*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            trait Compat
+            ```
+
+            ---
+
+            Is dyn-compatible
+        "#]],
+    );
+    check(
+        r#"
+trait UnCompat$0 {
+    fn f<T>() {}
+}
+"#,
+        expect![[r#"
+            *UnCompat*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            trait UnCompat
+            ```
+
+            ---
+
+            Is not dyn-compatible due to having a method `f` that is not dispatchable due to missing a receiver
+        "#]],
+    );
+    check(
+        r#"
+trait UnCompat {
+    fn f<T>() {}
+}
+fn f<T: UnCompat$0>
+"#,
+        expect![[r#"
+            *UnCompat*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            trait UnCompat
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn issue_18613() {
+    check(
+        r#"
+fn main() {
+    struct S<T, D = bool>();
+    let x$0 = S::<()>;
+}"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            let x: fn S<()>() -> S<()>
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+
+    check(
+        r#"
+pub struct Global;
+pub struct Box<T, A = Global>(T, A);
+
+impl<T> Box<T> {
+    pub fn new(x: T) -> Self { loop {} }
+}
+
+pub struct String;
+
+fn main() {
+    let box_value$0 = Box::<String>new();
+}
+"#,
+        expect![[r#"
+            *box_value*
+
+            ```rust
+            let box_value: fn Box<String>(String, Global) -> Box<String>
+            ```
+
+            ---
+
+            size = 0, align = 1
+        "#]],
+    );
+
+    check(
+        r#"
+//- minicore: eq
+pub struct RandomState;
+pub struct HashMap<K, V, S = RandomState>(K, V, S);
+
+impl<K, V> HashMap<K, V, RandomState> {
+    pub fn new() -> HashMap<K, V, RandomState> {
+        loop {}
+    }
+}
+
+impl<K, V, S> PartialEq for HashMap<K, V, S> {
+    fn eq(&self, other: &HashMap<K, V, S>) -> bool {
+        false
+    }
+}
+
+fn main() {
+    let s$0 = HashMap::<_, u64>::ne;
+}
+"#,
+        expect![[r#"
+            *s*
+
+            ```rust
+            let s: fn ne<HashMap<{unknown}, u64>>(&HashMap<{unknown}, u64>, &HashMap<{unknown}, u64>) -> bool
+            ```
+
+            ---
+
+            size = 0, align = 1
         "#]],
     );
 }

@@ -22,9 +22,9 @@
 #![feature(array_windows)]
 #![feature(cfg_match)]
 #![feature(core_io_borrowed_buf)]
+#![feature(hash_set_entry)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
@@ -50,6 +50,7 @@ pub mod source_map;
 use source_map::{SourceMap, SourceMapInputs};
 
 pub use self::caching_source_map_view::CachingSourceMapView;
+use crate::fatal_error::FatalError;
 
 pub mod edition;
 use edition::Edition;
@@ -66,7 +67,7 @@ mod span_encoding;
 pub use span_encoding::{DUMMY_SP, Span};
 
 pub mod symbol;
-pub use symbol::{Symbol, sym};
+pub use symbol::{Ident, MacroRulesNormalizedIdent, Symbol, kw, sym};
 
 mod analyze_source_file;
 pub mod fatal_error;
@@ -521,13 +522,11 @@ impl SpanData {
     }
 }
 
-// The interner is pointed to by a thread local value which is only set on the main thread
-// with parallelization is disabled. So we don't allow `Span` to transfer between threads
-// to avoid panics and other errors, even though it would be memory safe to do so.
-#[cfg(not(parallel_compiler))]
-impl !Send for Span {}
-#[cfg(not(parallel_compiler))]
-impl !Sync for Span {}
+impl Default for SpanData {
+    fn default() -> Self {
+        Self { lo: BytePos(0), hi: BytePos(0), ctxt: SyntaxContext::root(), parent: None }
+    }
+}
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
@@ -565,12 +564,6 @@ impl Span {
     #[inline]
     pub fn is_visible(self, sm: &SourceMap) -> bool {
         !self.is_dummy() && sm.is_span_accessible(self)
-    }
-
-    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
-    #[inline]
-    pub fn from_expansion(self) -> bool {
-        !self.ctxt().is_root()
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -1843,6 +1836,8 @@ impl StableSourceFileId {
 }
 
 impl SourceFile {
+    const MAX_FILE_SIZE: u32 = u32::MAX - 1;
+
     pub fn new(
         name: FileName,
         mut src: String,
@@ -1863,6 +1858,9 @@ impl SourceFile {
         let stable_id = StableSourceFileId::from_filename_in_current_crate(&name);
         let source_len = src.len();
         let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
+        if source_len > Self::MAX_FILE_SIZE {
+            return Err(OffsetOverflowError);
+        }
 
         let (lines, multibyte_chars) = analyze_source_file::analyze_source_file(&src);
 
@@ -2221,6 +2219,10 @@ pub fn char_width(ch: char) -> usize {
         | '\u{2067}' | '\u{2068}' | '\u{202C}' | '\u{2069}' => 1,
         _ => unicode_width::UnicodeWidthChar::width(ch).unwrap_or(1),
     }
+}
+
+pub fn str_width(s: &str) -> usize {
+    s.chars().map(char_width).sum()
 }
 
 /// Normalizes the source code and records the normalizations.
@@ -2617,6 +2619,10 @@ impl ErrorGuaranteed {
     #[deprecated = "should only be used in `DiagCtxtInner::emit_diagnostic`"]
     pub fn unchecked_error_guaranteed() -> Self {
         ErrorGuaranteed(())
+    }
+
+    pub fn raise_fatal(self) -> ! {
+        FatalError.raise()
     }
 }
 

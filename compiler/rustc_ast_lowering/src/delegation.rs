@@ -46,8 +46,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Asyncness, ResolverAstLowering};
-use rustc_span::Span;
-use rustc_span::symbol::Ident;
+use rustc_span::{Ident, Span};
 use rustc_target::spec::abi;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -259,10 +258,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self_param_id: pat_node_id,
                     };
                     self_resolver.visit_block(block);
+                    // Target expr needs to lower `self` path.
+                    this.ident_and_label_to_local_id.insert(pat_node_id, param.pat.hir_id.local_id);
                     this.lower_target_expr(&block)
                 } else {
-                    let pat_hir_id = this.lower_node_id(pat_node_id);
-                    this.generate_arg(pat_hir_id, span)
+                    this.generate_arg(param.pat.hir_id, span)
                 };
                 args.push(arg);
             }

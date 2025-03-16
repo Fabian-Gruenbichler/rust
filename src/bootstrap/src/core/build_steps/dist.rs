@@ -436,13 +436,10 @@ impl Step for Rustc {
             if libdir_relative.to_str() != Some("bin") {
                 let libdir = builder.rustc_libdir(compiler);
                 for entry in builder.read_dir(&libdir) {
-                    let name = entry.file_name();
-                    if let Some(s) = name.to_str() {
-                        if is_dylib(s) {
-                            // Don't use custom libdir here because ^lib/ will be resolved again
-                            // with installer
-                            builder.install(&entry.path(), &image.join("lib"), 0o644);
-                        }
+                    if is_dylib(&entry.path()) {
+                        // Don't use custom libdir here because ^lib/ will be resolved again
+                        // with installer
+                        builder.install(&entry.path(), &image.join("lib"), 0o644);
                     }
                 }
             }
@@ -459,7 +456,7 @@ impl Step for Rustc {
 
             // Copy over lld if it's there
             if builder.config.lld_enabled {
-                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let src_dir = builder.sysroot_target_bindir(compiler, host);
                 let rust_lld = exe("rust-lld", compiler.host);
                 builder.copy_link(&src_dir.join(&rust_lld), &dst_dir.join(&rust_lld));
                 let self_contained_lld_src_dir = src_dir.join("gcc-ld");
@@ -473,8 +470,16 @@ impl Step for Rustc {
                     );
                 }
             }
+
+            if builder.config.llvm_enabled(compiler.host) && builder.config.llvm_tools_enabled {
+                let src_dir = builder.sysroot_target_bindir(compiler, host);
+                let llvm_objcopy = exe("llvm-objcopy", compiler.host);
+                let rust_objcopy = exe("rust-objcopy", compiler.host);
+                builder.copy_link(&src_dir.join(&llvm_objcopy), &dst_dir.join(&rust_objcopy));
+            }
+
             if builder.tool_enabled("wasm-component-ld") {
-                let src_dir = builder.sysroot_libdir(compiler, host).parent().unwrap().join("bin");
+                let src_dir = builder.sysroot_target_bindir(compiler, host);
                 let ld = exe("wasm-component-ld", compiler.host);
                 builder.copy_link(&src_dir.join(&ld), &dst_dir.join(&ld));
             }
@@ -544,24 +549,24 @@ impl Step for DebuggerScripts {
             cp_debugger_script("natvis/liballoc.natvis");
             cp_debugger_script("natvis/libcore.natvis");
             cp_debugger_script("natvis/libstd.natvis");
-        } else {
-            cp_debugger_script("rust_types.py");
-
-            // gdb debugger scripts
-            builder.install(&builder.src.join("src/etc/rust-gdb"), &sysroot.join("bin"), 0o755);
-            builder.install(&builder.src.join("src/etc/rust-gdbgui"), &sysroot.join("bin"), 0o755);
-
-            cp_debugger_script("gdb_load_rust_pretty_printers.py");
-            cp_debugger_script("gdb_lookup.py");
-            cp_debugger_script("gdb_providers.py");
-
-            // lldb debugger scripts
-            builder.install(&builder.src.join("src/etc/rust-lldb"), &sysroot.join("bin"), 0o755);
-
-            cp_debugger_script("lldb_lookup.py");
-            cp_debugger_script("lldb_providers.py");
-            cp_debugger_script("lldb_commands")
         }
+
+        cp_debugger_script("rust_types.py");
+
+        // gdb debugger scripts
+        builder.install(&builder.src.join("src/etc/rust-gdb"), &sysroot.join("bin"), 0o755);
+        builder.install(&builder.src.join("src/etc/rust-gdbgui"), &sysroot.join("bin"), 0o755);
+
+        cp_debugger_script("gdb_load_rust_pretty_printers.py");
+        cp_debugger_script("gdb_lookup.py");
+        cp_debugger_script("gdb_providers.py");
+
+        // lldb debugger scripts
+        builder.install(&builder.src.join("src/etc/rust-lldb"), &sysroot.join("bin"), 0o755);
+
+        cp_debugger_script("lldb_lookup.py");
+        cp_debugger_script("lldb_providers.py");
+        cp_debugger_script("lldb_commands")
     }
 }
 
@@ -990,7 +995,18 @@ impl Step for PlainSourceTarball {
         ];
         let src_dirs = ["src", "compiler", "library", "tests"];
 
-        copy_src_dirs(builder, &builder.src, &src_dirs, &[], plain_dst_src);
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &src_dirs,
+            &[
+                // We don't currently use the GCC source code for building any official components,
+                // it is very big, and has unclear licensing implications due to being GPL licensed.
+                // We thus exclude it from the source tarball from now.
+                "src/gcc",
+            ],
+            plain_dst_src,
+        );
 
         // Copy the files normally
         for item in &src_files {
@@ -1018,7 +1034,7 @@ impl Step for PlainSourceTarball {
             let mut cmd = command(&builder.initial_cargo);
             cmd.arg("vendor").arg("--versioned-dirs");
 
-            for p in default_paths_to_vendor(builder) {
+            for (p, _) in default_paths_to_vendor(builder) {
                 cmd.arg("--sync").arg(p);
             }
 
@@ -1147,7 +1163,7 @@ impl Step for Rls {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rls = builder.ensure(tool::Rls { compiler, target, extra_features: Vec::new() });
+        let rls = builder.ensure(tool::Rls { compiler, target });
 
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::Rls);
@@ -1234,9 +1250,8 @@ impl Step for Clippy {
         // Prepare the image directory
         // We expect clippy to build, because we've exited this step above if tool
         // state for clippy isn't testing.
-        let clippy = builder.ensure(tool::Clippy { compiler, target, extra_features: Vec::new() });
-        let cargoclippy =
-            builder.ensure(tool::CargoClippy { compiler, target, extra_features: Vec::new() });
+        let clippy = builder.ensure(tool::Clippy { compiler, target });
+        let cargoclippy = builder.ensure(tool::CargoClippy { compiler, target });
 
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
@@ -1285,9 +1300,8 @@ impl Step for Miri {
         let compiler = self.compiler;
         let target = self.target;
 
-        let miri = builder.ensure(tool::Miri { compiler, target, extra_features: Vec::new() });
-        let cargomiri =
-            builder.ensure(tool::CargoMiri { compiler, target, extra_features: Vec::new() });
+        let miri = builder.ensure(tool::Miri { compiler, target });
+        let cargomiri = builder.ensure(tool::CargoMiri { compiler, target });
 
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
@@ -1418,10 +1432,8 @@ impl Step for Rustfmt {
         let compiler = self.compiler;
         let target = self.target;
 
-        let rustfmt =
-            builder.ensure(tool::Rustfmt { compiler, target, extra_features: Vec::new() });
-        let cargofmt =
-            builder.ensure(tool::Cargofmt { compiler, target, extra_features: Vec::new() });
+        let rustfmt = builder.ensure(tool::Rustfmt { compiler, target });
+        let cargofmt = builder.ensure(tool::Cargofmt { compiler, target });
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);

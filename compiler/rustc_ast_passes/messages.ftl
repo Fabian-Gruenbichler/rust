@@ -62,12 +62,12 @@ ast_passes_equality_in_where = equality constraints are not yet supported in `wh
 
 ast_passes_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
 
-ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have qualifiers
+ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have `{$kw}` qualifier
     .label = in this `extern` block
-    .suggestion = remove this qualifier
+    .suggestion = remove the `{$kw}` qualifier
 
-ast_passes_extern_invalid_safety = items in unadorned `extern` blocks cannot have safety qualifiers
-    .suggestion = add unsafe to this `extern` block
+ast_passes_extern_invalid_safety = items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
+    .suggestion = add `unsafe` to this `extern` block
 
 ast_passes_extern_item_ascii = items in `extern` blocks cannot use non-ascii identifiers
     .label = in this `extern` block
@@ -146,8 +146,6 @@ ast_passes_generic_before_constraints = generic arguments must come before the f
 
 ast_passes_generic_default_trailing = generic parameters with a default must be trailing
 
-ast_passes_impl_trait_path = `impl Trait` is not allowed in path parameters
-
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
@@ -208,8 +206,6 @@ ast_passes_precise_capturing_duplicated = duplicate `use<...>` precise capturing
     .label = second `use<...>` here
 
 ast_passes_precise_capturing_not_allowed_here = `use<...>` precise capturing syntax not allowed in {$loc}
-
-ast_passes_show_span = {$msg}
 
 ast_passes_stability_outside_std = stability attributes may not be used outside of the standard library
 

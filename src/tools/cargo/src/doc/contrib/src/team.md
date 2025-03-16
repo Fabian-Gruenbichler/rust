@@ -48,7 +48,7 @@ Members are required to always:
 
 Members are given privileges, such as:
 
-- Merge permissions (bors rights)
+- Merge permissions (GitHub permissions)
 - Issue and project management (GitHub permissions)
 - Voting and decision making (RFCs, major changes)
 - Access to private communications related to team management and security discussions
@@ -170,6 +170,7 @@ The degree of process is correlated with the degree of change being proposed:
 
 Per the [Rust crate ownership policy](https://forge.rust-lang.org/policies/crate-ownership.html), the Cargo team's "Intentional Artifacts" include:
 
+- [build-rs](https://crates.io/crates/build-rs)
 - [cargo-credential](https://crates.io/crates/cargo-credential)
 - [cargo-platform](https://crates.io/crates/cargo-platform)
 - [cargo-util-schemas](https://crates.io/crates/cargo-util-schemas)

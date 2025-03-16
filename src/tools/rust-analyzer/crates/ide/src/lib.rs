@@ -33,7 +33,7 @@ mod goto_type_definition;
 mod highlight_related;
 mod hover;
 mod inlay_hints;
-mod interpret_function;
+mod interpret;
 mod join_lines;
 mod markdown_remove;
 mod matching_brace;
@@ -64,7 +64,7 @@ use fetch_crates::CrateInfo;
 use hir::{sym, ChangeWithProcMacros};
 use ide_db::{
     base_db::{
-        salsa::{self, ParallelDatabase},
+        ra_salsa::{self, ParallelDatabase},
         CrateOrigin, CrateWorkspaceData, Env, FileLoader, FileSet, SourceDatabase,
         SourceRootDatabase, VfsPath,
     },
@@ -79,7 +79,7 @@ use crate::navigation_target::ToNav;
 
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind, AnnotationLocation},
-    call_hierarchy::CallItem,
+    call_hierarchy::{CallHierarchyConfig, CallItem},
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
@@ -119,9 +119,10 @@ pub use ide_assists::{
     Assist, AssistConfig, AssistId, AssistKind, AssistResolveStrategy, SingleResolve,
 };
 pub use ide_completion::{
-    CallableSnippets, CompletionConfig, CompletionItem, CompletionItemKind, CompletionRelevance,
-    Snippet, SnippetScope,
+    CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
+    CompletionItemKind, CompletionRelevance, Snippet, SnippetScope,
 };
+pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
     base_db::{Cancelled, CrateGraph, CrateId, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
@@ -131,15 +132,12 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, SymbolKind,
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
-pub use ide_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode, Severity,
-};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
-pub use text_edit::{Indel, TextEdit};
 
 pub type Cancellable<T> = Result<T, Cancelled>;
 
@@ -218,7 +216,7 @@ impl Default for AnalysisHost {
 /// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
-    db: salsa::Snapshot<RootDatabase>,
+    db: ra_salsa::Snapshot<RootDatabase>,
 }
 
 // As a general design guideline, `Analysis` API are intended to be independent
@@ -301,7 +299,7 @@ impl Analysis {
 
     /// Gets the syntax tree of the file.
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
-        // FIXME editiojn
+        // FIXME edition
         self.with_db(|db| db.parse(EditionedFileId::current_edition(file_id)).tree())
     }
 
@@ -350,7 +348,7 @@ impl Analysis {
     }
 
     pub fn interpret_function(&self, position: FilePosition) -> Cancellable<String> {
-        self.with_db(|db| interpret_function::interpret_function(db, position))
+        self.with_db(|db| interpret::interpret(db, position))
     }
 
     pub fn view_item_tree(&self, file_id: FileId) -> Cancellable<String> {
@@ -402,6 +400,8 @@ impl Analysis {
         self.with_db(|db| typing::on_enter(db, position))
     }
 
+    pub const SUPPORTED_TRIGGER_CHARS: &'static str = typing::TRIGGER_CHARS;
+
     /// Returns an edit which should be applied after a character was typed.
     ///
     /// This is useful for some on-the-fly fixups, like adding `;` to `let =`
@@ -410,14 +410,16 @@ impl Analysis {
         &self,
         position: FilePosition,
         char_typed: char,
-        autoclose: bool,
+        chars_to_exclude: Option<String>,
     ) -> Cancellable<Option<SourceChange>> {
         // Fast path to not even parse the file.
         if !typing::TRIGGER_CHARS.contains(char_typed) {
             return Ok(None);
         }
-        if char_typed == '<' && !autoclose {
-            return Ok(None);
+        if let Some(chars_to_exclude) = chars_to_exclude {
+            if chars_to_exclude.contains(char_typed) {
+                return Ok(None);
+            }
         }
 
         self.with_db(|db| typing::on_char_typed(db, position, char_typed))
@@ -538,7 +540,7 @@ impl Analysis {
     /// Returns URL(s) for the documentation of the symbol under the cursor.
     /// # Arguments
     /// * `position` - Position in the file.
-    /// * `target_dir` - Directory where the build output is storeda.
+    /// * `target_dir` - Directory where the build output is stored.
     pub fn external_docs(
         &self,
         position: FilePosition,
@@ -564,13 +566,21 @@ impl Analysis {
     }
 
     /// Computes incoming calls for the given file position.
-    pub fn incoming_calls(&self, position: FilePosition) -> Cancellable<Option<Vec<CallItem>>> {
-        self.with_db(|db| call_hierarchy::incoming_calls(db, position))
+    pub fn incoming_calls(
+        &self,
+        config: CallHierarchyConfig,
+        position: FilePosition,
+    ) -> Cancellable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::incoming_calls(db, config, position))
     }
 
     /// Computes outgoing calls for the given file position.
-    pub fn outgoing_calls(&self, position: FilePosition) -> Cancellable<Option<Vec<CallItem>>> {
-        self.with_db(|db| call_hierarchy::outgoing_calls(db, position))
+    pub fn outgoing_calls(
+        &self,
+        config: CallHierarchyConfig,
+        position: FilePosition,
+    ) -> Cancellable<Option<Vec<CallItem>>> {
+        self.with_db(|db| call_hierarchy::outgoing_calls(db, config, position))
     }
 
     /// Returns a `mod name;` declaration which created the current module.

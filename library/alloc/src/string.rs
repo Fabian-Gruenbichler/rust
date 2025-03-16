@@ -53,7 +53,7 @@ use core::ops::AddAssign;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Range, RangeBounds};
-use core::str::pattern::Pattern;
+use core::str::pattern::{Pattern, Utf8Pattern};
 use core::{fmt, hash, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
@@ -116,7 +116,7 @@ use crate::vec::Vec;
 /// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
 /// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
 /// is a variable width encoding, `String`s are typically smaller than an array of
-/// the same `chars`:
+/// the same `char`s:
 ///
 /// ```
 /// use std::mem;
@@ -2436,6 +2436,11 @@ impl<'b> Pattern for &'b String {
     {
         self[..].strip_suffix_of(haystack)
     }
+
+    #[inline]
+    fn as_utf8_pattern(&self) -> Option<Utf8Pattern<'_>> {
+        Some(Utf8Pattern::StringPattern(self.as_bytes()))
+    }
 }
 
 macro_rules! impl_eq {
@@ -2670,14 +2675,28 @@ pub trait ToString {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
+    #[inline]
+    fn to_string(&self) -> String {
+        <Self as SpecToString>::spec_to_string(self)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait SpecToString {
+    fn spec_to_string(&self) -> String;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T: fmt::Display + ?Sized> SpecToString for T {
     // A common guideline is to not inline generic functions. However,
     // removing `#[inline]` from this method causes non-negligible regressions.
     // See <https://github.com/rust-lang/rust/pull/74852>, the last attempt
     // to try to remove it.
     #[inline]
-    default fn to_string(&self) -> String {
+    default fn spec_to_string(&self) -> String {
         let mut buf = String::new();
-        let mut formatter = core::fmt::Formatter::new(&mut buf);
+        let mut formatter =
+            core::fmt::Formatter::new(&mut buf, core::fmt::FormattingOptions::new());
         // Bypass format_args!() to avoid write_str with zero-length strs
         fmt::Display::fmt(self, &mut formatter)
             .expect("a Display implementation returned an error unexpectedly");
@@ -2685,42 +2704,34 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[unstable(feature = "ascii_char", issue = "110998")]
-impl ToString for core::ascii::Char {
+impl SpecToString for core::ascii::Char {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self.as_str().to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "char_to_string_specialization", since = "1.46.0")]
-impl ToString for char {
+impl SpecToString for char {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(self.encode_utf8(&mut [0; 4]))
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "bool_to_string_specialization", since = "1.68.0")]
-impl ToString for bool {
+impl SpecToString for bool {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         String::from(if *self { "true" } else { "false" })
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
-impl ToString for u8 {
+impl SpecToString for u8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(3);
         let mut n = *self;
         if n >= 10 {
@@ -2736,12 +2747,10 @@ impl ToString for u8 {
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
-impl ToString for i8 {
+impl SpecToString for i8 {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         let mut buf = String::with_capacity(4);
         if self.is_negative() {
             buf.push('-');
@@ -2782,11 +2791,9 @@ macro_rules! to_string_expr_wrap_in_deref {
 macro_rules! to_string_str {
     {$($($x:ident)*),+} => {
         $(
-            #[doc(hidden)]
-            #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
-            impl ToString for to_string_str_wrap_in_ref!($($x)*) {
+            impl SpecToString for to_string_str_wrap_in_ref!($($x)*) {
                 #[inline]
-                fn to_string(&self) -> String {
+                fn spec_to_string(&self) -> String {
                     String::from(to_string_expr_wrap_in_deref!(self ; $($x)*))
                 }
             }
@@ -2810,32 +2817,26 @@ to_string_str! {
     x,
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
-impl ToString for Cow<'_, str> {
+impl SpecToString for Cow<'_, str> {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self[..].to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "string_to_string_specialization", since = "1.17.0")]
-impl ToString for String {
+impl SpecToString for String {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         self.to_owned()
     }
 }
 
-#[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "fmt_arguments_to_string_specialization", since = "1.71.0")]
-impl ToString for fmt::Arguments<'_> {
+impl SpecToString for fmt::Arguments<'_> {
     #[inline]
-    fn to_string(&self) -> String {
+    fn spec_to_string(&self) -> String {
         crate::fmt::format(*self)
     }
 }

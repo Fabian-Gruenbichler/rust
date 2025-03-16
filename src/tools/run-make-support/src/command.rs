@@ -224,6 +224,12 @@ pub struct CompletedProcess {
 impl CompletedProcess {
     #[must_use]
     #[track_caller]
+    pub fn stdout(&self) -> Vec<u8> {
+        self.output.stdout.clone()
+    }
+
+    #[must_use]
+    #[track_caller]
     pub fn stdout_utf8(&self) -> String {
         String::from_utf8(self.output.stdout.clone()).expect("stdout is not valid UTF-8")
     }
@@ -236,8 +242,20 @@ impl CompletedProcess {
 
     #[must_use]
     #[track_caller]
+    pub fn stderr(&self) -> Vec<u8> {
+        self.output.stderr.clone()
+    }
+
+    #[must_use]
+    #[track_caller]
     pub fn stderr_utf8(&self) -> String {
         String::from_utf8(self.output.stderr.clone()).expect("stderr is not valid UTF-8")
+    }
+
+    #[must_use]
+    #[track_caller]
+    pub fn invalid_stderr_utf8(&self) -> String {
+        String::from_utf8_lossy(&self.output.stderr.clone()).to_string()
     }
 
     #[must_use]
@@ -311,7 +329,7 @@ impl CompletedProcess {
     /// Checks that `stderr` does not contain the regex pattern `unexpected`.
     #[track_caller]
     pub fn assert_stderr_not_contains_regex<S: AsRef<str>>(&self, unexpected: S) -> &Self {
-        assert_not_contains_regex(&self.stdout_utf8(), unexpected);
+        assert_not_contains_regex(&self.stderr_utf8(), unexpected);
         self
     }
 

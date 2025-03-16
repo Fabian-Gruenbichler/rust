@@ -252,7 +252,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
-use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, Receiver};
+use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
 use core::pin::Pin;
@@ -282,19 +282,19 @@ mod tests;
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
 #[repr(C)]
-struct RcBox<T: ?Sized> {
+struct RcInner<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
     value: T,
 }
 
-/// Calculate layout for `RcBox<T>` using the inner value's layout
-fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
+/// Calculate layout for `RcInner<T>` using the inner value's layout
+fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Calculate layout using the given value layout.
     // Previously, layout was calculated on the expression
-    // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
+    // `&*(ptr as *const RcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<RcBox<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<RcInner<()>>().extend(layout).unwrap().0.pad_to_align()
 }
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference
@@ -307,6 +307,7 @@ fn rcbox_layout_for_value_layout(layout: Layout) -> Layout {
 /// `value.get_mut()`. This avoids conflicts with methods of the inner type `T`.
 ///
 /// [get_mut]: Rc::get_mut
+#[doc(search_unbox)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
@@ -314,8 +315,8 @@ pub struct Rc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
+    phantom: PhantomData<RcInner<T>>,
     alloc: A,
 }
 
@@ -343,38 +344,53 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline]
-    unsafe fn from_inner(ptr: NonNull<RcBox<T>>) -> Self {
+    unsafe fn from_inner(ptr: NonNull<RcInner<T>>) -> Self {
         unsafe { Self::from_inner_in(ptr, Global) }
     }
 
     #[inline]
-    unsafe fn from_ptr(ptr: *mut RcBox<T>) -> Self {
+    unsafe fn from_ptr(ptr: *mut RcInner<T>) -> Self {
         unsafe { Self::from_inner(NonNull::new_unchecked(ptr)) }
     }
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> {
+    fn inner(&self) -> &RcInner<T> {
         // This unsafety is ok because while this Rc is alive we're guaranteed
         // that the inner pointer is valid.
         unsafe { self.ptr.as_ref() }
     }
 
     #[inline]
-    fn into_inner_with_allocator(this: Self) -> (NonNull<RcBox<T>>, A) {
+    fn into_inner_with_allocator(this: Self) -> (NonNull<RcInner<T>>, A) {
         let this = mem::ManuallyDrop::new(this);
         (this.ptr, unsafe { ptr::read(&this.alloc) })
     }
 
     #[inline]
-    unsafe fn from_inner_in(ptr: NonNull<RcBox<T>>, alloc: A) -> Self {
+    unsafe fn from_inner_in(ptr: NonNull<RcInner<T>>, alloc: A) -> Self {
         Self { ptr, phantom: PhantomData, alloc }
     }
 
     #[inline]
-    unsafe fn from_ptr_in(ptr: *mut RcBox<T>, alloc: A) -> Self {
+    unsafe fn from_ptr_in(ptr: *mut RcInner<T>, alloc: A) -> Self {
         unsafe { Self::from_inner_in(NonNull::new_unchecked(ptr), alloc) }
+    }
+
+    // Non-inlined part of `drop`.
+    #[inline(never)]
+    unsafe fn drop_slow(&mut self) {
+        // Reconstruct the "strong weak" pointer and drop it when this
+        // variable goes out of scope. This ensures that the memory is
+        // deallocated even if the destructor of `T` panics.
+        let _weak = Weak { ptr: self.ptr, alloc: &self.alloc };
+
+        // Destroy the contained object.
+        // We cannot use `get_mut_unchecked` here, because `self.alloc` is borrowed.
+        unsafe {
+            ptr::drop_in_place(&mut (*self.ptr.as_ptr()).value);
+        }
     }
 }
 
@@ -397,7 +413,7 @@ impl<T> Rc<T> {
         // if the weak pointer is stored inside the strong one.
         unsafe {
             Self::from_inner(
-                Box::leak(Box::new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value }))
+                Box::leak(Box::new(RcInner { strong: Cell::new(1), weak: Cell::new(1), value }))
                     .into(),
             )
         }
@@ -546,8 +562,12 @@ impl<T> Rc<T> {
         // if the weak pointer is stored inside the strong one.
         unsafe {
             Ok(Self::from_inner(
-                Box::leak(Box::try_new(RcBox { strong: Cell::new(1), weak: Cell::new(1), value })?)
-                    .into(),
+                Box::leak(Box::try_new(RcInner {
+                    strong: Cell::new(1),
+                    weak: Cell::new(1),
+                    value,
+                })?)
+                .into(),
             ))
         }
     }
@@ -646,7 +666,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // That would make code size bigger.
         match Self::try_new_in(value, alloc) {
             Ok(m) => m,
-            Err(_) => handle_alloc_error(Layout::new::<RcBox<T>>()),
+            Err(_) => handle_alloc_error(Layout::new::<RcInner<T>>()),
         }
     }
 
@@ -765,7 +785,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let (uninit_raw_ptr, alloc) = Box::into_raw_with_allocator(Box::new_in(
-            RcBox {
+            RcInner {
                 strong: Cell::new(0),
                 weak: Cell::new(1),
                 value: mem::MaybeUninit::<T>::uninit(),
@@ -773,9 +793,9 @@ impl<T, A: Allocator> Rc<T, A> {
             alloc,
         ));
         let uninit_ptr: NonNull<_> = (unsafe { &mut *uninit_raw_ptr }).into();
-        let init_ptr: NonNull<RcBox<T>> = uninit_ptr.cast();
+        let init_ptr: NonNull<RcInner<T>> = uninit_ptr.cast();
 
-        let weak = Weak { ptr: init_ptr, alloc: alloc };
+        let weak = Weak { ptr: init_ptr, alloc };
 
         // It's important we don't give up ownership of the weak pointer, or
         // else the memory might be freed by the time `data_fn` returns. If
@@ -826,7 +846,7 @@ impl<T, A: Allocator> Rc<T, A> {
         // the allocation while the strong destructor is running, even
         // if the weak pointer is stored inside the strong one.
         let (ptr, alloc) = Box::into_unique(Box::try_new_in(
-            RcBox { strong: Cell::new(1), weak: Cell::new(1), value },
+            RcInner { strong: Cell::new(1), weak: Cell::new(1), value },
             alloc,
         )?);
         Ok(unsafe { Self::from_inner_in(ptr.into(), alloc) })
@@ -1059,9 +1079,29 @@ impl<T> Rc<[T]> {
                 |layout| Global.allocate_zeroed(layout),
                 |mem| {
                     ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                        as *mut RcBox<[mem::MaybeUninit<T>]>
+                        as *mut RcInner<[mem::MaybeUninit<T>]>
                 },
             ))
+        }
+    }
+
+    /// Converts the reference-counted slice into a reference-counted array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Rc<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *const [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Rc::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
         }
     }
 }
@@ -1132,7 +1172,7 @@ impl<T, A: Allocator> Rc<[T], A> {
                     |layout| alloc.allocate_zeroed(layout),
                     |mem| {
                         ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len)
-                            as *mut RcBox<[mem::MaybeUninit<T>]>
+                            as *mut RcInner<[mem::MaybeUninit<T>]>
                     },
                 ),
                 alloc,
@@ -1437,7 +1477,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
     pub fn as_ptr(this: &Self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(this.ptr);
+        let ptr: *mut RcInner<T> = NonNull::as_ptr(this.ptr);
 
         // SAFETY: This cannot go through Deref::deref or Rc::inner because
         // this is required to retain raw/mut provenance such that e.g. `get_mut` can
@@ -1516,8 +1556,8 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         let offset = unsafe { data_offset(ptr) };
 
-        // Reverse the offset to find the original RcBox.
-        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcBox<T> };
+        // Reverse the offset to find the original RcInner.
+        let rc_ptr = unsafe { ptr.byte_sub(offset) as *mut RcInner<T> };
 
         unsafe { Self::from_ptr_in(rc_ptr, alloc) }
     }
@@ -1856,7 +1896,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
             // Initialize with clone of this.
             let initialized_clone = unsafe {
                 // Clone. If the clone panics, `in_progress` will be dropped and clean up.
-                this_data_ref.clone_to_uninit(in_progress.data_ptr());
+                this_data_ref.clone_to_uninit(in_progress.data_ptr().cast());
                 // Cast type of pointer, now that it is initialized.
                 in_progress.into_rc()
             };
@@ -2002,43 +2042,43 @@ impl<A: Allocator> Rc<dyn Any, A> {
 }
 
 impl<T: ?Sized> Rc<T> {
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `RcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    /// The function `mem_to_rc_inner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[cfg(not(no_global_oom_handling))]
     unsafe fn allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> *mut RcBox<T> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+    ) -> *mut RcInner<T> {
+        let layout = rc_inner_layout_for_value_layout(value_layout);
         unsafe {
-            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
+            Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rc_inner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
         }
     }
 
-    /// Allocates an `RcBox<T>` with sufficient space for
+    /// Allocates an `RcInner<T>` with sufficient space for
     /// a possibly-unsized inner value where the value has the layout provided,
     /// returning an error if allocation fails.
     ///
-    /// The function `mem_to_rcbox` is called with the data pointer
-    /// and must return back a (potentially fat)-pointer for the `RcBox<T>`.
+    /// The function `mem_to_rc_inner` is called with the data pointer
+    /// and must return back a (potentially fat)-pointer for the `RcInner<T>`.
     #[inline]
     unsafe fn try_allocate_for_layout(
         value_layout: Layout,
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
-        mem_to_rcbox: impl FnOnce(*mut u8) -> *mut RcBox<T>,
-    ) -> Result<*mut RcBox<T>, AllocError> {
-        let layout = rcbox_layout_for_value_layout(value_layout);
+        mem_to_rc_inner: impl FnOnce(*mut u8) -> *mut RcInner<T>,
+    ) -> Result<*mut RcInner<T>, AllocError> {
+        let layout = rc_inner_layout_for_value_layout(value_layout);
 
         // Allocate for the layout.
         let ptr = allocate(layout)?;
 
-        // Initialize the RcBox
-        let inner = mem_to_rcbox(ptr.as_non_null_ptr().as_ptr());
+        // Initialize the RcInner
+        let inner = mem_to_rc_inner(ptr.as_non_null_ptr().as_ptr());
         unsafe {
             debug_assert_eq!(Layout::for_value_raw(inner), layout);
 
@@ -2051,15 +2091,15 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: ?Sized, A: Allocator> Rc<T, A> {
-    /// Allocates an `RcBox<T>` with sufficient space for an unsized inner value
+    /// Allocates an `RcInner<T>` with sufficient space for an unsized inner value
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_ptr_in(ptr: *const T, alloc: &A) -> *mut RcBox<T> {
-        // Allocate for the `RcBox<T>` using the given value.
+    unsafe fn allocate_for_ptr_in(ptr: *const T, alloc: &A) -> *mut RcInner<T> {
+        // Allocate for the `RcInner<T>` using the given value.
         unsafe {
             Rc::<T>::allocate_for_layout(
                 Layout::for_value_raw(ptr),
                 |layout| alloc.allocate(layout),
-                |mem| mem.with_metadata_of(ptr as *const RcBox<T>),
+                |mem| mem.with_metadata_of(ptr as *const RcInner<T>),
             )
         }
     }
@@ -2088,14 +2128,14 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 }
 
 impl<T> Rc<[T]> {
-    /// Allocates an `RcBox<[T]>` with the given length.
+    /// Allocates an `RcInner<[T]>` with the given length.
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice(len: usize) -> *mut RcBox<[T]> {
+    unsafe fn allocate_for_slice(len: usize) -> *mut RcInner<[T]> {
         unsafe {
             Self::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| Global.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcBox<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2119,7 +2159,7 @@ impl<T> Rc<[T]> {
     unsafe fn from_iter_exact(iter: impl Iterator<Item = T>, len: usize) -> Rc<[T]> {
         // Panic guard while cloning T elements.
         // In the event of a panic, elements that have been written
-        // into the new RcBox will be dropped, then the memory freed.
+        // into the new RcInner will be dropped, then the memory freed.
         struct Guard<T> {
             mem: NonNull<u8>,
             elems: *mut T,
@@ -2154,7 +2194,7 @@ impl<T> Rc<[T]> {
                 guard.n_elems += 1;
             }
 
-            // All clear. Forget the guard so it doesn't free the new RcBox.
+            // All clear. Forget the guard so it doesn't free the new RcInner.
             mem::forget(guard);
 
             Self::from_ptr(ptr)
@@ -2163,15 +2203,15 @@ impl<T> Rc<[T]> {
 }
 
 impl<T, A: Allocator> Rc<[T], A> {
-    /// Allocates an `RcBox<[T]>` with the given length.
+    /// Allocates an `RcInner<[T]>` with the given length.
     #[inline]
     #[cfg(not(no_global_oom_handling))]
-    unsafe fn allocate_for_slice_in(len: usize, alloc: &A) -> *mut RcBox<[T]> {
+    unsafe fn allocate_for_slice_in(len: usize, alloc: &A) -> *mut RcInner<[T]> {
         unsafe {
             Rc::<[T]>::allocate_for_layout(
                 Layout::array::<T>(len).unwrap(),
                 |layout| alloc.allocate(layout),
-                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcBox<[T]>,
+                |mem| ptr::slice_from_raw_parts_mut(mem.cast::<T>(), len) as *mut RcInner<[T]>,
             )
         }
     }
@@ -2212,14 +2252,22 @@ impl<T: ?Sized, A: Allocator> Deref for Rc<T, A> {
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Rc<T, A> {}
 
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
+unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for UniqueRc<T, A> {}
+
 #[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
 unsafe impl<T: ?Sized, A: Allocator> PinCoerceUnsized for Weak<T, A> {}
 
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 unsafe impl<T: ?Sized, A: Allocator> DerefPure for Rc<T, A> {}
 
-#[unstable(feature = "receiver_trait", issue = "none")]
-impl<T: ?Sized> Receiver for Rc<T> {}
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: ?Sized, A: Allocator> DerefPure for UniqueRc<T, A> {}
+
+#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+impl<T: ?Sized> LegacyReceiver for Rc<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
@@ -2248,21 +2296,12 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Rc<T, A> {
     /// drop(foo);    // Doesn't print anything
     /// drop(foo2);   // Prints "dropped!"
     /// ```
+    #[inline]
     fn drop(&mut self) {
         unsafe {
             self.inner().dec_strong();
             if self.inner().strong() == 0 {
-                // destroy the contained object
-                ptr::drop_in_place(Self::get_mut_unchecked(self));
-
-                // remove the implicit "strong weak" pointer now that we've
-                // destroyed the contents.
-                self.inner().dec_weak();
-
-                if self.inner().weak() == 0 {
-                    self.alloc
-                        .deallocate(self.ptr.cast(), Layout::for_value_raw(self.ptr.as_ptr()));
-                }
+                self.drop_slow();
             }
         }
     }
@@ -2308,7 +2347,16 @@ impl<T: Default> Default for Rc<T> {
     /// ```
     #[inline]
     fn default() -> Rc<T> {
-        Rc::new(Default::default())
+        unsafe {
+            Self::from_inner(
+                Box::leak(Box::write(Box::new_uninit(), RcInner {
+                    strong: Cell::new(1),
+                    weak: Cell::new(1),
+                    value: T::default(),
+                }))
+                .into(),
+            )
+        }
     }
 }
 
@@ -2639,6 +2687,26 @@ impl<T: Clone> From<&[T]> for Rc<[T]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
+impl<T: Clone> From<&mut [T]> for Rc<[T]> {
+    /// Allocates a reference-counted slice and fills it by cloning `v`'s items.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = [1, 2, 3];
+    /// let original: &mut [i32] = &mut original;
+    /// let shared: Rc<[i32]> = Rc::from(original);
+    /// assert_eq!(&[1, 2, 3], &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut [T]) -> Rc<[T]> {
+        Rc::from(&*v)
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
 impl From<&str> for Rc<str> {
     /// Allocates a reference-counted string slice and copies `v` into it.
@@ -2654,6 +2722,26 @@ impl From<&str> for Rc<str> {
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
+impl From<&mut str> for Rc<str> {
+    /// Allocates a reference-counted string slice and copies `v` into it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::rc::Rc;
+    /// let mut original = String::from("statue");
+    /// let original: &mut str = &mut original;
+    /// let shared: Rc<str> = Rc::from(original);
+    /// assert_eq!("statue", &shared[..]);
+    /// ```
+    #[inline]
+    fn from(v: &mut str) -> Rc<str> {
+        Rc::from(&*v)
     }
 }
 
@@ -2872,7 +2960,9 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 }
 
 /// `Weak` is a version of [`Rc`] that holds a non-owning reference to the
-/// managed allocation. The allocation is accessed by calling [`upgrade`] on the `Weak`
+/// managed allocation.
+///
+/// The allocation is accessed by calling [`upgrade`] on the `Weak`
 /// pointer, which returns an <code>[Option]<[Rc]\<T>></code>.
 ///
 /// Since a `Weak` reference does not count towards ownership, it will not
@@ -2901,9 +2991,9 @@ pub struct Weak<
     // but it is not necessarily a valid pointer.
     // `Weak::new` sets this to `usize::MAX` so that it doesn’t need
     // to allocate space on the heap. That's not a value a real pointer
-    // will ever have because RcBox has alignment at least 2.
+    // will ever have because RcInner has alignment at least 2.
     // This is only possible when `T: Sized`; unsized `T` never dangle.
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
     alloc: A,
 }
 
@@ -2939,7 +3029,7 @@ impl<T> Weak<T> {
     pub const fn new() -> Weak<T> {
         Weak {
             ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
             },
             alloc: Global,
         }
@@ -2966,7 +3056,7 @@ impl<T, A: Allocator> Weak<T, A> {
     pub fn new_in(alloc: A) -> Weak<T, A> {
         Weak {
             ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcBox<T>>(usize::MAX))
+                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
             },
             alloc,
         }
@@ -3062,7 +3152,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     ///
     /// drop(strong);
     /// // But not any more. We can do weak.as_ptr(), but accessing the pointer would lead to
-    /// // undefined behaviour.
+    /// // undefined behavior.
     /// // assert_eq!("hello", unsafe { &*weak.as_ptr() });
     /// ```
     ///
@@ -3070,11 +3160,11 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     #[must_use]
     #[stable(feature = "rc_as_ptr", since = "1.45.0")]
     pub fn as_ptr(&self) -> *const T {
-        let ptr: *mut RcBox<T> = NonNull::as_ptr(self.ptr);
+        let ptr: *mut RcInner<T> = NonNull::as_ptr(self.ptr);
 
         if is_dangling(ptr) {
             // If the pointer is dangling, we return the sentinel directly. This cannot be
-            // a valid payload address, as the payload is at least as aligned as RcBox (usize).
+            // a valid payload address, as the payload is at least as aligned as RcInner (usize).
             ptr as *const T
         } else {
             // SAFETY: if is_dangling returns false, then the pointer is dereferenceable.
@@ -3206,14 +3296,14 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
 
         let ptr = if is_dangling(ptr) {
             // This is a dangling Weak.
-            ptr as *mut RcBox<T>
+            ptr as *mut RcInner<T>
         } else {
             // Otherwise, we're guaranteed the pointer came from a nondangling Weak.
             // SAFETY: data_offset is safe to call, as ptr references a real (potentially dropped) T.
             let offset = unsafe { data_offset(ptr) };
-            // Thus, we reverse the offset to get the whole RcBox.
+            // Thus, we reverse the offset to get the whole RcInner.
             // SAFETY: the pointer originated from a Weak, so this offset is safe.
-            unsafe { ptr.byte_sub(offset) as *mut RcBox<T> }
+            unsafe { ptr.byte_sub(offset) as *mut RcInner<T> }
         };
 
         // SAFETY: we now have recovered the original Weak pointer, so can create the Weak.
@@ -3288,7 +3378,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
         }
     }
 
-    /// Returns `None` when the pointer is dangling and there is no allocated `RcBox`,
+    /// Returns `None` when the pointer is dangling and there is no allocated `RcInner`,
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
@@ -3522,7 +3612,7 @@ trait RcInnerPtr {
     }
 }
 
-impl<T: ?Sized> RcInnerPtr for RcBox<T> {
+impl<T: ?Sized> RcInnerPtr for RcInner<T> {
     #[inline(always)]
     fn weak_ref(&self) -> &Cell<usize> {
         &self.weak
@@ -3563,15 +3653,15 @@ impl<T: ?Sized, A: Allocator> AsRef<T> for Rc<T, A> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> Unpin for Rc<T, A> {}
 
-/// Gets the offset within an `RcBox` for the payload behind a pointer.
+/// Gets the offset within an `RcInner` for the payload behind a pointer.
 ///
 /// # Safety
 ///
 /// The pointer must point to (and have valid metadata for) a previously
 /// valid instance of T, but the T is allowed to be dropped.
 unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
-    // Align the unsized value to the end of the RcBox.
-    // Because RcBox is repr(C), it will always be the last field in memory.
+    // Align the unsized value to the end of the RcInner.
+    // Because RcInner is repr(C), it will always be the last field in memory.
     // SAFETY: since the only unsized types possible are slices, trait objects,
     // and extern types, the input safety requirement is currently enough to
     // satisfy the requirements of align_of_val_raw; this is an implementation
@@ -3581,7 +3671,7 @@ unsafe fn data_offset<T: ?Sized>(ptr: *const T) -> usize {
 
 #[inline]
 fn data_offset_align(align: usize) -> usize {
-    let layout = Layout::new::<RcBox<()>>();
+    let layout = Layout::new::<RcInner<()>>();
     layout.size() + layout.padding_needed_for(align)
 }
 
@@ -3622,20 +3712,260 @@ fn data_offset_align(align: usize) -> usize {
 /// previous example, `UniqueRc` allows for more flexibility in the construction of cyclic data,
 /// including fallible or async constructors.
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
-#[derive(Debug)]
 pub struct UniqueRc<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
-    ptr: NonNull<RcBox<T>>,
-    phantom: PhantomData<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
+    phantom: PhantomData<RcInner<T>>,
     alloc: A,
 }
+
+// Not necessary for correctness since `UniqueRc` contains `NonNull`,
+// but having an explicit negative impl is nice for documentation purposes
+// and results in nicer error messages.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> !Send for UniqueRc<T, A> {}
+
+// Not necessary for correctness since `UniqueRc` contains `NonNull`,
+// but having an explicit negative impl is nice for documentation purposes
+// and results in nicer error messages.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> !Sync for UniqueRc<T, A> {}
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<UniqueRc<U, A>>
     for UniqueRc<T, A>
 {
+}
+
+//#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[unstable(feature = "dispatch_from_dyn", issue = "none")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<UniqueRc<U>> for UniqueRc<T> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Display, A: Allocator> fmt::Display for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + fmt::Debug, A: Allocator> fmt::Debug for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> fmt::Pointer for UniqueRc<T, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Pointer::fmt(&(&raw const **self), f)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::Borrow<T> for UniqueRc<T, A> {
+    fn borrow(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> borrow::BorrowMut<T> for UniqueRc<T, A> {
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsRef<T> for UniqueRc<T, A> {
+    fn as_ref(&self) -> &T {
+        &**self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> AsMut<T> for UniqueRc<T, A> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut **self
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized, A: Allocator> Unpin for UniqueRc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueRc<T, A> {
+    /// Equality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are equal if their inner values are equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five == UniqueRc::new(5));
+    /// ```
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        PartialEq::eq(&**self, &**other)
+    }
+
+    /// Inequality for two `UniqueRc`s.
+    ///
+    /// Two `UniqueRc`s are not equal if their inner values are not equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five != UniqueRc::new(6));
+    /// ```
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        PartialEq::ne(&**self, &**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + PartialOrd, A: Allocator> PartialOrd for UniqueRc<T, A> {
+    /// Partial comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `partial_cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Some(Ordering::Less), five.partial_cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline(always)]
+    fn partial_cmp(&self, other: &UniqueRc<T, A>) -> Option<Ordering> {
+        (**self).partial_cmp(&**other)
+    }
+
+    /// Less-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five < UniqueRc::new(6));
+    /// ```
+    #[inline(always)]
+    fn lt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self < **other
+    }
+
+    /// 'Less than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `<=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five <= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn le(&self, other: &UniqueRc<T, A>) -> bool {
+        **self <= **other
+    }
+
+    /// Greater-than comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five > UniqueRc::new(4));
+    /// ```
+    #[inline(always)]
+    fn gt(&self, other: &UniqueRc<T, A>) -> bool {
+        **self > **other
+    }
+
+    /// 'Greater than or equal to' comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `>=` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert!(five >= UniqueRc::new(5));
+    /// ```
+    #[inline(always)]
+    fn ge(&self, other: &UniqueRc<T, A>) -> bool {
+        **self >= **other
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Ord, A: Allocator> Ord for UniqueRc<T, A> {
+    /// Comparison for two `UniqueRc`s.
+    ///
+    /// The two are compared by calling `cmp()` on their inner values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unique_rc_arc)]
+    /// use std::rc::UniqueRc;
+    /// use std::cmp::Ordering;
+    ///
+    /// let five = UniqueRc::new(5);
+    ///
+    /// assert_eq!(Ordering::Less, five.cmp(&UniqueRc::new(6)));
+    /// ```
+    #[inline]
+    fn cmp(&self, other: &UniqueRc<T, A>) -> Ordering {
+        (**self).cmp(&**other)
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Eq, A: Allocator> Eq for UniqueRc<T, A> {}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T: ?Sized + Hash, A: Allocator> Hash for UniqueRc<T, A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
 }
 
 // Depends on A = Global
@@ -3664,7 +3994,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
     #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn new_in(value: T, alloc: A) -> Self {
         let (ptr, alloc) = Box::into_unique(Box::new_in(
-            RcBox {
+            RcInner {
                 strong: Cell::new(0),
                 // keep one weak reference so if all the weak pointers that are created are dropped
                 // the UniqueRc still stays valid.
@@ -3729,9 +4059,6 @@ impl<T: ?Sized, A: Allocator> Deref for UniqueRc<T, A> {
     }
 }
 
-#[unstable(feature = "pin_coerce_unsized_trait", issue = "123430")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for UniqueRc<T> {}
-
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
 impl<T: ?Sized, A: Allocator> DerefMut for UniqueRc<T, A> {
     fn deref_mut(&mut self) -> &mut T {
@@ -3759,7 +4086,7 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
     }
 }
 
-/// A unique owning pointer to a [`RcBox`] **that does not imply the contents are initialized,**
+/// A unique owning pointer to a [`RcInner`] **that does not imply the contents are initialized,**
 /// but will deallocate it (without dropping the value) when dropped.
 ///
 /// This is a helper for [`Rc::make_mut()`] to ensure correct cleanup on panic.
@@ -3767,21 +4094,21 @@ unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for UniqueRc<T, A> {
 /// which `MaybeUninit` does not.
 #[cfg(not(no_global_oom_handling))]
 struct UniqueRcUninit<T: ?Sized, A: Allocator> {
-    ptr: NonNull<RcBox<T>>,
+    ptr: NonNull<RcInner<T>>,
     layout_for_value: Layout,
     alloc: Option<A>,
 }
 
 #[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> UniqueRcUninit<T, A> {
-    /// Allocates a RcBox with layout suitable to contain `for_value` or a clone of it.
+    /// Allocates a RcInner with layout suitable to contain `for_value` or a clone of it.
     fn new(for_value: &T, alloc: A) -> UniqueRcUninit<T, A> {
         let layout = Layout::for_value(for_value);
         let ptr = unsafe {
             Rc::allocate_for_layout(
                 layout,
-                |layout_for_rcbox| alloc.allocate(layout_for_rcbox),
-                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcBox<T>),
+                |layout_for_rc_inner| alloc.allocate(layout_for_rc_inner),
+                |mem| mem.with_metadata_of(ptr::from_ref(for_value) as *const RcInner<T>),
             )
         };
         Self { ptr: NonNull::new(ptr).unwrap(), layout_for_value: layout, alloc: Some(alloc) }
@@ -3816,10 +4143,10 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
         // * new() produced a pointer safe to deallocate.
         // * We own the pointer unless into_rc() was called, which forgets us.
         unsafe {
-            self.alloc
-                .take()
-                .unwrap()
-                .deallocate(self.ptr.cast(), rcbox_layout_for_value_layout(self.layout_for_value));
+            self.alloc.take().unwrap().deallocate(
+                self.ptr.cast(),
+                rc_inner_layout_for_value_layout(self.layout_for_value),
+            );
         }
     }
 }

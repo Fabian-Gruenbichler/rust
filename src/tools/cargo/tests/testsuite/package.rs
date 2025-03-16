@@ -72,8 +72,14 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
-        &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[],
+        &[
+            "Cargo.lock",
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "src/main.rs",
+            "Cargo.lock",
+        ],
+        (),
     );
 }
 
@@ -183,8 +189,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
     "sha1": "{}"
   }},
   "path_in_vcs": ""
-}}
-"#,
+}}"#,
         repo.revparse_head()
     );
     validate_crate_contents(
@@ -197,7 +202,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
             "src/main.rs",
             ".cargo_vcs_info.json",
         ],
-        &[(".cargo_vcs_info.json", &vcs_contents)],
+        [(".cargo_vcs_info.json", &vcs_contents)],
     );
 
     println!("package sub-repo");
@@ -208,10 +213,11 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
 See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info.
 [PACKAGING] a v0.0.1 ([ROOT]/all/a/a)
 [ARCHIVING] .cargo_vcs_info.json
+[ARCHIVING] Cargo.lock
 [ARCHIVING] Cargo.toml
 [ARCHIVING] Cargo.toml.orig
 [ARCHIVING] src/lib.rs
-[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 
 "#]])
         .run();
@@ -223,20 +229,20 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
     "sha1": "{}"
   }},
   "path_in_vcs": "a/a"
-}}
-"#,
+}}"#,
         repo.revparse_head()
     );
     validate_crate_contents(
         f,
         "a-0.0.1.crate",
         &[
+            "Cargo.lock",
             "Cargo.toml",
             "Cargo.toml.orig",
             "src/lib.rs",
             ".cargo_vcs_info.json",
         ],
-        &[(".cargo_vcs_info.json", &vcs_contents)],
+        [(".cargo_vcs_info.json", &vcs_contents)],
     );
 }
 
@@ -630,7 +636,6 @@ fn package_git_submodule() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 /// Tests if a symlink to a git submodule is properly handled.
 ///
@@ -757,7 +762,7 @@ src/main.rs
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[],
+        (),
     );
 }
 
@@ -818,7 +823,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
             "src/main.rs",
             "src/foo.rs",
         ],
-        &[],
+        (),
     );
 }
 
@@ -1096,6 +1101,20 @@ to proceed despite this and include the uncommitted changes, pass the `--allow-d
 
 "#]])
         .run();
+
+    // cd to `src` and cargo report relative paths.
+    p.cargo("package")
+        .cwd(p.root().join("src"))
+        .with_status(101)
+        .with_stderr_data(str![[r#"
+[ERROR] 1 files in the working directory contain changes that were not yet committed into git:
+
+../Cargo.toml
+
+to proceed despite this and include the uncommitted changes, pass the `--allow-dirty` flag
+
+"#]])
+        .run();
 }
 
 #[cargo_test]
@@ -1141,6 +1160,7 @@ to proceed despite this and include the uncommitted changes, pass the `--allow-d
         .with_stderr_data("")
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/build/mod.rs
@@ -1148,6 +1168,261 @@ src/lib.rs
 
 "#]])
         .run();
+}
+
+#[cargo_test]
+fn vcs_status_check_for_each_workspace_member() {
+    // Cargo checks VCS status separately for each workspace member.
+    // This ensure one file changed in a package won't affect the other.
+    // Since the dirty bit in .cargo_vcs_info.json is just for advisory purpose,
+    // We may change the meaning of it in the future.
+    let (p, repo) = git::new_repo("foo", |p| {
+        p.file(
+            "Cargo.toml",
+            r#"
+                [workspace]
+                members = ["isengard", "mordor"]
+            "#,
+        )
+        .file("hobbit", "...")
+        .file(
+            "isengard/Cargo.toml",
+            r#"
+                [package]
+                name = "isengard"
+                edition = "2015"
+                homepage = "saruman"
+                description = "saruman"
+                license = "MIT"
+            "#,
+        )
+        .file("isengard/src/lib.rs", "")
+        .file(
+            "mordor/Cargo.toml",
+            r#"
+                [package]
+                name = "mordor"
+                edition = "2015"
+                homepage = "sauron"
+                description = "sauron"
+                license = "MIT"
+            "#,
+        )
+        .file("mordor/src/lib.rs", "")
+    });
+    git::commit(&repo);
+
+    p.change_file(
+        "Cargo.toml",
+        r#"
+            [workspace]
+            members = ["isengard", "mordor"]
+            [workspace.package]
+            edition = "2021"
+        "#,
+    );
+    // Dirty file outside won't affect packaging.
+    p.change_file("hobbit", "changed!");
+    p.change_file("mordor/src/lib.rs", "changed!");
+    p.change_file("mordor/src/main.rs", "fn main() {}");
+
+    // Ensure dirty files be reported only for one affected package.
+    p.cargo("package --workspace --no-verify")
+        .with_status(101)
+        .with_stderr_data(str![[r#"
+[PACKAGING] isengard v0.0.0 ([ROOT]/foo/isengard)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[ERROR] 2 files in the working directory contain changes that were not yet committed into git:
+
+mordor/src/lib.rs
+mordor/src/main.rs
+
+to proceed despite this and include the uncommitted changes, pass the `--allow-dirty` flag
+
+"#]])
+        .run();
+
+    // Ensure only dirty package be recorded as dirty.
+    p.cargo("package --workspace --no-verify --allow-dirty")
+        .with_stderr_data(str![[r#"
+[PACKAGING] isengard v0.0.0 ([ROOT]/foo/isengard)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGING] mordor v0.0.0 ([ROOT]/foo/mordor)
+[PACKAGED] 6 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+
+"#]])
+        .run();
+
+    let f = File::open(&p.root().join("target/package/isengard-0.0.0.crate")).unwrap();
+    validate_crate_contents(
+        f,
+        "isengard-0.0.0.crate",
+        &[
+            ".cargo_vcs_info.json",
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            "Cargo.lock",
+        ],
+        [(
+            ".cargo_vcs_info.json",
+            // No change within `isengard/`, so not dirty at all.
+            str![[r#"
+{
+  "git": {
+    "sha1": "[..]"
+  },
+  "path_in_vcs": "isengard"
+}
+"#]]
+            .is_json(),
+        )],
+    );
+
+    let f = File::open(&p.root().join("target/package/mordor-0.0.0.crate")).unwrap();
+    validate_crate_contents(
+        f,
+        "mordor-0.0.0.crate",
+        &[
+            ".cargo_vcs_info.json",
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            "src/main.rs",
+            "Cargo.lock",
+        ],
+        [(
+            ".cargo_vcs_info.json",
+            // Dirty bit is recorded.
+            str![[r#"
+{
+  "git": {
+    "dirty": true,
+    "sha1": "[..]"
+  },
+  "path_in_vcs": "mordor"
+}
+"#]]
+            .is_json(),
+        )],
+    );
+}
+
+#[cargo_test]
+fn dirty_file_outside_pkg_root_considered_dirty() {
+    if !symlink_supported() {
+        return;
+    }
+    let main_outside_pkg_root = paths::root().join("main.rs");
+    let (p, repo) = git::new_repo("foo", |p| {
+        p.file(
+            "Cargo.toml",
+            r#"
+                [workspace]
+                members = ["isengard"]
+                resolver = "2"
+                [workspace.package]
+                edition = "2015"
+            "#,
+        )
+        .file("lib.rs", r#"compile_error!("you shall not pass")"#)
+        .file("LICENSE", "before")
+        .file("README.md", "before")
+        .file(
+            "isengard/Cargo.toml",
+            r#"
+                [package]
+                name = "isengard"
+                edition.workspace = true
+                homepage = "saruman"
+                description = "saruman"
+                license-file = "../LICENSE"
+            "#,
+        )
+        .symlink("lib.rs", "isengard/src/lib.rs")
+        .symlink("README.md", "isengard/README.md")
+        .file(&main_outside_pkg_root, "fn main() {}")
+        .symlink(&main_outside_pkg_root, "isengard/src/main.rs")
+    });
+    git::commit(&repo);
+
+    // Changing files outside pkg root under situations below should be treated
+    // as dirty. `cargo package` is expected to fail on VCS stastus check.
+    //
+    // * Changes in files outside package root that source files symlink to
+    p.change_file("README.md", "after");
+    p.change_file("lib.rs", "pub fn after() {}");
+    // * Changes in files outside pkg root that `license-file`/`readme` point to
+    p.change_file("LICENSE", "after");
+    // * When workspace inheritance is involved and changed
+    p.change_file(
+        "Cargo.toml",
+        r#"
+            [workspace]
+            members = ["isengard"]
+            resolver = "2"
+            [workspace.package]
+            edition = "2021"
+        "#,
+    );
+    // Changes in files outside git workdir won't affect vcs status check
+    p.change_file(
+        &main_outside_pkg_root,
+        r#"fn main() { eprintln!("after"); }"#,
+    );
+
+    // Ensure dirty files be reported.
+    p.cargo("package --workspace --no-verify")
+        .with_status(101)
+        .with_stderr_data(str![[r#"
+[ERROR] 2 files in the working directory contain changes that were not yet committed into git:
+
+LICENSE
+README.md
+
+to proceed despite this and include the uncommitted changes, pass the `--allow-dirty` flag
+
+"#]])
+        .run();
+
+    p.cargo("package --workspace --no-verify --allow-dirty")
+        .with_stderr_data(str![[r#"
+[PACKAGING] isengard v0.0.0 ([ROOT]/foo/isengard)
+[PACKAGED] 8 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+
+"#]])
+        .run();
+
+    let cargo_toml = str![[r##"
+...
+[package]
+edition = "2021"
+...
+
+"##]];
+
+    let f = File::open(&p.root().join("target/package/isengard-0.0.0.crate")).unwrap();
+    validate_crate_contents(
+        f,
+        "isengard-0.0.0.crate",
+        &[
+            ".cargo_vcs_info.json",
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            "src/main.rs",
+            "Cargo.lock",
+            "LICENSE",
+            "README.md",
+        ],
+        [
+            ("src/lib.rs", str!["pub fn after() {}"]),
+            ("src/main.rs", str![r#"fn main() { eprintln!("after"); }"#]),
+            ("README.md", str!["after"]),
+            ("LICENSE", str!["after"]),
+            ("Cargo.toml", cargo_toml),
+        ],
+    );
 }
 
 #[cargo_test]
@@ -1184,16 +1459,20 @@ fn issue_13695_allow_dirty_vcs_info() {
             "Cargo.toml",
             "Cargo.toml.orig",
             "src/lib.rs",
+            "Cargo.lock",
         ],
-        &[(
+        [(
             ".cargo_vcs_info.json",
-            r#"{
+            str![[r#"
+{
   "git": {
-    "sha1": "[..]",
-    "dirty": true
+    "dirty": true,
+    "sha1": "[..]"
   },
   "path_in_vcs": ""
-}"#,
+}
+"#]]
+            .is_json(),
         )],
     );
 
@@ -1202,6 +1481,7 @@ fn issue_13695_allow_dirty_vcs_info() {
         .with_stderr_data("")
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/lib.rs
@@ -1241,15 +1521,19 @@ fn issue_13695_allowing_dirty_vcs_info_but_clean() {
             "Cargo.toml",
             "Cargo.toml.orig",
             "src/lib.rs",
+            "Cargo.lock",
         ],
-        &[(
+        [(
             ".cargo_vcs_info.json",
-            r#"{
+            str![[r#"
+{
   "git": {
     "sha1": "[..]"
   },
   "path_in_vcs": ""
-}"#,
+}
+"#]]
+            .is_json(),
         )],
     );
 }
@@ -1279,14 +1563,14 @@ fn issue_14354_allowing_dirty_bare_commit() {
     validate_crate_contents(
         f,
         "foo-0.1.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[],
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        (),
     );
 }
 
 #[cargo_test]
 fn generated_manifest() {
-    let registry = registry::alt_init();
+    registry::alt_init();
     Package::new("abc", "1.0.0").publish();
     Package::new("def", "1.0.0").alternative(true).publish();
     Package::new("ghi", "1.0.0").publish();
@@ -1325,8 +1609,18 @@ fn generated_manifest() {
     p.cargo("package --no-verify").run();
 
     let f = File::open(&p.root().join("target/package/foo-0.0.1.crate")).unwrap();
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "foo"
@@ -1358,20 +1652,18 @@ version = "0.1"
 
 [dependencies.def]
 version = "1.0"
-registry-index = "{}"
+registry-index = "[ROOTURL]/alternative-registry"
 
 [dependencies.ghi]
 version = "1.0"
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE,
-        registry.index_url()
-    );
+
+"##]];
 
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[("Cargo.toml", &rewritten_toml)],
+        [("Cargo.toml", rewritten_toml)],
     );
 }
 
@@ -1412,8 +1704,18 @@ fn ignore_workspace_specifier() {
     p.cargo("package --no-verify").cwd("bar").run();
 
     let f = File::open(&p.root().join("target/package/bar-0.1.0.crate")).unwrap();
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "bar"
@@ -1430,14 +1732,13 @@ readme = false
 [lib]
 name = "bar"
 path = "src/lib.rs"
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE
-    );
+
+"##]];
     validate_crate_contents(
         f,
         "bar-0.1.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[("Cargo.toml", &rewritten_toml)],
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        [("Cargo.toml", rewritten_toml)],
     );
 }
 
@@ -1491,8 +1792,18 @@ fn package_public_dep() {
         )
         .file("src/main.rs", "fn main() {}")
         .build();
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "foo"
@@ -1512,16 +1823,24 @@ path = "src/main.rs"
 [dependencies.bar]
 version = "1.0.0"
 
-[target.{host}.dependencies.baz]
+[target.[HOST_TARGET].dependencies.baz]
 version = "1.0.0"
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE,
-        host = rustc_host()
-    );
+
+"##]];
     verify(&p, "package", rewritten_toml);
 
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "foo"
@@ -1542,16 +1861,14 @@ path = "src/main.rs"
 version = "1.0.0"
 public = true
 
-[target.{host}.dependencies.baz]
+[target.[HOST_TARGET].dependencies.baz]
 version = "1.0.0"
 public = true
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE,
-        host = rustc_host()
-    );
+
+"##]];
     verify(&p, "package -Zpublic-dependency", rewritten_toml);
 
-    fn verify(p: &cargo_test_support::Project, cmd: &str, rewritten_toml: String) {
+    fn verify(p: &cargo_test_support::Project, cmd: &str, rewritten_toml: impl IntoData) {
         p.cargo(cmd)
             .masquerade_as_nightly_cargo(&["public-dependency"])
             .run();
@@ -1560,7 +1877,7 @@ public = true
             f,
             "foo-0.0.1.crate",
             &["Cargo.toml", "Cargo.toml.orig", "Cargo.lock", "src/main.rs"],
-            &[("Cargo.toml", &rewritten_toml)],
+            [("Cargo.toml", rewritten_toml)],
         );
     }
 }
@@ -1837,6 +2154,7 @@ fn include_cargo_toml_implicit() {
 
     p.cargo("package --list")
         .with_stdout_data(str![[r#"
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/lib.rs
@@ -1889,7 +2207,8 @@ fn package_include_ignore_only() {
         r#"["Cargo.toml", "src/abc**", "src/lib.rs"]"#,
         "[]",
         &["src/lib.rs", "src/abc1.rs", "src/abc2.rs", "src/abc/mod.rs"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          src/abc/mod.rs\n\
          src/abc1.rs\n\
@@ -1905,7 +2224,8 @@ fn gitignore_patterns() {
         r#"["Cargo.toml", "foo"]"#, // include
         "[]",
         &["src/lib.rs", "foo", "a/foo", "a/b/foo", "x/foo/y", "bar"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          a/b/foo\n\
          a/foo\n\
@@ -1918,7 +2238,8 @@ fn gitignore_patterns() {
         r#"["Cargo.toml", "/foo"]"#, // include
         "[]",
         &["src/lib.rs", "foo", "a/foo", "a/b/foo", "x/foo/y", "bar"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          foo\n\
          ",
@@ -1928,7 +2249,8 @@ fn gitignore_patterns() {
         "[]",
         r#"["foo/"]"#, // exclude
         &["src/lib.rs", "foo", "a/foo", "x/foo/y", "bar"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          a/foo\n\
          bar\n\
@@ -1952,7 +2274,8 @@ fn gitignore_patterns() {
             "y",
             "z",
         ],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          c\n\
          other\n\
@@ -1964,7 +2287,8 @@ fn gitignore_patterns() {
         r#"["Cargo.toml", "**/foo/bar"]"#, // include
         "[]",
         &["src/lib.rs", "a/foo/bar", "foo", "bar"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          a/foo/bar\n\
          ",
@@ -1974,7 +2298,8 @@ fn gitignore_patterns() {
         r#"["Cargo.toml", "foo/**"]"#, // include
         "[]",
         &["src/lib.rs", "a/foo/bar", "foo/x/y/z"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          foo/x/y/z\n\
          ",
@@ -1984,7 +2309,8 @@ fn gitignore_patterns() {
         r#"["Cargo.toml", "a/**/b"]"#, // include
         "[]",
         &["src/lib.rs", "a/b", "a/x/b", "a/x/y/b"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          a/b\n\
          a/x/b\n\
@@ -2000,6 +2326,7 @@ fn gitignore_negate() {
         "[]",
         &["src/lib.rs", "foo.rs", "!important"],
         "!important\n\
+         Cargo.lock\n\
          Cargo.toml\n\
          Cargo.toml.orig\n\
          src/lib.rs\n\
@@ -2014,7 +2341,8 @@ fn gitignore_negate() {
         r#"["Cargo.toml", "src/", "!src/foo.rs"]"#, // include
         "[]",
         &["src/lib.rs", "src/foo.rs"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          src/lib.rs\n\
          ",
@@ -2024,7 +2352,8 @@ fn gitignore_negate() {
         r#"["Cargo.toml", "src/*.rs", "!foo.rs"]"#, // include
         "[]",
         &["src/lib.rs", "foo.rs", "src/foo.rs", "src/bar/foo.rs"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          src/lib.rs\n\
          ",
@@ -2034,7 +2363,8 @@ fn gitignore_negate() {
         "[]",
         r#"["*.rs", "!foo.rs", "\\!important"]"#, // exclude
         &["src/lib.rs", "foo.rs", "!important"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          foo.rs\n\
          ",
@@ -2047,7 +2377,8 @@ fn exclude_dot_files_and_directories_by_default() {
         "[]",
         "[]",
         &["src/lib.rs", ".dotfile", ".dotdir/file"],
-        "Cargo.toml\n\
+        "Cargo.lock\n\
+         Cargo.toml\n\
          Cargo.toml.orig\n\
          src/lib.rs\n\
          ",
@@ -2059,6 +2390,7 @@ fn exclude_dot_files_and_directories_by_default() {
         &["src/lib.rs", ".dotfile", ".dotdir/file"],
         ".dotdir/file\n\
          .dotfile\n\
+         Cargo.lock\n\
          Cargo.toml\n\
          Cargo.toml.orig\n\
          src/lib.rs\n\
@@ -2242,6 +2574,7 @@ fn license_file_implicit_include() {
     p.cargo("package --list")
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/lib.rs
@@ -2255,11 +2588,12 @@ subdir/LICENSE
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v1.0.0 ([ROOT]/foo)
 [ARCHIVING] .cargo_vcs_info.json
+[ARCHIVING] Cargo.lock
 [ARCHIVING] Cargo.toml
 [ARCHIVING] Cargo.toml.orig
 [ARCHIVING] src/lib.rs
 [ARCHIVING] subdir/LICENSE
-[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 6 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 
 "#]])
         .run();
@@ -2269,12 +2603,13 @@ subdir/LICENSE
         "foo-1.0.0.crate",
         &[
             ".cargo_vcs_info.json",
+            "Cargo.lock",
             "Cargo.toml",
             "Cargo.toml.orig",
             "subdir/LICENSE",
             "src/lib.rs",
         ],
-        &[("subdir/LICENSE", "license text")],
+        [("subdir/LICENSE", "license text")],
     );
 }
 
@@ -2300,6 +2635,7 @@ fn relative_license_included() {
 
     p.cargo("package --list")
         .with_stdout_data(str![[r#"
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 LICENSE
@@ -2312,7 +2648,7 @@ src/lib.rs
     p.cargo("package")
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v1.0.0 ([ROOT]/foo)
-[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v1.0.0 ([ROOT]/foo)
 [COMPILING] foo v1.0.0 ([ROOT]/foo/target/package/foo-1.0.0)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -2323,8 +2659,14 @@ src/lib.rs
     validate_crate_contents(
         f,
         "foo-1.0.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "LICENSE", "src/lib.rs"],
-        &[("LICENSE", "license text")],
+        &[
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "LICENSE",
+            "src/lib.rs",
+            "Cargo.lock",
+        ],
+        [("LICENSE", "license text")],
     );
     let manifest =
         std::fs::read_to_string(p.root().join("target/package/foo-1.0.0/Cargo.toml")).unwrap();
@@ -2357,6 +2699,7 @@ fn relative_license_include_collision() {
 
     p.cargo("package --list")
         .with_stdout_data(str![[r#"
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 LICENSE
@@ -2372,7 +2715,7 @@ src/lib.rs
     p.cargo("package").with_stderr_data(str![[r#"
 [WARNING] license-file `../LICENSE` appears to be a path outside of the package, but there is already a file named `LICENSE` in the root of the package. The archived crate will contain the copy in the root of the package. Update the license-file to point to the path relative to the root of the package to remove this warning.
 [PACKAGING] foo v1.0.0 ([ROOT]/foo)
-[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v1.0.0 ([ROOT]/foo)
 [COMPILING] foo v1.0.0 ([ROOT]/foo/target/package/foo-1.0.0)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -2382,8 +2725,14 @@ src/lib.rs
     validate_crate_contents(
         f,
         "foo-1.0.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "LICENSE", "src/lib.rs"],
-        &[("LICENSE", "inner license")],
+        &[
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "LICENSE",
+            "src/lib.rs",
+            "Cargo.lock",
+        ],
+        [("LICENSE", "inner license")],
     );
     let manifest = read_to_string(p.root().join("target/package/foo-1.0.0/Cargo.toml")).unwrap();
     assert!(manifest.contains("license-file = \"LICENSE\""));
@@ -2419,7 +2768,7 @@ fn package_restricted_windows() {
 [WARNING] file src/con.rs is a reserved Windows filename, it will not work on Windows platforms
 [WARNING] file src/aux/mod.rs is a reserved Windows filename, it will not work on Windows platforms
 [PACKAGING] foo v0.1.0 ([ROOT]/foo)
-[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 6 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v0.1.0 ([ROOT]/foo)
 [COMPILING] foo v0.1.0 ([ROOT]/foo/target/package/foo-0.1.0)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -2448,6 +2797,7 @@ fn finds_git_in_parent() {
     p.cargo("package --list --allow-dirty")
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 ignoreme
@@ -2462,6 +2812,7 @@ src/lib.rs
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
 .gitignore
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 ignoreme2
@@ -2475,6 +2826,7 @@ src/lib.rs
         .with_stdout_data(str![[r#"
 .cargo_vcs_info.json
 .gitignore
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/lib.rs
@@ -2983,8 +3335,18 @@ fn workspace_overrides_resolver() {
     p.cargo("package --no-verify -p bar -p baz").run();
 
     let f = File::open(&p.root().join("target/package/bar-0.1.0.crate")).unwrap();
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2021"
 name = "bar"
@@ -3001,20 +3363,29 @@ resolver = "1"
 [lib]
 name = "bar"
 path = "src/lib.rs"
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE
-    );
+
+"##]];
     validate_crate_contents(
         f,
         "bar-0.1.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[("Cargo.toml", &rewritten_toml)],
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        [("Cargo.toml", rewritten_toml)],
     );
 
     // When the crate has the same implicit resolver as the workspace it is not overridden
     let f = File::open(&p.root().join("target/package/baz-0.1.0.crate")).unwrap();
-    let rewritten_toml = format!(
-        r#"{}
+    let rewritten_toml = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "baz"
@@ -3030,19 +3401,18 @@ readme = false
 [lib]
 name = "baz"
 path = "src/lib.rs"
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE
-    );
+
+"##]];
     validate_crate_contents(
         f,
         "baz-0.1.0.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[("Cargo.toml", &rewritten_toml)],
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        [("Cargo.toml", rewritten_toml)],
     );
 }
 
 fn verify_packaged_status_line(
-    output: std::process::Output,
+    output: cargo_test_support::RawOutput,
     num_files: usize,
     uncompressed_size: u64,
     compressed_size: u64,
@@ -3127,7 +3497,7 @@ version = "0.0.1"
         + main_rs_contents.len()
         + cargo_toml_contents.len()
         + cargo_lock_contents.len()) as u64;
-    let output = p.cargo("package").exec_with_output().unwrap();
+    let output = p.cargo("package").run();
 
     assert!(p.root().join("target/package/foo-0.0.1.crate").is_file());
     p.cargo("package -l")
@@ -3157,7 +3527,7 @@ src/main.rs
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[
+        [
             ("Cargo.lock", cargo_lock_contents),
             ("Cargo.toml", &cargo_toml_contents),
             ("Cargo.toml.orig", cargo_toml_orig_contents),
@@ -3232,7 +3602,7 @@ version = "0.0.1"
         + cargo_lock_contents.len()
         + bar_txt_contents.len()) as u64;
 
-    let output = p.cargo("package").exec_with_output().unwrap();
+    let output = p.cargo("package").run();
     assert!(p.root().join("target/package/foo-0.0.1.crate").is_file());
     p.cargo("package -l")
         .with_stdout_data(str![[r#"
@@ -3268,7 +3638,7 @@ src/main.rs
             "src/bar.txt",
             "src/main.rs",
         ],
-        &[
+        [
             ("Cargo.lock", cargo_lock_contents),
             ("Cargo.toml", &cargo_toml_contents),
             ("Cargo.toml.orig", cargo_toml_orig_contents),
@@ -3351,7 +3721,7 @@ version = "0.0.1"
         + cargo_lock_contents.len()
         + bar_txt_contents.len() * 2) as u64;
 
-    let output = p.cargo("package").exec_with_output().unwrap();
+    let output = p.cargo("package").run();
     assert!(p.root().join("target/package/foo-0.0.1.crate").is_file());
     p.cargo("package -l")
         .with_stdout_data(str![[r#"
@@ -3391,7 +3761,7 @@ src/main.rs.bak
             "src/main.rs",
             "src/main.rs.bak",
         ],
-        &[
+        [
             ("Cargo.lock", cargo_lock_contents),
             ("Cargo.toml", &cargo_toml_contents),
             ("Cargo.toml.orig", cargo_toml_orig_contents),
@@ -3494,10 +3864,20 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
             "Examples/ExampleFoo.rs",
             "Tests/ExplicitPath.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            &format!(
-                r#"{}
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2018"
 name = "foo"
@@ -3517,9 +3897,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
-                cargo::core::manifest::MANIFEST_PREAMBLE
-            ),
+
+"##]],
         )],
     );
 }
@@ -3584,7 +3963,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[],
+        (),
     );
 }
 
@@ -3621,7 +4000,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
         f,
         "foo-0.0.0.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[],
+        (),
     );
 }
 
@@ -3813,7 +4192,7 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
 [PACKAGED] 6 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 
 "#]])
-        .run()
+        .run();
 }
 
 #[cargo_test]
@@ -3893,9 +4272,10 @@ fn normalize_paths() {
             "tests/test_foo.rs",
             "benches/bench_foo.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -3941,7 +4321,8 @@ path = "tests/test_foo.rs"
 [[bench]]
 name = "bench_foo"
 path = "benches/bench_foo.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -3971,7 +4352,7 @@ fn discovery_inferred_build_rs_included() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v0.0.1 ([ROOT]/foo)
-[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v0.0.1 ([ROOT]/foo)
 [COMPILING] foo v0.0.1 ([ROOT]/foo/target/package/foo-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -3983,10 +4364,17 @@ fn discovery_inferred_build_rs_included() {
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "build.rs"],
-        &[(
+        &[
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            "build.rs",
+            "Cargo.lock",
+        ],
+        [(
+            "Cargo.toml",
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4020,7 +4408,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4051,7 +4440,7 @@ fn discovery_inferred_build_rs_excluded() {
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v0.0.1 ([ROOT]/foo)
 [WARNING] ignoring `package.build` as `build.rs` is not included in the published package
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v0.0.1 ([ROOT]/foo)
 [COMPILING] foo v0.0.1 ([ROOT]/foo/target/package/foo-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -4063,10 +4452,11 @@ fn discovery_inferred_build_rs_excluded() {
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[(
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4097,7 +4487,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4128,7 +4519,7 @@ fn discovery_explicit_build_rs_included() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v0.0.1 ([ROOT]/foo)
-[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 5 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v0.0.1 ([ROOT]/foo)
 [COMPILING] foo v0.0.1 ([ROOT]/foo/target/package/foo-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -4140,10 +4531,17 @@ fn discovery_explicit_build_rs_included() {
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "build.rs"],
-        &[(
+        &[
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            "build.rs",
+            "Cargo.lock",
+        ],
+        [(
+            "Cargo.toml",
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4177,7 +4575,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4209,7 +4608,7 @@ fn discovery_explicit_build_rs_excluded() {
         .with_stderr_data(str![[r#"
 [PACKAGING] foo v0.0.1 ([ROOT]/foo)
 [WARNING] ignoring `package.build` as `build.rs` is not included in the published package
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] foo v0.0.1 ([ROOT]/foo)
 [COMPILING] foo v0.0.1 ([ROOT]/foo/target/package/foo-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
@@ -4221,10 +4620,11 @@ fn discovery_explicit_build_rs_excluded() {
     validate_crate_contents(
         f,
         "foo-0.0.1.crate",
-        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[(
+        &["Cargo.toml", "Cargo.toml.orig", "src/lib.rs", "Cargo.lock"],
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4255,7 +4655,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4304,9 +4705,10 @@ fn discovery_inferred_lib_included() {
             "src/main.rs",
             "src/lib.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4344,7 +4746,8 @@ path = "src/lib.rs"
 [[bin]]
 name = "foo"
 path = "src/main.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4388,9 +4791,10 @@ fn discovery_inferred_lib_excluded() {
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4421,7 +4825,8 @@ license = "MIT"
 [[bin]]
 name = "foo"
 path = "src/main.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4473,9 +4878,10 @@ fn discovery_explicit_lib_included() {
             "src/main.rs",
             "src/lib.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4513,7 +4919,8 @@ path = "src/lib.rs"
 [[bin]]
 name = "foo"
 path = "src/main.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4560,9 +4967,10 @@ fn discovery_explicit_lib_excluded() {
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4593,7 +5001,8 @@ license = "MIT"
 [[bin]]
 name = "foo"
 path = "src/main.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4648,9 +5057,10 @@ fn discovery_inferred_other_included() {
             "tests/test_foo.rs",
             "benches/bench_foo.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4703,7 +5113,8 @@ path = "tests/test_foo.rs"
 [[bench]]
 name = "bench_foo"
 path = "benches/bench_foo.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4753,9 +5164,10 @@ fn discovery_inferred_other_excluded() {
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4786,7 +5198,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4853,9 +5266,10 @@ fn discovery_explicit_other_included() {
             "tests/test_foo.rs",
             "benches/bench_foo.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -4908,7 +5322,8 @@ path = "tests/test_foo.rs"
 [[bench]]
 name = "bench_foo"
 path = "benches/bench_foo.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -4970,9 +5385,10 @@ fn discovery_explicit_other_excluded() {
         f,
         "foo-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/lib.rs"],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -5003,7 +5419,8 @@ license = "MIT"
 [lib]
 name = "foo"
 path = "src/lib.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -5070,9 +5487,10 @@ fn deterministic_build_targets() {
             "examples/y.rs",
             "examples/z.rs",
         ],
-        &[(
+        [(
             "Cargo.toml",
-            r#"# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+            str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
 #
 # When uploading crates to the registry Cargo will automatically
 # "normalize" Cargo.toml files for maximal compatibility
@@ -5126,7 +5544,8 @@ path = "examples/y.rs"
 [[example]]
 name = "z"
 path = "examples/z.rs"
-"#,
+
+"##]],
         )],
     );
 }
@@ -5211,17 +5630,15 @@ fn workspace_with_local_deps() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] level3 v0.0.1 ([ROOT]/foo/level3)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] level2 v0.0.1 ([ROOT]/foo/level2)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
-[PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] crates.io index
 [ERROR] failed to prepare local package for uploading
 
 Caused by:
-  no matching package named `level2` found
-  location searched: registry `crates-io`
-  required by package `level1 v0.0.1 ([ROOT]/foo/level1)`
+  no matching package named `level3` found
+  location searched: crates.io index
+  required by package `level2 v0.0.1 ([ROOT]/foo/level2)`
 
 "#]])
         .run();
@@ -5238,11 +5655,11 @@ fn workspace_with_local_deps_nightly() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] level3 v0.0.1 ([ROOT]/foo/level3)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] level2 v0.0.1 ([ROOT]/foo/level2)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
-[PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] crates.io index
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] level3 v0.0.1 ([ROOT]/foo/level3)
 [COMPILING] level3 v0.0.1 ([ROOT]/foo/target/package/level3-0.0.1)
@@ -5262,8 +5679,8 @@ fn workspace_with_local_deps_nightly() {
 "#]])
         .run();
 
-    let generated_lock = format!(
-        r#"# This file is automatically @generated by Cargo.
+    let generated_lock = str![[r##"
+# This file is automatically @generated by Cargo.
 # It is not intended for manual editing.
 version = 4
 
@@ -5278,7 +5695,7 @@ dependencies = [
 name = "level2"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = [..]
+checksum = "[..]"
 dependencies = [
  "level3",
 ]
@@ -5287,12 +5704,22 @@ dependencies = [
 name = "level3"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = [..]
-"#
-    );
+checksum = "[..]"
 
-    let generated_manifest = format!(
-        r#"{}
+"##]];
+
+    let generated_manifest = str![[r##"
+# THIS FILE IS AUTOMATICALLY GENERATED BY CARGO
+#
+# When uploading crates to the registry Cargo will automatically
+# "normalize" Cargo.toml files for maximal compatibility
+# with all versions of Cargo and also rewrite `path` dependencies
+# to registry (e.g., crates.io) dependencies.
+#
+# If you are reading this file be aware that the original Cargo.toml
+# will likely look very different (and much more reasonable).
+# See Cargo.toml.orig for the original contents.
+
 [package]
 edition = "2015"
 name = "level1"
@@ -5316,9 +5743,8 @@ path = "src/main.rs"
 [dependencies.level2]
 version = "0.0.1"
 features = ["foo"]
-"#,
-        cargo::core::manifest::MANIFEST_PREAMBLE,
-    );
+
+"##]];
 
     let mut f = File::open(&p.root().join("target/package/level1-0.0.1.crate")).unwrap();
 
@@ -5326,9 +5752,9 @@ features = ["foo"]
         &mut f,
         "level1-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[
-            ("Cargo.lock", &generated_lock),
-            ("Cargo.toml", &generated_manifest),
+        [
+            ("Cargo.lock", generated_lock),
+            ("Cargo.toml", generated_manifest),
         ],
     );
 }
@@ -5388,15 +5814,13 @@ fn workspace_with_local_deps_packaging_one_fails() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
-[VERIFYING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] crates.io index
-[ERROR] failed to verify package tarball
+[ERROR] failed to prepare local package for uploading
 
 Caused by:
   no matching package named `level2` found
-  location searched: registry `crates-io`
-  required by package `level1 v0.0.1 ([ROOT]/foo/target/package/level1-0.0.1)`
+  location searched: crates.io index
+  required by package `level1 v0.0.1 ([ROOT]/foo/level1)`
 
 "#]])
         .run();
@@ -5415,15 +5839,13 @@ fn workspace_with_local_deps_packaging_one_fails_nightly() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
-[VERIFYING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] crates.io index
-[ERROR] failed to verify package tarball
+[ERROR] failed to prepare local package for uploading
 
 Caused by:
   no matching package named `level2` found
-  location searched: registry `crates-io`
-  required by package `level1 v0.0.1 ([ROOT]/foo/target/package/level1-0.0.1)`
+  location searched: crates.io index
+  required by package `level1 v0.0.1 ([ROOT]/foo/level1)`
 
 "#]])
         .run();
@@ -5488,7 +5910,7 @@ fn workspace_with_local_deps_packaging_one_bin_fails() {
 
 Caused by:
   no matching package named `level2` found
-  location searched: registry `crates-io`
+  location searched: crates.io index
   required by package `level1 v0.0.1 ([ROOT]/foo/level1)`
 
 "#]])
@@ -5564,14 +5986,14 @@ fn workspace_with_local_deps_packaging_one_with_needed_deps() {
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
 [PACKAGING] level3 v0.0.1 ([ROOT]/foo/level3)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] level2 v0.0.1 ([ROOT]/foo/level2)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[UPDATING] crates.io index
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [VERIFYING] level3 v0.0.1 ([ROOT]/foo/level3)
 [COMPILING] level3 v0.0.1 ([ROOT]/foo/target/package/level3-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
 [VERIFYING] level2 v0.0.1 ([ROOT]/foo/level2)
-[UPDATING] crates.io index
 [UNPACKING] level3 v0.0.1 (registry `[ROOT]/foo/target/package/tmp-registry`)
 [COMPILING] level3 v0.0.1
 [COMPILING] level2 v0.0.1 ([ROOT]/foo/target/package/level2-0.0.1)
@@ -5630,6 +6052,7 @@ fn workspace_with_local_deps_list() {
     p.cargo("package --list")
         .replace_crates_io(crates_io.index_url())
         .with_stdout_data(str![[r#"
+Cargo.lock
 Cargo.toml
 Cargo.toml.orig
 src/lib.rs
@@ -5701,14 +6124,14 @@ fn workspace_with_local_deps_index_mismatch() {
     .with_stdout_data("")
     .with_stderr_data(str![[r#"
 [PACKAGING] level2 v0.0.1 ([ROOT]/foo/level2)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] crates.io index
 [ERROR] failed to prepare local package for uploading
 
 Caused by:
   no matching package named `level2` found
-  location searched: registry `crates-io`
+  location searched: crates.io index
   required by package `level1 v0.0.1 ([ROOT]/foo/level1)`
 
 "#]])
@@ -5771,7 +6194,7 @@ fn workspace_with_local_deps_alternative_index() {
     .with_stdout_data("")
     .with_stderr_data(str![[r#"
 [PACKAGING] level2 v0.0.1 ([ROOT]/foo/level2)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] level1 v0.0.1 ([ROOT]/foo/level1)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -5805,7 +6228,7 @@ dependencies = [
 name = "level2"
 version = "0.0.1"
 source = "{index}"
-checksum = [..]
+checksum = "[..]"
 "#
     );
 
@@ -5815,7 +6238,7 @@ checksum = [..]
         &mut f,
         "level1-0.0.1.crate",
         &["Cargo.lock", "Cargo.toml", "Cargo.toml.orig", "src/main.rs"],
-        &[("Cargo.lock", &generated_lock)],
+        [("Cargo.lock", generated_lock)],
     );
 }
 
@@ -5874,7 +6297,6 @@ fn workspace_with_local_dep_already_published() {
         .with_stderr_data(
             str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] crates.io index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -5887,6 +6309,7 @@ fn workspace_with_local_dep_already_published() {
 [COMPILING] dep v0.1.0
 [COMPILING] main v0.0.1 ([ROOT]/foo/target/package/main-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 
 "#]]
             .unordered(),
@@ -5902,20 +6325,21 @@ fn workspace_with_local_dep_already_published_nightly() {
     p.cargo("package -Zpackage-workspace")
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .replace_crates_io(reg.index_url())
-        .with_status(101)
         .with_stderr_data(
             str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] crates.io index
-[ERROR] failed to prepare local package for uploading
-
-Caused by:
-  failed to get `dep` as a dependency of package `main v0.0.1 ([ROOT]/foo/main)`
-
-Caused by:
-  found a package in the remote registry and the local overlay: dep@0.1.0
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[VERIFYING] dep v0.1.0 ([ROOT]/foo/dep)
+[COMPILING] dep v0.1.0 ([ROOT]/foo/target/package/dep-0.1.0)
+[FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
+[VERIFYING] main v0.0.1 ([ROOT]/foo/main)
+[UNPACKING] dep v0.1.0 (registry `[ROOT]/foo/target/package/tmp-registry`)
+[COMPILING] dep v0.1.0
+[COMPILING] main v0.0.1 ([ROOT]/foo/target/package/main-0.0.1)
+[FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
 
 "#]]
             .unordered(),
@@ -5977,7 +6401,6 @@ fn workspace_with_local_and_remote_deps() {
         .with_stderr_data(
             str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] crates.io index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -5992,6 +6415,7 @@ fn workspace_with_local_and_remote_deps() {
 [COMPILING] dep v0.1.0
 [COMPILING] main v0.0.1 ([ROOT]/foo/target/package/main-0.0.1)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 
 "#]]
             .unordered(),
@@ -6086,7 +6510,7 @@ fn registry_inferred_from_unique_option() {
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6181,7 +6605,7 @@ The registry `alternative` is not listed in the `package.publish` value in Cargo
     .masquerade_as_nightly_cargo(&["package-workspace"])
     .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6254,7 +6678,7 @@ fn registry_inference_ignores_unpublishable() {
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6275,7 +6699,7 @@ fn registry_inference_ignores_unpublishable() {
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6356,7 +6780,7 @@ fn registry_not_inferred_because_of_multiple_options() {
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6439,7 +6863,7 @@ fn registry_not_inferred_because_of_mismatch() {
         .masquerade_as_nightly_cargo(&["package-workspace"])
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
@@ -6512,14 +6936,14 @@ fn unpublishable_dependency() {
         .with_status(101)
         .with_stderr_data(str![[r#"
 [PACKAGING] dep v0.1.0 ([ROOT]/foo/dep)
-[PACKAGED] 3 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[PACKAGED] 4 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
 [PACKAGING] main v0.0.1 ([ROOT]/foo/main)
 [UPDATING] `alternative` index
 [ERROR] failed to prepare local package for uploading
 
 Caused by:
   no matching package named `dep` found
-  location searched: registry `alternative`
+  location searched: `alternative` index
   required by package `main v0.0.1 ([ROOT]/foo/main)`
 
 "#]])
@@ -6565,4 +6989,125 @@ See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for
 
 "#]])
         .run();
+}
+
+#[cargo_test]
+#[cfg(unix)]
+fn simple_with_fifo() {
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.1.0"
+                edition = "2015"
+            "#,
+        )
+        .file("src/main.rs", "fn main() {}")
+        .build();
+
+    std::process::Command::new("mkfifo")
+        .current_dir(p.root())
+        .arg(p.root().join("blocks-when-read"))
+        .status()
+        .expect("a FIFO can be created");
+
+    // Avoid actual blocking even in case of failure, assuming that what it lists here
+    // would also be read eventually.
+    p.cargo("package -l")
+        .with_stdout_data(str![[r#"
+Cargo.lock
+Cargo.toml
+Cargo.toml.orig
+src/main.rs
+
+"#]])
+        .run();
+}
+
+#[cargo_test]
+fn git_core_symlinks_false() {
+    if !symlink_supported() {
+        return;
+    }
+
+    let git_project = git::new("bar", |p| {
+        p.file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "bar"
+                description = "bar"
+                license = "MIT"
+                edition = "2021"
+                documentation = "foo"
+            "#,
+        )
+        .file("src/lib.rs", "//! This is a module")
+        .symlink("src/lib.rs", "symlink-lib.rs")
+        .symlink_dir("src", "symlink-dir")
+    });
+
+    let url = git_project.root().to_url().to_string();
+
+    let p = project().build();
+    let root = p.root();
+    // Remove the default project layout,
+    // so we can git-fetch from git_project under the same directory
+    fs::remove_dir_all(&root).unwrap();
+    fs::create_dir_all(&root).unwrap();
+    let repo = git::init(&root);
+
+    let mut cfg = repo.config().unwrap();
+    cfg.set_bool("core.symlinks", false).unwrap();
+
+    // let's fetch from git_project so it respects our core.symlinks=false config.
+    repo.remote_anonymous(&url)
+        .unwrap()
+        .fetch(&["HEAD"], None, None)
+        .unwrap();
+    let rev = repo
+        .find_reference("FETCH_HEAD")
+        .unwrap()
+        .peel_to_commit()
+        .unwrap();
+    repo.reset(rev.as_object(), git2::ResetType::Hard, None)
+        .unwrap();
+
+    p.cargo("package --allow-dirty")
+        .with_stderr_data(str![[r#"
+[WARNING] found symbolic links that may be checked out as regular files for git repo at `[ROOT]/foo/`
+This might cause the `.crate` file to include incorrect or incomplete files
+[NOTE] to avoid this, set the Git config `core.symlinks` to `true`
+...
+[PACKAGING] bar v0.0.0 ([ROOT]/foo)
+[PACKAGED] 7 files, [FILE_SIZE]B ([FILE_SIZE]B compressed)
+[VERIFYING] bar v0.0.0 ([ROOT]/foo)
+[COMPILING] bar v0.0.0 ([ROOT]/foo/target/package/bar-0.0.0)
+[FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
+
+"#]])
+        .run();
+
+    let f = File::open(&p.root().join("target/package/bar-0.0.0.crate")).unwrap();
+    validate_crate_contents(
+        f,
+        "bar-0.0.0.crate",
+        &[
+            "Cargo.lock",
+            "Cargo.toml",
+            "Cargo.toml.orig",
+            "src/lib.rs",
+            // We're missing symlink-dir/lib.rs in the `.crate` file.
+            "symlink-dir",
+            "symlink-lib.rs",
+            ".cargo_vcs_info.json",
+        ],
+        [
+            // And their contents are incorrect.
+            ("symlink-dir", str!["[ROOT]/bar/src"]),
+            ("symlink-lib.rs", str!["[ROOT]/bar/src/lib.rs"]),
+        ],
+    );
 }

@@ -221,6 +221,11 @@ pub enum Suggestion {
     /// Remove `r#` from identifier:
     /// `format!("{r#foo}")` -> `format!("{foo}")`
     RemoveRawIdent(InnerSpan),
+    /// Reorder format parameter:
+    /// `format!("{foo:?#}")` -> `format!("{foo:#?}")`
+    /// `format!("{foo:?x}")` -> `format!("{foo:x?}")`
+    /// `format!("{foo:?X}")` -> `format!("{foo:X?}")`
+    ReorderFormatParameter(InnerSpan, string::String),
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -473,19 +478,19 @@ impl<'a> Parser<'a> {
             }
 
             pos = peek_pos;
-            description = format!("expected `'}}'`, found `{maybe:?}`");
+            description = format!("expected `}}`, found `{}`", maybe.escape_debug());
         } else {
-            description = "expected `'}'` but string was terminated".to_owned();
+            description = "expected `}` but string was terminated".to_owned();
             // point at closing `"`
             pos = self.input.len() - if self.append_newline { 1 } else { 0 };
         }
 
         let pos = self.to_span_index(pos);
 
-        let label = "expected `'}'`".to_owned();
+        let label = "expected `}`".to_owned();
         let (note, secondary_label) = if arg.format.fill == Some('}') {
             (
-                Some("the character `'}'` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
+                Some("the character `}` is interpreted as a fill character because of the `:` that precedes it".to_owned()),
                 arg.format.fill_span.map(|sp| ("this is not interpreted as a formatting closing brace".to_owned(), sp)),
             )
         } else {
@@ -731,6 +736,12 @@ impl<'a> Parser<'a> {
             }
         } else if self.consume('?') {
             spec.ty = "?";
+            if let Some(&(_, maybe)) = self.cur.peek() {
+                match maybe {
+                    '#' | 'x' | 'X' => self.suggest_format_parameter(maybe),
+                    _ => (),
+                }
+            }
         } else {
             spec.ty = self.word();
             if !spec.ty.is_empty() {
@@ -931,6 +942,30 @@ impl<'a> Parser<'a> {
                 };
             }
         }
+    }
+
+    fn suggest_format_parameter(&mut self, c: char) {
+        let replacement = match c {
+            '#' => "#?",
+            'x' => "x?",
+            'X' => "X?",
+            _ => return,
+        };
+        let Some(pos) = self.consume_pos(c) else {
+            return;
+        };
+
+        let span = self.span(pos - 1, pos + 1);
+        let pos = self.to_span_index(pos);
+
+        self.errors.insert(0, ParseError {
+            description: format!("expected `}}`, found `{c}`"),
+            note: None,
+            label: "expected `'}'`".into(),
+            span: pos.to(pos),
+            secondary_label: None,
+            suggestion: Suggestion::ReorderFormatParameter(span, format!("{replacement}")),
+        })
     }
 }
 

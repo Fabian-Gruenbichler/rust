@@ -570,7 +570,10 @@ pub struct Package {
     features: FeatureMap,
     local: bool,
     alternative: bool,
-    invalid_json: bool,
+    invalid_index_line: bool,
+    index_line: Option<String>,
+    edition: Option<String>,
+    resolver: Option<String>,
     proc_macro: bool,
     links: Option<String>,
     rust_version: Option<String>,
@@ -1249,7 +1252,10 @@ impl Package {
             features: BTreeMap::new(),
             local: false,
             alternative: false,
-            invalid_json: false,
+            invalid_index_line: false,
+            index_line: None,
+            edition: None,
+            resolver: None,
             proc_macro: false,
             links: None,
             rust_version: None,
@@ -1385,6 +1391,18 @@ impl Package {
         self
     }
 
+    /// Specifies `package.edition`
+    pub fn edition(&mut self, edition: &str) -> &mut Package {
+        self.edition = Some(edition.to_owned());
+        self
+    }
+
+    /// Specifies `package.resolver`
+    pub fn resolver(&mut self, resolver: &str) -> &mut Package {
+        self.resolver = Some(resolver.to_owned());
+        self
+    }
+
     /// Specifies whether or not this is a proc macro.
     pub fn proc_macro(&mut self, proc_macro: bool) -> &mut Package {
         self.proc_macro = proc_macro;
@@ -1406,8 +1424,16 @@ impl Package {
 
     /// Causes the JSON line emitted in the index to be invalid, presumably
     /// causing Cargo to skip over this version.
-    pub fn invalid_json(&mut self, invalid: bool) -> &mut Package {
-        self.invalid_json = invalid;
+    pub fn invalid_index_line(&mut self, invalid: bool) -> &mut Package {
+        self.invalid_index_line = invalid;
+        self
+    }
+
+    /// Override the auto-generated index line
+    ///
+    /// This can give more control over error cases than [`Package::invalid_index_line`]
+    pub fn index_line(&mut self, line: &str) -> &mut Package {
+        self.index_line = Some(line.to_owned());
         self
     }
 
@@ -1480,22 +1506,26 @@ impl Package {
             let c = t!(fs::read(&self.archive_dst()));
             cksum(&c)
         };
-        let name = if self.invalid_json {
-            serde_json::json!(1)
+        let line = if let Some(line) = self.index_line.clone() {
+            line
         } else {
-            serde_json::json!(self.name)
+            let name = if self.invalid_index_line {
+                serde_json::json!(1)
+            } else {
+                serde_json::json!(self.name)
+            };
+            create_index_line(
+                name,
+                &self.vers,
+                deps,
+                &cksum,
+                self.features.clone(),
+                self.yanked,
+                self.links.clone(),
+                self.rust_version.as_deref(),
+                self.v,
+            )
         };
-        let line = create_index_line(
-            name,
-            &self.vers,
-            deps,
-            &cksum,
-            self.features.clone(),
-            self.yanked,
-            self.links.clone(),
-            self.rust_version.as_deref(),
-            self.v,
-        );
 
         let registry_path = if self.alternative {
             alt_registry_path()
@@ -1570,7 +1600,15 @@ impl Package {
         ));
 
         if let Some(version) = &self.rust_version {
-            manifest.push_str(&format!("rust-version = \"{}\"", version));
+            manifest.push_str(&format!("rust-version = \"{}\"\n", version));
+        }
+
+        if let Some(edition) = &self.edition {
+            manifest.push_str(&format!("edition = \"{}\"\n", edition));
+        }
+
+        if let Some(resolver) = &self.resolver {
+            manifest.push_str(&format!("resolver = \"{}\"\n", resolver));
         }
 
         if !self.features.is_empty() {

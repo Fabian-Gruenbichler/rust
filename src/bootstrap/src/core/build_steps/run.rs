@@ -181,8 +181,7 @@ impl Step for CollectLicenseMetadata {
             panic!("REUSE is required to collect the license metadata");
         };
 
-        // Temporary location, it will be moved to src/etc once it's accurate.
-        let dest = builder.out.join("license-metadata.json");
+        let dest = builder.src.join("license-metadata.json");
 
         let mut cmd = builder.tool_cmd(Tool::CollectLicenseMetadata);
         cmd.env("REUSE_EXE", reuse);
@@ -209,14 +208,14 @@ impl Step for GenerateCopyright {
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let license_metadata = builder.ensure(CollectLicenseMetadata);
-
-        // Temporary location, it will be moved to the proper one once it's accurate.
+        let license_metadata = builder.src.join("license-metadata.json");
         let dest = builder.out.join("COPYRIGHT.html");
+        let dest_libstd = builder.out.join("COPYRIGHT-library.html");
 
         let mut cmd = builder.tool_cmd(Tool::GenerateCopyright);
         cmd.env("LICENSE_METADATA", &license_metadata);
         cmd.env("DEST", &dest);
+        cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
         cmd.env("CARGO", &builder.initial_cargo);
         cmd.run(builder);
@@ -271,7 +270,11 @@ impl Step for GenerateCompletions {
             (Bash, builder.src.join("src/etc/completions/x.py.sh")),
             (Zsh, builder.src.join("src/etc/completions/x.py.zsh")),
             (Fish, builder.src.join("src/etc/completions/x.py.fish")),
-            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1"))
+            (PowerShell, builder.src.join("src/etc/completions/x.py.ps1")),
+            (Bash, builder.src.join("src/etc/completions/x.sh")),
+            (Zsh, builder.src.join("src/etc/completions/x.zsh")),
+            (Fish, builder.src.join("src/etc/completions/x.fish")),
+            (PowerShell, builder.src.join("src/etc/completions/x.ps1"))
         );
     }
 
@@ -281,5 +284,27 @@ impl Step for GenerateCompletions {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(GenerateCompletions);
+    }
+}
+
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct UnicodeTableGenerator;
+
+impl Step for UnicodeTableGenerator {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/unicode-table-generator")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(UnicodeTableGenerator);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mut cmd = builder.tool_cmd(Tool::UnicodeTableGenerator);
+        cmd.arg(builder.src.join("library/core/src/unicode/unicode_data.rs"));
+        cmd.run(builder);
     }
 }

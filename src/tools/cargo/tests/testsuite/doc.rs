@@ -1501,7 +1501,7 @@ fn open_no_doc_crate() {
         .with_status(101)
         .with_stderr_data(str![[r#"
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
-[ERROR] no crates with documentation
+[ERROR] cannot open specified crate's documentation: no documentation generated
 
 "#]])
         .run();
@@ -1985,7 +1985,8 @@ fn doc_json_artifacts() {
 ]
 "#]]
             .is_json()
-            .against_jsonlines(),
+            .against_jsonlines()
+            .unordered(),
         )
         .run();
 }

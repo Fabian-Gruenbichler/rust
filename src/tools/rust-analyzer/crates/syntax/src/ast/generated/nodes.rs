@@ -212,8 +212,6 @@ pub struct AsmOptions {
 }
 impl AsmOptions {
     #[inline]
-    pub fn asm_option(&self) -> Option<AsmOption> { support::child(&self.syntax) }
-    #[inline]
     pub fn asm_options(&self) -> AstChildren<AsmOption> { support::children(&self.syntax) }
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -667,6 +665,8 @@ impl Fn {
     pub fn fn_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![fn]) }
     #[inline]
     pub fn gen_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![gen]) }
+    #[inline]
+    pub fn safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![safe]) }
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
@@ -1281,6 +1281,8 @@ pub struct OrPat {
 impl OrPat {
     #[inline]
     pub fn pats(&self) -> AstChildren<Pat> { support::children(&self.syntax) }
+    #[inline]
+    pub fn pipe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![|]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1359,6 +1361,21 @@ impl ParenType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParenthesizedArgList {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ParenthesizedArgList {
+    #[inline]
+    pub fn type_args(&self) -> AstChildren<TypeArg> { support::children(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn coloncolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![::]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1399,7 +1416,9 @@ impl PathSegment {
     #[inline]
     pub fn name_ref(&self) -> Option<NameRef> { support::child(&self.syntax) }
     #[inline]
-    pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
+    pub fn parenthesized_arg_list(&self) -> Option<ParenthesizedArgList> {
+        support::child(&self.syntax)
+    }
     #[inline]
     pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     #[inline]
@@ -1761,7 +1780,11 @@ impl Static {
     #[inline]
     pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
     #[inline]
+    pub fn safe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![safe]) }
+    #[inline]
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
+    #[inline]
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1988,11 +2011,13 @@ pub struct TypeBound {
 }
 impl TypeBound {
     #[inline]
-    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
-    #[inline]
     pub fn lifetime(&self) -> Option<Lifetime> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
+    #[inline]
+    pub fn use_bound_generic_args(&self) -> Option<UseBoundGenericArgs> {
+        support::child(&self.syntax)
+    }
     #[inline]
     pub fn question_mark_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![?]) }
     #[inline]
@@ -2068,6 +2093,21 @@ impl Use {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     #[inline]
     pub fn use_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![use]) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UseBoundGenericArgs {
+    pub(crate) syntax: SyntaxNode,
+}
+impl UseBoundGenericArgs {
+    #[inline]
+    pub fn use_bound_generic_args(&self) -> AstChildren<UseBoundGenericArg> {
+        support::children(&self.syntax)
+    }
+    #[inline]
+    pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
+    #[inline]
+    pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2394,6 +2434,12 @@ pub enum Type {
     RefType(RefType),
     SliceType(SliceType),
     TupleType(TupleType),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum UseBoundGenericArg {
+    Lifetime(Lifetime),
+    NameRef(NameRef),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3729,6 +3775,20 @@ impl AstNode for ParenType {
     #[inline]
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for ParenthesizedArgList {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PARENTHESIZED_ARG_LIST }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for Path {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == PATH }
@@ -4418,6 +4478,20 @@ impl AstNode for Union {
 impl AstNode for Use {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool { kind == USE }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl AstNode for UseBoundGenericArgs {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == USE_BOUND_GENERIC_ARGS }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
         if Self::can_cast(syntax.kind()) {
@@ -5554,6 +5628,34 @@ impl AstNode for Type {
         }
     }
 }
+impl From<Lifetime> for UseBoundGenericArg {
+    #[inline]
+    fn from(node: Lifetime) -> UseBoundGenericArg { UseBoundGenericArg::Lifetime(node) }
+}
+impl From<NameRef> for UseBoundGenericArg {
+    #[inline]
+    fn from(node: NameRef) -> UseBoundGenericArg { UseBoundGenericArg::NameRef(node) }
+}
+impl AstNode for UseBoundGenericArg {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, LIFETIME | NAME_REF) }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            LIFETIME => UseBoundGenericArg::Lifetime(Lifetime { syntax }),
+            NAME_REF => UseBoundGenericArg::NameRef(NameRef { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            UseBoundGenericArg::Lifetime(it) => &it.syntax,
+            UseBoundGenericArg::NameRef(it) => &it.syntax,
+        }
+    }
+}
 impl AnyHasArgList {
     #[inline]
     pub fn new<T: ast::HasArgList>(node: T) -> AnyHasArgList {
@@ -6564,6 +6666,11 @@ impl std::fmt::Display for Type {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for UseBoundGenericArg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Abi {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -7019,6 +7126,11 @@ impl std::fmt::Display for ParenType {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ParenthesizedArgList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Path {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -7265,6 +7377,11 @@ impl std::fmt::Display for Union {
     }
 }
 impl std::fmt::Display for Use {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for UseBoundGenericArgs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

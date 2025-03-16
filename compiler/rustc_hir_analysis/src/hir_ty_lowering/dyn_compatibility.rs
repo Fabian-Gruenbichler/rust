@@ -1,16 +1,16 @@
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::DefId;
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{
-    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable, Upcast,
+    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
 use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 use super::HirTyLowerer;
 use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{
-    GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds, RegionInferReason,
+    GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
@@ -30,7 +30,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         span: Span,
         hir_id: hir::HirId,
-        hir_trait_bounds: &[(hir::PolyTraitRef<'tcx>, hir::TraitBoundModifier)],
+        hir_trait_bounds: &[hir::PolyTraitRef<'tcx>],
         lifetime: &hir::Lifetime,
         representation: DynKind,
     ) -> Ty<'tcx> {
@@ -39,8 +39,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for (trait_bound, modifier) in hir_trait_bounds.iter().rev() {
-            if *modifier == hir::TraitBoundModifier::Maybe {
+        for trait_bound in hir_trait_bounds.iter().rev() {
+            if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
                 continue;
             }
             if let GenericArgCountResult {
@@ -50,13 +50,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             } = self.lower_poly_trait_ref(
                 &trait_bound.trait_ref,
                 trait_bound.span,
-                ty::BoundConstness::NotConst,
-                ty::PredicatePolarity::Positive,
+                hir::BoundConstness::Never,
+                hir::BoundPolarity::Positive,
                 dummy_self,
                 &mut bounds,
-                // True so we don't populate `bounds` with associated type bounds, even
-                // though they're disallowed from object types.
-                OnlySelfBounds(true),
+                PredicateFilter::SelfOnly,
             ) {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
@@ -64,7 +62,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let mut trait_bounds = vec![];
         let mut projection_bounds = vec![];
-        for (pred, span) in bounds.clauses(tcx) {
+        for (pred, span) in bounds.clauses() {
             let bound_pred = pred.kind();
             match bound_pred.skip_binder() {
                 ty::ClauseKind::Trait(trait_pred) => {
@@ -80,7 +78,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::ConstArgHasType(..)
                 | ty::ClauseKind::WellFormed(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => {
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::HostEffect(..) => {
                     span_bug!(span, "did not expect {pred} clause in object bounds");
                 }
             }
@@ -93,11 +92,20 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
+
+        // We don't support >1 principal
         if regular_traits.len() > 1 {
-            let _ = self.report_trait_object_addition_traits_error(&regular_traits);
-        } else if regular_traits.is_empty() && auto_traits.is_empty() {
-            let reported = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
-            return Ty::new_error(tcx, reported);
+            let guar = self.report_trait_object_addition_traits_error(&regular_traits);
+            return Ty::new_error(tcx, guar);
+        }
+        // We  don't support empty trait objects.
+        if regular_traits.is_empty() && auto_traits.is_empty() {
+            let guar = self.report_trait_object_with_no_traits_error(span, &trait_bounds);
+            return Ty::new_error(tcx, guar);
+        }
+        // Don't create a dyn trait if we have errors in the principal.
+        if let Err(guar) = trait_bounds.error_reported() {
+            return Ty::new_error(tcx, guar);
         }
 
         // Check that there are no gross dyn-compatibility violations;
@@ -119,15 +127,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let mut associated_types: FxIndexMap<Span, FxIndexSet<DefId>> = FxIndexMap::default();
+        let mut needed_associated_types = FxIndexSet::default();
 
+        let principal_span = regular_traits.first().map_or(DUMMY_SP, |info| info.bottom().1);
         let regular_traits_refs_spans = trait_bounds
             .into_iter()
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         for (base_trait_ref, original_span) in regular_traits_refs_spans {
             let base_pred: ty::Predicate<'tcx> = base_trait_ref.upcast(tcx);
-            for ClauseWithSupertraitSpan { pred, original_span, supertrait_span } in
+            for ClauseWithSupertraitSpan { pred, supertrait_span } in
                 traits::elaborate(tcx, [ClauseWithSupertraitSpan::new(base_pred, original_span)])
                     .filter_only_self()
             {
@@ -136,15 +145,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let bound_predicate = pred.kind();
                 match bound_predicate.skip_binder() {
                     ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) => {
-                        let pred = bound_predicate.rebind(pred);
-                        associated_types.entry(original_span).or_default().extend(
-                            tcx.associated_items(pred.def_id())
+                        // FIXME(negative_bounds): Handle this correctly...
+                        let trait_ref =
+                            tcx.anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
+                        needed_associated_types.extend(
+                            tcx.associated_items(trait_ref.def_id())
                                 .in_definition_order()
                                 .filter(|item| item.kind == ty::AssocKind::Type)
-                                .filter(|item| {
-                                    !item.is_impl_trait_in_trait() && !item.is_effects_desugaring
-                                })
-                                .map(|item| item.def_id),
+                                .filter(|item| !item.is_impl_trait_in_trait())
+                                // If the associated type has a `where Self: Sized` bound,
+                                // we do not need to constrain the associated type.
+                                .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                                .map(|item| (item.def_id, trait_ref)),
                         );
                     }
                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
@@ -194,30 +206,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // So every `Projection` clause is an `Assoc = Foo` bound. `associated_types` contains all associated
         // types's `DefId`, so the following loop removes all the `DefIds` of the associated types that have a
         // corresponding `Projection` clause
-        for def_ids in associated_types.values_mut() {
-            for (projection_bound, span) in &projection_bounds {
-                let def_id = projection_bound.projection_def_id();
-                // FIXME(#120456) - is `swap_remove` correct?
-                def_ids.swap_remove(&def_id);
-                if tcx.generics_require_sized_self(def_id) {
-                    tcx.emit_node_span_lint(
-                        UNUSED_ASSOCIATED_TYPE_BOUNDS,
-                        hir_id,
-                        *span,
-                        crate::errors::UnusedAssociatedTypeBounds { span: *span },
-                    );
-                }
+        for (projection_bound, span) in &projection_bounds {
+            let def_id = projection_bound.item_def_id();
+            let trait_ref = tcx.anonymize_bound_vars(
+                projection_bound.map_bound(|p| p.projection_term.trait_ref(tcx)),
+            );
+            needed_associated_types.swap_remove(&(def_id, trait_ref));
+            if tcx.generics_require_sized_self(def_id) {
+                tcx.emit_node_span_lint(
+                    UNUSED_ASSOCIATED_TYPE_BOUNDS,
+                    hir_id,
+                    *span,
+                    crate::errors::UnusedAssociatedTypeBounds { span: *span },
+                );
             }
-            // If the associated type has a `where Self: Sized` bound, we do not need to constrain the associated
-            // type in the `dyn Trait`.
-            def_ids.retain(|def_id| !tcx.generics_require_sized_self(def_id));
         }
 
-        self.complain_about_missing_assoc_tys(
-            associated_types,
+        if let Err(guar) = self.check_for_required_assoc_tys(
+            principal_span,
+            needed_associated_types,
             potential_assoc_types,
             hir_trait_bounds,
-        );
+        ) {
+            return Ty::new_error(tcx, guar);
+        }
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
@@ -260,10 +272,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     })
                     .collect();
-                let args = tcx.mk_args(&args);
 
                 let span = i.bottom().1;
-                let empty_generic_args = hir_trait_bounds.iter().any(|(hir_bound, _)| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
@@ -293,7 +304,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .emit();
                 }
 
-                ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
+                ty::ExistentialTraitRef::new(tcx, trait_ref.def_id, args)
             })
         });
 
@@ -406,7 +417,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             late_bound_in_projection_term,
             late_bound_in_term,
             |br_name| {
-                let item_name = tcx.item_name(pred.projection_def_id());
+                let item_name = tcx.item_name(pred.item_def_id());
                 struct_span_code_err!(
                     self.dcx(),
                     span,

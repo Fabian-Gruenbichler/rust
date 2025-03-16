@@ -8,8 +8,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::Analysis;
-use rustc_mir_dataflow::impls::MaybeStorageDead;
-use rustc_mir_dataflow::storage::always_storage_live_locals;
+use rustc_mir_dataflow::impls::{MaybeStorageDead, always_storage_live_locals};
 use tracing::{debug, instrument};
 
 use crate::ssa::{SsaLocals, StorageLiveLocals};
@@ -85,8 +84,8 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-    let ssa = SsaLocals::new(tcx, body, param_env);
+    let typing_env = body.typing_env(tcx);
+    let ssa = SsaLocals::new(tcx, body, typing_env);
 
     let mut replacer = compute_replacement(tcx, body, &ssa);
     debug!(?replacer.targets);
@@ -126,8 +125,7 @@ fn compute_replacement<'tcx>(
     // Compute `MaybeStorageDead` dataflow to check that we only replace when the pointee is
     // definitely live.
     let mut maybe_dead = MaybeStorageDead::new(Cow::Owned(always_live_locals))
-        .into_engine(tcx, body)
-        .iterate_to_fixpoint()
+        .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
     // Map for each local to the pointee.
@@ -179,7 +177,7 @@ fn compute_replacement<'tcx>(
         } else {
             // This is a proper dereference. We can only allow it if `target` is live.
             maybe_dead.seek_after_primary_effect(loc);
-            let maybe_dead = maybe_dead.contains(target.local);
+            let maybe_dead = maybe_dead.get().contains(target.local);
             !maybe_dead
         }
     };

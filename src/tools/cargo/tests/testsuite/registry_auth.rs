@@ -542,8 +542,7 @@ fn token_not_logged() {
         .replace_crates_io(crates_io.index_url())
         .env("CARGO_HTTP_DEBUG", "true")
         .env("CARGO_LOG", "trace")
-        .exec_with_output()
-        .unwrap();
+        .run();
     let log = String::from_utf8(output.stderr).unwrap();
     assert_e2e().eq(
         &log,
@@ -562,13 +561,15 @@ fn token_not_logged() {
     assert!(authorizations.iter().all(|line| line.contains("REDACTED")));
     // Total authorizations:
     // 1. Initial config.json
-    // 2. config.json again for verification
-    // 3. /index/3/b/bar
-    // 4. /dl/bar/1.0.0/download
-    // 5. /index/3/f/foo for checking duplicate version
-    // 6. /api/v1/crates/new
-    // 7. config.json for the "wait for publish"
-    // 8. /index/3/f/foo for the "wait for publish"
-    assert_eq!(authorizations.len(), 8);
+    // 2. /index/3/f/foo
+    // 3. config.json again for verification
+    // 4. /index/3/b/bar
+    // 5. config.json again for verification
+    // 6. /index/3/b/bar
+    // 7. /dl/bar/1.0.0/download
+    // 8. /api/v1/crates/new
+    // 9. config.json again for verification
+    // 10. /index/3/f/foo for the "wait for publish"
+    assert_eq!(authorizations.len(), 10);
     assert!(!log.contains("a-unique_token"));
 }

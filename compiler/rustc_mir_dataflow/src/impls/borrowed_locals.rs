@@ -2,7 +2,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
-use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::{Analysis, GenKill};
 
 /// A dataflow analysis that tracks whether a pointer or reference could possibly exist that points
 /// to a given local. This analysis ignores fake borrows, so it should not be used by
@@ -15,12 +15,12 @@ use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    pub(super) fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
+    pub(super) fn transfer_function<'a, T>(trans: &'a mut T) -> TransferFunction<'a, T> {
         TransferFunction { trans }
     }
 }
 
-impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> Analysis<'tcx> for MaybeBorrowedLocals {
     type Domain = BitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
@@ -32,40 +32,24 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
         // No locals are aliased on function entry
     }
-}
 
-impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
-    type Idx = Local;
-
-    fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
-    }
-
-    fn statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
-        self.transfer_function(trans).visit_statement(statement, location);
+        Self::transfer_function(state).visit_statement(statement, location);
     }
 
-    fn terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
-        trans: &mut Self::Domain,
+        state: &mut Self::Domain,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        self.transfer_function(trans).visit_terminator(terminator, location);
+        Self::transfer_function(state).visit_terminator(terminator, location);
         terminator.edges()
-    }
-
-    fn call_return_effect(
-        &mut self,
-        _trans: &mut Self::Domain,
-        _block: BasicBlock,
-        _return_places: CallReturnPlaces<'_, 'tcx>,
-    ) {
     }
 }
 

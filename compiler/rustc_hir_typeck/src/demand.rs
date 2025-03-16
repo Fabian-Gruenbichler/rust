@@ -9,8 +9,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
-use rustc_span::symbol::sym;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
 use tracing::instrument;
@@ -191,7 +190,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .sup(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
     pub(crate) fn demand_eqtype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -218,7 +219,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.at(cause, self.param_env)
             .eq(DefineOpaqueTypes::Yes, expected, actual)
             .map(|infer_ok| self.register_infer_ok_obligations(infer_ok))
-            .map_err(|e| self.err_ctxt().report_mismatched_types(cause, expected, actual, e))
+            .map_err(|e| {
+                self.err_ctxt().report_mismatched_types(cause, self.param_env, expected, actual, e)
+            })
     }
 
     pub(crate) fn demand_coerce(
@@ -271,7 +274,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_if_possible(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
+        let mut err =
+            self.err_ctxt().report_mismatched_types(&cause, self.param_env, expected, expr_ty, e);
 
         self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected, expected_ty_expr, Some(e));
 
@@ -912,7 +916,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [candidate] => format!(
                 "the method of the same name on {} `{}`",
                 match candidate.kind {
-                    probe::CandidateKind::InherentImplCandidate(_) => "the inherent impl for",
+                    probe::CandidateKind::InherentImplCandidate { .. } => "the inherent impl for",
                     _ => "trait",
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
@@ -1113,7 +1117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Constructor,
         }
         let mut maybe_emit_help = |def_id: hir::def_id::DefId,
-                                   callable: rustc_span::symbol::Ident,
+                                   callable: Ident,
                                    args: &[hir::Expr<'_>],
                                    kind: CallableKind| {
             let arg_idx = args.iter().position(|a| a.hir_id == expr.hir_id).unwrap();

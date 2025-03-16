@@ -12,15 +12,15 @@ use either::{Left, Right};
 use init_mask::*;
 pub use init_mask::{InitChunk, InitChunkIter};
 use provenance_map::*;
+use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    AllocId, BadBytesAccess, CtfeProvenance, InterpError, InterpResult, Pointer, PointerArithmetic,
-    Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo,
-    UnsupportedOpInfo, interp_ok, read_target_uint, write_target_uint,
+    AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
+    PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UnsupportedOpInfo, interp_ok, read_target_uint, write_target_uint,
 };
 use crate::ty;
 
@@ -199,22 +199,22 @@ impl From<ScalarSizeMismatch> for AllocError {
 }
 
 impl AllocError {
-    pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
+    pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpErrorKind<'tcx> {
         use AllocError::*;
         match self {
             ScalarSizeMismatch(s) => {
-                InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
+                InterpErrorKind::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
             }
-            ReadPointerAsInt(info) => InterpError::Unsupported(
+            ReadPointerAsInt(info) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
             ),
-            OverwritePartialPointer(offset) => InterpError::Unsupported(
+            OverwritePartialPointer(offset) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::OverwritePartialPointer(Pointer::new(alloc_id, offset)),
             ),
-            ReadPartialPointer(offset) => InterpError::Unsupported(
+            ReadPartialPointer(offset) => InterpErrorKind::Unsupported(
                 UnsupportedOpInfo::ReadPartialPointer(Pointer::new(alloc_id, offset)),
             ),
-            InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
+            InvalidUninitBytes(info) => InterpErrorKind::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
             ),
         }
@@ -318,7 +318,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
         Self::uninit_inner(size, align, || {
             ty::tls::with(|tcx| tcx.dcx().delayed_bug("exhausted memory during interpretation"));
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
+            InterpErrorKind::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })
         .into()
     }
@@ -640,6 +640,28 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     pub fn write_uninit(&mut self, cx: &impl HasDataLayout, range: AllocRange) -> AllocResult {
         self.mark_init(range, false);
         self.provenance.clear(range, cx)?;
+        Ok(())
+    }
+
+    /// Initialize all previously uninitialized bytes in the entire allocation, and set
+    /// provenance of everything to `Wildcard`. Before calling this, make sure all
+    /// provenance in this allocation is exposed!
+    pub fn prepare_for_native_write(&mut self) -> AllocResult {
+        let full_range = AllocRange { start: Size::ZERO, size: Size::from_bytes(self.len()) };
+        // Overwrite uninitialized bytes with 0, to ensure we don't leak whatever their value happens to be.
+        for chunk in self.init_mask.range_as_init_chunks(full_range) {
+            if !chunk.is_init() {
+                let uninit_bytes = &mut self.bytes
+                    [chunk.range().start.bytes_usize()..chunk.range().end.bytes_usize()];
+                uninit_bytes.fill(0);
+            }
+        }
+        // Mark everything as initialized now.
+        self.mark_init(full_range, true);
+
+        // Set provenance of all bytes to wildcard.
+        self.provenance.write_wildcards(self.len());
+
         Ok(())
     }
 

@@ -1,18 +1,20 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::trait_ref_of_method;
 use itertools::Itertools;
+use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
 use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
 use rustc_hir::intravisit::{
-    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound,
-    walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_where_predicate,
+    Visitor, walk_fn_decl, walk_generic_args, walk_generics, walk_impl_item_ref, walk_param_bound, walk_poly_trait_ref,
+    walk_trait_ref, walk_ty, walk_where_predicate,
 };
 use rustc_hir::{
     BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind, Generics,
-    Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
-    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WherePredicate, lang_items,
+    HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node, PolyTraitRef,
+    PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
+    WherePredicateKind, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
@@ -163,7 +165,7 @@ fn check_fn_inner<'tcx>(
                 if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
                     return;
                 }
-                if let GenericBound::Trait(ref trait_ref, _) = *bound {
+                if let GenericBound::Trait(ref trait_ref) = *bound {
                     let params = &trait_ref
                         .trait_ref
                         .path
@@ -420,15 +422,6 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 
     fn visit_ty(&mut self, ty: &'tcx Ty<'_>) {
         match ty.kind {
-            TyKind::OpaqueDef(opaque, bounds) => {
-                let len = self.lts.len();
-                self.visit_opaque_ty(opaque);
-                self.lts.truncate(len);
-                self.lts.extend(bounds.iter().filter_map(|bound| match bound {
-                    GenericArg::Lifetime(&l) => Some(l),
-                    _ => None,
-                }));
-            },
             TyKind::BareFn(&BareFnTy { decl, .. }) => {
                 let mut sub_visitor = RefVisitor::new(self.cx);
                 sub_visitor.visit_fn_decl(decl);
@@ -438,7 +431,7 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
                 if !lt.is_elided() {
                     self.unelided_trait_object_lifetime = true;
                 }
-                for (bound, _) in bounds {
+                for bound in bounds {
                     self.visit_poly_trait_ref(bound);
                 }
             },
@@ -451,9 +444,9 @@ impl<'tcx> Visitor<'tcx> for RefVisitor<'_, 'tcx> {
 /// reason about elision.
 fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_>) -> bool {
     for predicate in generics.predicates {
-        match *predicate {
-            WherePredicate::RegionPredicate(..) => return true,
-            WherePredicate::BoundPredicate(ref pred) => {
+        match *predicate.kind {
+            WherePredicateKind::RegionPredicate(..) => return true,
+            WherePredicateKind::BoundPredicate(ref pred) => {
                 // a predicate like F: Trait or F: for<'a> Trait<'a>
                 let mut visitor = RefVisitor::new(cx);
                 // walk the type F, it may not contain LT refs
@@ -476,7 +469,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
                     }
                 }
             },
-            WherePredicate::EqPredicate(ref pred) => {
+            WherePredicateKind::EqPredicate(ref pred) => {
                 let mut visitor = RefVisitor::new(cx);
                 walk_ty(&mut visitor, pred.lhs_ty);
                 walk_ty(&mut visitor, pred.rhs_ty);
@@ -492,6 +485,7 @@ fn has_where_lifetimes<'tcx>(cx: &LateContext<'tcx>, generics: &'tcx Generics<'_
 struct Usage {
     lifetime: Lifetime,
     in_where_predicate: bool,
+    in_bounded_ty: bool,
     in_generics_arg: bool,
 }
 
@@ -499,11 +493,15 @@ struct LifetimeChecker<'cx, 'tcx, F> {
     cx: &'cx LateContext<'tcx>,
     map: FxIndexMap<LocalDefId, Vec<Usage>>,
     where_predicate_depth: usize,
+    bounded_ty_depth: usize,
     generic_args_depth: usize,
     phantom: std::marker::PhantomData<F>,
 }
 
-impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
+impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F>
+where
+    F: NestedFilter<'tcx>,
+{
     fn new(cx: &'cx LateContext<'tcx>, generics: &'tcx Generics<'_>) -> LifetimeChecker<'cx, 'tcx, F> {
         let map = generics
             .params
@@ -519,9 +517,29 @@ impl<'cx, 'tcx, F> LifetimeChecker<'cx, 'tcx, F> {
             cx,
             map,
             where_predicate_depth: 0,
+            bounded_ty_depth: 0,
             generic_args_depth: 0,
             phantom: std::marker::PhantomData,
         }
+    }
+
+    // `visit_where_bound_predicate` is based on:
+    // https://github.com/rust-lang/rust/blob/864cee3ea383cc8254ba394ba355e648faa9cfa5/compiler/rustc_hir/src/intravisit.rs#L936-L939
+    fn visit_where_bound_predicate(
+        &mut self,
+        hir_id: HirId,
+        bounded_ty: &'tcx Ty<'tcx>,
+        bounds: &'tcx [GenericBound<'tcx>],
+        bound_generic_params: &'tcx [GenericParam<'tcx>],
+    ) {
+        try_visit!(self.visit_id(hir_id));
+
+        self.bounded_ty_depth += 1;
+        try_visit!(self.visit_ty(bounded_ty));
+        self.bounded_ty_depth -= 1;
+
+        walk_list!(self, visit_param_bound, bounds);
+        walk_list!(self, visit_generic_param, bound_generic_params);
     }
 }
 
@@ -540,6 +558,7 @@ where
             usages.push(Usage {
                 lifetime: *lifetime,
                 in_where_predicate: self.where_predicate_depth != 0,
+                in_bounded_ty: self.bounded_ty_depth != 0,
                 in_generics_arg: self.generic_args_depth != 0,
             });
         }
@@ -547,7 +566,17 @@ where
 
     fn visit_where_predicate(&mut self, predicate: &'tcx WherePredicate<'tcx>) {
         self.where_predicate_depth += 1;
-        walk_where_predicate(self, predicate);
+        if let &WherePredicateKind::BoundPredicate(WhereBoundPredicate {
+            bounded_ty,
+            bounds,
+            bound_generic_params,
+            origin: _,
+        }) = predicate.kind
+        {
+            self.visit_where_bound_predicate(predicate.hir_id, bounded_ty, bounds, bound_generic_params);
+        } else {
+            walk_where_predicate(self, predicate);
+        }
         self.where_predicate_depth -= 1;
     }
 
@@ -571,7 +600,7 @@ fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, 
     for (def_id, usages) in checker.map {
         if usages
             .iter()
-            .all(|usage| usage.in_where_predicate && !usage.in_generics_arg)
+            .all(|usage| usage.in_where_predicate && !usage.in_bounded_ty && !usage.in_generics_arg)
         {
             span_lint(
                 cx,
@@ -598,7 +627,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
     for (&def_id, usages) in &checker.map {
         if usages
             .iter()
-            .all(|usage| usage.in_where_predicate && !usage.in_generics_arg)
+            .all(|usage| usage.in_where_predicate && !usage.in_bounded_ty && !usage.in_generics_arg)
         {
             span_lint(
                 cx,
@@ -614,8 +643,7 @@ fn report_extra_impl_lifetimes<'tcx>(cx: &LateContext<'tcx>, impl_: &'tcx Impl<'
 
 // An `impl` lifetime is elidable if it satisfies the following conditions:
 // - It is used exactly once.
-// - That single use is not in `GenericArgs` in a `WherePredicate`. (Note that `GenericArgs` are
-//   different from `GenericParam`s.)
+// - That single use is not in a `WherePredicate`.
 fn report_elidable_impl_lifetimes<'tcx>(
     cx: &LateContext<'tcx>,
     impl_: &'tcx Impl<'_>,
@@ -628,11 +656,6 @@ fn report_elidable_impl_lifetimes<'tcx>(
                 Usage {
                     lifetime,
                     in_where_predicate: false,
-                    ..
-                }
-                | Usage {
-                    lifetime,
-                    in_generics_arg: false,
                     ..
                 },
             ] = usages.as_slice()
@@ -746,7 +769,7 @@ fn elision_suggestions(
     suggestions.extend(
         usages
             .iter()
-            .filter(|usage| named_lifetime(usage).map_or(false, |id| elidable_lts.contains(&id)))
+            .filter(|usage| named_lifetime(usage).is_some_and(|id| elidable_lts.contains(&id)))
             .map(|usage| {
                 match cx.tcx.parent_hir_node(usage.hir_id) {
                     Node::Ty(Ty {

@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::iter;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::{ExtendUnord, UnordItems, UnordSet};
 use rustc_errors::ErrorGuaranteed;
@@ -16,7 +17,6 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use super::RvalueScopes;
 use crate::hir::place::Place as HirPlace;
@@ -73,9 +73,9 @@ pub struct TypeckResults<'tcx> {
     /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
-    /// Top-level patterns whose match ergonomics need to be desugared
-    /// by the Rust 2021 -> 2024 migration lint.
-    rust_2024_migration_desugared_pats: ItemLocalSet,
+    /// Top-level patterns incompatible with Rust 2024's match ergonomics. These will be translated
+    /// to a form valid in all Editions, either as a lint diagnostic or hard error.
+    rust_2024_migration_desugared_pats: ItemLocalMap<Rust2024IncompatiblePatInfo>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -418,15 +418,19 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
-    pub fn rust_2024_migration_desugared_pats(&self) -> LocalSetInContext<'_> {
-        LocalSetInContext {
+    pub fn rust_2024_migration_desugared_pats(
+        &self,
+    ) -> LocalTableInContext<'_, Rust2024IncompatiblePatInfo> {
+        LocalTableInContext {
             hir_owner: self.hir_owner,
             data: &self.rust_2024_migration_desugared_pats,
         }
     }
 
-    pub fn rust_2024_migration_desugared_pats_mut(&mut self) -> LocalSetInContextMut<'_> {
-        LocalSetInContextMut {
+    pub fn rust_2024_migration_desugared_pats_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Rust2024IncompatiblePatInfo> {
+        LocalTableInContextMut {
             hir_owner: self.hir_owner,
             data: &mut self.rust_2024_migration_desugared_pats,
         }
@@ -699,12 +703,31 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 /// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub struct UserType<'tcx> {
+    pub kind: UserTypeKind<'tcx>,
+    pub bounds: ty::Clauses<'tcx>,
+}
+
+impl<'tcx> UserType<'tcx> {
+    pub fn new(kind: UserTypeKind<'tcx>) -> UserType<'tcx> {
+        UserType { kind, bounds: ty::ListWithCachedTypeInfo::empty() }
+    }
+
+    /// A user type annotation with additional bounds that need to be enforced.
+    /// These bounds are lowered from `impl Trait` in bindings.
+    pub fn new_with_bounds(kind: UserTypeKind<'tcx>, bounds: ty::Clauses<'tcx>) -> UserType<'tcx> {
+        UserType { kind, bounds }
+    }
+}
+
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
 #[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum UserType<'tcx> {
+pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
@@ -720,9 +743,13 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
     /// Returns `true` if this represents the generic parameters of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     fn is_identity(&self) -> bool {
-        match self.value {
-            UserType::Ty(_) => false,
-            UserType::TypeOf(_, user_args) => {
+        if !self.value.bounds.is_empty() {
+            return false;
+        }
+
+        match self.value.kind {
+            UserTypeKind::Ty(_) => false,
+            UserTypeKind::TypeOf(_, user_args) => {
                 if user_args.user_self_ty.is_some() {
                     return false;
                 }
@@ -764,6 +791,18 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.bounds.is_empty() {
+            self.kind.fmt(f)
+        } else {
+            self.kind.fmt(f)?;
+            write!(f, " + ")?;
+            std::fmt::Debug::fmt(&self.bounds, f)
+        }
+    }
+}
+
+impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ty(arg0) => {
                 ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
@@ -771,4 +810,18 @@ impl<'tcx> std::fmt::Display for UserType<'tcx> {
             Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
         }
     }
+}
+
+/// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
+/// emitted during THIR construction.
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct Rust2024IncompatiblePatInfo {
+    /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
+    pub primary_labels: Vec<(Span, String)>,
+    /// Whether any binding modifiers occur under a non-`move` default binding mode.
+    pub bad_modifiers: bool,
+    /// Whether any `&` or `&mut` patterns occur under a non-`move` default binding mode.
+    pub bad_ref_pats: bool,
+    /// If `true`, we can give a simpler suggestion solely by eliding explicit binding modifiers.
+    pub suggest_eliding_modes: bool,
 }

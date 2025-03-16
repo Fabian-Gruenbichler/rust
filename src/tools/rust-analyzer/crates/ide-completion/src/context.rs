@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope, Type,
-    TypeInfo,
+    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope,
+    Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -20,7 +20,6 @@ use syntax::{
     SyntaxKind::{self, *},
     SyntaxToken, TextRange, TextSize, T,
 };
-use text_edit::Indel;
 
 use crate::{
     context::analysis::{expand_and_analyze, AnalysisResult},
@@ -48,12 +47,16 @@ pub(crate) struct QualifierCtx {
     // TODO: Add try_tok and default_tok
     pub(crate) async_tok: Option<SyntaxToken>,
     pub(crate) unsafe_tok: Option<SyntaxToken>,
+    pub(crate) safe_tok: Option<SyntaxToken>,
     pub(crate) vis_node: Option<ast::Visibility>,
 }
 
 impl QualifierCtx {
     pub(crate) fn none(&self) -> bool {
-        self.async_tok.is_none() && self.unsafe_tok.is_none() && self.vis_node.is_none()
+        self.async_tok.is_none()
+            && self.unsafe_tok.is_none()
+            && self.safe_tok.is_none()
+            && self.vis_node.is_none()
     }
 }
 
@@ -130,6 +133,7 @@ pub(crate) type ExistingDerives = FxHashSet<hir::Macro>;
 pub(crate) struct AttrCtx {
     pub(crate) kind: AttrKind,
     pub(crate) annotated_item_kind: Option<SyntaxKind>,
+    pub(crate) derive_helpers: Vec<(Symbol, Symbol)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -229,7 +233,7 @@ pub(crate) enum ItemListKind {
     Impl,
     TraitImpl(Option<ast::Impl>),
     Trait,
-    ExternBlock,
+    ExternBlock { is_unsafe: bool },
 }
 
 #[derive(Debug)]
@@ -286,15 +290,14 @@ pub(crate) struct ParamContext {
 /// The state of the lifetime we are completing.
 #[derive(Debug)]
 pub(crate) struct LifetimeContext {
-    pub(crate) lifetime: Option<ast::Lifetime>,
     pub(crate) kind: LifetimeKind,
 }
 
 /// The kind of lifetime we are completing.
 #[derive(Debug)]
 pub(crate) enum LifetimeKind {
-    LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
-    Lifetime,
+    LifetimeParam,
+    Lifetime { in_lifetime_param_bound: bool, def: Option<hir::GenericDef> },
     LabelRef,
     LabelDef,
 }
@@ -680,8 +683,7 @@ impl<'a> CompletionContext<'a> {
         // actual completion.
         let file_with_fake_ident = {
             let parse = db.parse(file_id);
-            let edit = Indel::insert(offset, COMPLETION_MARKER.to_owned());
-            parse.reparse(&edit, file_id.edition()).tree()
+            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, file_id.edition()).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually
@@ -716,7 +718,7 @@ impl<'a> CompletionContext<'a> {
             expected: (expected_type, expected_name),
             qualifier_ctx,
             token,
-            offset,
+            original_offset,
         } = expand_and_analyze(
             &sema,
             original_file.syntax().clone(),
@@ -726,7 +728,7 @@ impl<'a> CompletionContext<'a> {
         )?;
 
         // adjust for macro input, this still fails if there is no token written yet
-        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
+        let scope = sema.scope_at_offset(&token.parent()?, original_offset)?;
 
         let krate = scope.krate();
         let module = scope.module();

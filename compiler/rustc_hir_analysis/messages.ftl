@@ -68,18 +68,21 @@ hir_analysis_closure_implicit_hrtb = implicit types in closure signatures are fo
 hir_analysis_cmse_call_generic =
     function pointers with the `"C-cmse-nonsecure-call"` ABI cannot contain generics in their type
 
-hir_analysis_cmse_call_inputs_stack_spill =
-    arguments for `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_entry_generic =
+    functions with the `"C-cmse-nonsecure-entry"` ABI cannot contain generics in their type
+
+hir_analysis_cmse_inputs_stack_spill =
+    arguments for `"{$abi_name}"` function too large to pass via registers
     .label = {$plural ->
         [false] this argument doesn't
         *[true] these arguments don't
     } fit in the available registers
-    .note = functions with the `"C-cmse-nonsecure-call"` ABI must pass all their arguments via the 4 32-bit available argument registers
+    .note = functions with the `"{$abi_name}"` ABI must pass all their arguments via the 4 32-bit available argument registers
 
-hir_analysis_cmse_call_output_stack_spill =
-    return value of `"C-cmse-nonsecure-call"` function too large to pass via registers
+hir_analysis_cmse_output_stack_spill =
+    return value of `"{$abi_name}"` function too large to pass via registers
     .label = this type doesn't fit in the available registers
-    .note1 = functions with the `"C-cmse-nonsecure-call"` ABI must pass their result via the available return registers
+    .note1 = functions with the `"{$abi_name}"` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
@@ -93,12 +96,14 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
-hir_analysis_const_bound_for_non_const_trait =
-    `{$modifier}` can only be applied to `#[const_trait]` traits
+hir_analysis_const_bound_for_non_const_trait = `{$modifier}` can only be applied to `#[const_trait]` traits
+    .label = can't be applied to `{$trait_name}`
+    .note = `{$trait_name}` can't be used with `{$modifier}` because it isn't annotated with `#[const_trait]`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
 
-hir_analysis_const_impl_for_non_const_trait =
-    const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
-    .suggestion = mark `{$trait_name}` as const
+hir_analysis_const_impl_for_non_const_trait = const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`
+    .label = this trait is not `const`
+    .suggestion = {$suggestion_pre}mark `{$trait_name}` as `#[const_trait]` to allow it to have `const` implementations
     .note = marking a trait with `#[const_trait]` ensures all default method bodies are `const`
     .adding = adding a non-const method body in the future would be a breaking change
 
@@ -109,8 +114,6 @@ hir_analysis_const_param_ty_impl_on_non_adt =
 hir_analysis_const_param_ty_impl_on_unsized =
     the trait `ConstParamTy` may not be implemented for this type
     .label = type is not `Sized`
-
-hir_analysis_const_specialize = cannot specialize on const impl with non-const impl
 
 hir_analysis_copy_impl_on_non_adt =
     the trait `Copy` cannot be implemented for this type
@@ -145,10 +148,6 @@ hir_analysis_drop_impl_reservation = reservation `Drop` impls are not supported
 
 hir_analysis_duplicate_precise_capture = cannot capture parameter `{$name}` twice
     .label = parameter captured again here
-
-hir_analysis_effects_without_next_solver = using `#![feature(effects)]` without enabling next trait solver globally
-    .note = the next trait solver must be enabled globally for the effects feature to work correctly
-    .help = use `-Znext-solver` to enable
 
 hir_analysis_empty_specialization = specialization impl does not specialize any associated items
     .note = impl is a specialization of this impl
@@ -235,17 +234,42 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
+hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must not be a method generic parameter type
+
+hir_analysis_invalid_generic_receiver_ty_help =
+    use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
 hir_analysis_invalid_receiver_ty = invalid `self` parameter type: `{$receiver_ty}`
-    .note = type of `self` must be `Self` or a type that dereferences to it
+    .note = type of `self` must be `Self` or some type implementing `Receiver`
 
 hir_analysis_invalid_receiver_ty_help =
+    consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
+
+hir_analysis_invalid_receiver_ty_help_no_arbitrary_self_types =
     consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+
+hir_analysis_invalid_receiver_ty_help_nonnull_note =
+    `NonNull` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `NonNull` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_help_weak_note =
+    `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
+
+hir_analysis_invalid_receiver_ty_no_arbitrary_self_types = invalid `self` parameter type: `{$receiver_ty}`
+    .note = type of `self` must be `Self` or a type that dereferences to it
 
 hir_analysis_invalid_union_field =
     field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be used in a union
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 hir_analysis_invalid_union_field_sugg =
+    wrap the field type in `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field =
+    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
+    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
+
+hir_analysis_invalid_unsafe_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
@@ -306,8 +330,8 @@ hir_analysis_missing_trait_item_suggestion = implement the missing item: `{$snip
 
 hir_analysis_missing_trait_item_unstable = not all trait items implemented, missing: `{$missing_item_name}`
     .note = default implementation of `{$missing_item_name}` is unstable
-    .some_note = use of unstable library feature '{$feature}': {$reason}
-    .none_note = use of unstable library feature '{$feature}'
+    .some_note = use of unstable library feature `{$feature}`: {$reason}
+    .none_note = use of unstable library feature `{$feature}`
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
@@ -353,11 +377,13 @@ hir_analysis_only_current_traits_arbitrary = only traits defined in the current 
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
 
-hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
-
 hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
 
 hir_analysis_only_current_traits_note = define and implement a trait or new type instead
+
+hir_analysis_only_current_traits_note_more_info = for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+
+hir_analysis_only_current_traits_note_uncovered = impl doesn't have any local type before any uncovered type parameters
 
 hir_analysis_only_current_traits_opaque = type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
 
@@ -417,6 +443,9 @@ hir_analysis_recursive_generic_parameter = {$param_def_kind} `{$param_name}` is 
 hir_analysis_redundant_lifetime_args = unnecessary lifetime parameter `{$victim}`
     .note = you can use the `{$candidate}` lifetime directly, in place of `{$victim}`
 
+hir_analysis_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
+
 hir_analysis_requires_note = the `{$trait_name}` impl for `{$ty}` requires that `{$error_predicate}`
 
 hir_analysis_return_type_notation_equality_bound =
@@ -438,6 +467,11 @@ hir_analysis_rpitit_refined = impl trait in impl method signature does not match
     .suggestion = replace the return type so that it matches the trait
     .label = return type from trait method defined here
     .unmatched_bound_label = this bound is stronger than that defined on the trait
+    .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
+    .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
+
+hir_analysis_rpitit_refined_lifetimes = impl trait in impl method captures fewer lifetimes than in trait
+    .suggestion = modify the `use<..>` bound to capture the same lifetimes that the trait does
     .note = add `#[allow(refining_impl_trait)]` if it is intended for this to be part of the public API of this crate
     .feedback_note = we are soliciting feedback, see issue #121718 <https://github.com/rust-lang/rust/issues/121718> for more information
 

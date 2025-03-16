@@ -5,19 +5,20 @@ use cfg::CfgExpr;
 use either::Either;
 use intern::{sym, Symbol};
 use mbe::{expect_fragment, DelimiterKind};
-use span::{Edition, EditionedFileId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+use span::{Edition, EditionedFileId, Span};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
     unescape::{unescape_byte, unescape_char, unescape_unicode, Mode},
 };
-use syntax_bridge::parse_to_token_tree;
+use syntax_bridge::syntax_node_to_token_tree;
 
 use crate::{
     builtin::quote::{dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
+    span_map::SpanMap,
     tt::{self, DelimSpan},
     ExpandError, ExpandResult, HirFileIdExt, Lookup as _, MacroCallId,
 };
@@ -73,7 +74,7 @@ impl BuiltinFnLikeExpander {
     }
 
     pub fn is_asm(&self) -> bool {
-        matches!(self, Self::Asm | Self::GlobalAsm)
+        matches!(self, Self::Asm | Self::GlobalAsm | Self::NakedAsm)
     }
 }
 
@@ -121,6 +122,7 @@ register_builtin! {
     (stringify, Stringify) => stringify_expand,
     (asm, Asm) => asm_expand,
     (global_asm, GlobalAsm) => asm_expand,
+    (naked_asm, NakedAsm) => asm_expand,
     (cfg, Cfg) => cfg_expand,
     (core_panic, CorePanic) => panic_expand,
     (std_panic, StdPanic) => panic_expand,
@@ -739,18 +741,14 @@ fn include_expand(
             return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
         }
     };
-    match parse_to_token_tree(
-        file_id.edition(),
-        SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-        SyntaxContextId::ROOT,
-        &db.file_text(file_id.file_id()),
-    ) {
-        Some(it) => ExpandResult::ok(it),
-        None => ExpandResult::new(
-            tt::Subtree::empty(DelimSpan { open: span, close: span }),
-            ExpandError::other(span, "failed to parse included file"),
-        ),
-    }
+    let span_map = db.real_span_map(file_id);
+    // FIXME: Parse errors
+    ExpandResult::ok(syntax_node_to_token_tree(
+        &db.parse(file_id).syntax_node(),
+        SpanMap::RealSpanMap(span_map),
+        span,
+        syntax_bridge::DocCommentDesugarMode::ProcMacro,
+    ))
 }
 
 pub fn include_input_to_file_id(

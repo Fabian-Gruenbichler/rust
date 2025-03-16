@@ -8,16 +8,11 @@ mod tests;
 use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "android",
     target_os = "hurd"
 ))]
 use libc::dirfd;
-#[cfg(any(
-    all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
-    target_os = "hurd"
-))]
+#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
 #[cfg(any(
     target_os = "android",
@@ -34,7 +29,6 @@ use libc::readdir as readdir64;
 #[cfg(not(any(
     target_os = "android",
     target_os = "linux",
-    target_os = "emscripten",
     target_os = "solaris",
     target_os = "illumos",
     target_os = "l4re",
@@ -48,7 +42,7 @@ use libc::readdir as readdir64;
 use libc::readdir_r as readdir64_r;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::readdir64;
-#[cfg(any(target_os = "emscripten", target_os = "l4re"))]
+#[cfg(target_os = "l4re")]
 use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
@@ -58,7 +52,6 @@ use libc::{
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
@@ -69,7 +62,6 @@ use libc::{
 };
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
-    target_os = "emscripten",
     target_os = "l4re",
     target_os = "hurd"
 ))]
@@ -168,7 +160,8 @@ cfg_has_statx! {{
             ) -> c_int
         }
 
-        if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Unavailable as u8 {
+        let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
+        if statx_availability == STATX_STATE::Unavailable as u8 {
             return None;
         }
 
@@ -189,7 +182,7 @@ cfg_has_statx! {{
             // See: https://github.com/rust-lang/rust/issues/65662
             //
             // FIXME what about transient conditions like `ENOMEM`?
-            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
+            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
                 .err()
                 .and_then(|e| e.raw_os_error());
             if err2 == Some(libc::EFAULT) {
@@ -199,6 +192,9 @@ cfg_has_statx! {{
                 STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
                 return None;
             }
+        }
+        if statx_availability == STATX_STATE::Unknown as u8 {
+            STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
@@ -559,7 +555,7 @@ impl FileAttr {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
                     SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64)
                 } else {
-                    Err(io::const_io_error!(
+                    Err(io::const_error!(
                         io::ErrorKind::Unsupported,
                         "creation time is not available for the filesystem",
                     ))
@@ -567,7 +563,7 @@ impl FileAttr {
             }
         }
 
-        Err(io::const_io_error!(
+        Err(io::const_error!(
             io::ErrorKind::Unsupported,
             "creation time is not available on this platform \
                             currently",
@@ -895,11 +891,10 @@ impl DirEntry {
     #[cfg(all(
         any(
             all(target_os = "linux", not(target_env = "musl")),
-            target_os = "emscripten",
             target_os = "android",
             target_os = "hurd"
         ),
-        not(miri)
+        not(miri) // no dirfd on Miri
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
@@ -910,7 +905,7 @@ impl DirEntry {
                 fd,
                 name,
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -924,7 +919,6 @@ impl DirEntry {
     #[cfg(any(
         not(any(
             all(target_os = "linux", not(target_env = "musl")),
-            target_os = "emscripten",
             target_os = "android",
             target_os = "hurd",
         )),
@@ -1194,7 +1188,7 @@ impl File {
                 fd,
                 c"".as_ptr() as *const c_char,
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1252,6 +1246,123 @@ impl File {
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
+    pub fn lock(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX) })?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn lock(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "lock() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH) })?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn lock_shared(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "lock_shared() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
+    pub fn try_lock(&self) -> io::Result<bool> {
+        let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) });
+        if let Err(ref err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                return Ok(false);
+            }
+        }
+        result?;
+        return Ok(true);
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn try_lock(&self) -> io::Result<bool> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        let result = cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_SH | libc::LOCK_NB) });
+        if let Err(ref err) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                return Ok(false);
+            }
+        }
+        result?;
+        return Ok(true);
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn try_lock_shared(&self) -> io::Result<bool> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "try_lock_shared() not supported"))
+    }
+
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    ))]
+    pub fn unlock(&self) -> io::Result<()> {
+        cvt(unsafe { libc::flock(self.as_raw_fd(), libc::LOCK_UN) })?;
+        return Ok(());
+    }
+
+    #[cfg(not(any(
+        target_os = "freebsd",
+        target_os = "linux",
+        target_os = "netbsd",
+        target_vendor = "apple",
+    )))]
+    pub fn unlock(&self) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "unlock() not supported"))
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
@@ -1342,11 +1453,11 @@ impl File {
         )))]
         let to_timespec = |time: Option<SystemTime>| match time {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(
+            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "timestamp is too large to set as a file time"
             )),
-            Some(_) => Err(io::const_io_error!(
+            Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "timestamp is too small to set as a file time"
             )),
@@ -1359,7 +1470,7 @@ impl File {
                 // the same as for Redox.
                 // `futimens` and `UTIME_OMIT` are a work in progress for vxworks.
                 let _ = times;
-                Err(io::const_io_error!(
+                Err(io::const_error!(
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
@@ -1398,7 +1509,7 @@ impl File {
                     weak!(fn futimens(c_int, *const libc::timespec) -> c_int);
                     match futimens.get() {
                         Some(futimens) => futimens(self.as_raw_fd(), times.as_ptr()),
-                        None => return Err(io::const_io_error!(
+                        None => return Err(io::const_error!(
                             io::ErrorKind::Unsupported,
                             "setting file times requires Android API level >= 19",
                         )),
@@ -1538,7 +1649,7 @@ impl fmt::Debug for File {
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
-        #[cfg(all(target_os = "freebsd", target_arch = "x86_64"))]
+        #[cfg(target_os = "freebsd")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let info = Box::<libc::kinfo_file>::new_zeroed();
             let mut info = unsafe { info.assume_init() };
@@ -1566,7 +1677,7 @@ impl fmt::Debug for File {
         #[cfg(not(any(
             target_os = "linux",
             target_os = "vxworks",
-            all(target_os = "freebsd", target_arch = "x86_64"),
+            target_os = "freebsd",
             target_os = "netbsd",
             target_os = "illumos",
             target_os = "solaris",
@@ -1767,7 +1878,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
                 libc::AT_FDCWD,
                 p.as_ptr(),
                 libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1786,7 +1897,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
                 libc::AT_FDCWD,
                 p.as_ptr(),
                 libc::AT_SYMLINK_NOFOLLOW | libc::AT_STATX_SYNC_AS_STAT,
-                libc::STATX_ALL,
+                libc::STATX_BASIC_STATS | libc::STATX_BTIME,
             ) } {
                 return ret;
             }
@@ -1827,7 +1938,7 @@ fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> 
 #[cfg(target_os = "espidf")]
 fn open_to_and_set_permissions(
     to: &Path,
-    _reader_metadata: crate::fs::Metadata,
+    _reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     let writer = OpenOptions::new().open(to)?;
@@ -1838,7 +1949,7 @@ fn open_to_and_set_permissions(
 #[cfg(not(target_os = "espidf"))]
 fn open_to_and_set_permissions(
     to: &Path,
-    reader_metadata: crate::fs::Metadata,
+    reader_metadata: &crate::fs::Metadata,
 ) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::OpenOptions;
     use crate::os::unix::fs::{OpenOptionsExt, PermissionsExt};
@@ -1863,30 +1974,63 @@ fn open_to_and_set_permissions(
     Ok((writer, writer_metadata))
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "android", target_vendor = "apple")))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
+mod cfm {
+    use crate::fs::{File, Metadata};
+    use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, Read, Result, Write};
 
-    io::copy(&mut reader, &mut writer)
-}
+    #[allow(dead_code)]
+    pub struct CachedFileMetadata(pub File, pub Metadata);
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-    let (mut reader, reader_metadata) = open_from(from)?;
-    let max_len = u64::MAX;
-    let (mut writer, _) = open_to_and_set_permissions(to, reader_metadata)?;
-
-    use super::kernel_copy::{CopyResult, copy_regular_files};
-
-    match copy_regular_files(reader.as_raw_fd(), writer.as_raw_fd(), max_len) {
-        CopyResult::Ended(bytes) => Ok(bytes),
-        CopyResult::Error(e, _) => Err(e),
-        CopyResult::Fallback(written) => match io::copy::generic_copy(&mut reader, &mut writer) {
-            Ok(bytes) => Ok(bytes + written),
-            Err(e) => Err(e),
-        },
+    impl Read for CachedFileMetadata {
+        fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+            self.0.read(buf)
+        }
+        fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
+            self.0.read_vectored(bufs)
+        }
+        fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> Result<()> {
+            self.0.read_buf(cursor)
+        }
+        #[inline]
+        fn is_read_vectored(&self) -> bool {
+            self.0.is_read_vectored()
+        }
+        fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+            self.0.read_to_end(buf)
+        }
+        fn read_to_string(&mut self, buf: &mut String) -> Result<usize> {
+            self.0.read_to_string(buf)
+        }
     }
+    impl Write for CachedFileMetadata {
+        fn write(&mut self, buf: &[u8]) -> Result<usize> {
+            self.0.write(buf)
+        }
+        fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
+            self.0.write_vectored(bufs)
+        }
+        #[inline]
+        fn is_write_vectored(&self) -> bool {
+            self.0.is_write_vectored()
+        }
+        #[inline]
+        fn flush(&mut self) -> Result<()> {
+            self.0.flush()
+        }
+    }
+}
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub(crate) use cfm::CachedFileMetadata;
+
+#[cfg(not(target_vendor = "apple"))]
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    let (reader, reader_metadata) = open_from(from)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
+
+    io::copy(
+        &mut cfm::CachedFileMetadata(reader, reader_metadata),
+        &mut cfm::CachedFileMetadata(writer, writer_metadata),
+    )
 }
 
 #[cfg(target_vendor = "apple")]
@@ -1923,7 +2067,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 
     // Fall back to using `fcopyfile` if `fclonefileat` does not succeed.
-    let (writer, writer_metadata) = open_to_and_set_permissions(to, reader_metadata)?;
+    let (writer, writer_metadata) = open_to_and_set_permissions(to, &reader_metadata)?;
 
     // We ensure that `FreeOnDrop` never contains a null pointer so it is
     // always safe to call `copyfile_state_free`
@@ -1973,7 +2117,7 @@ pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
 #[cfg(target_os = "vxworks")]
 pub fn lchown(path: &Path, uid: u32, gid: u32) -> io::Result<()> {
     let (_, _, _) = (path, uid, gid);
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
+    Err(io::const_error!(io::ErrorKind::Unsupported, "lchown not supported by vxworks"))
 }
 
 #[cfg(not(any(target_os = "fuchsia", target_os = "vxworks")))]
@@ -1984,7 +2128,7 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 #[cfg(target_os = "vxworks")]
 pub fn chroot(dir: &Path) -> io::Result<()> {
     let _ = dir;
-    Err(io::const_io_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
+    Err(io::const_error!(io::ErrorKind::Unsupported, "chroot not supported by vxworks"))
 }
 
 pub use remove_dir_impl::remove_dir_all;

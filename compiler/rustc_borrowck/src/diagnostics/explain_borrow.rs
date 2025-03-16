@@ -5,7 +5,7 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
@@ -17,8 +17,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_span::symbol::{Symbol, kw};
-use rustc_span::{DesugaringKind, Span, sym};
+use rustc_span::{DesugaringKind, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
 use tracing::{debug, instrument};
 
@@ -61,12 +60,12 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic(
+    pub(crate) fn add_explanation_to_diagnostic<G: EmissionGuarantee>(
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexSlice<Local, Option<Symbol>>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -130,7 +129,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 {
                     suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                 } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
-                    // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                    // We can use `var_or_use_span` if either `path_span` is not present, or both
+                    // spans are the same.
                     if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
@@ -165,7 +165,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
-                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                // We can use `var_or_use_span` if either `path_span` is not present, or both spans
+                // are the same.
                 if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
                     err.span_label(var_or_use_span, format!("{borrow_desc}{message}"));
                 } else {
@@ -285,7 +286,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                 span: _,
                                 pat,
                                 init,
-                                // FIXME(#101728): enable rewrite when type ascription is stabilized again
+                                // FIXME(#101728): enable rewrite when type ascription is
+                                // stabilized again.
                                 ty: None,
                                 recovered: _,
                             }) = cond.kind
@@ -346,15 +348,15 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_object_lifetime_default_note(
+    fn add_object_lifetime_default_note<G: EmissionGuarantee>(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
-            // We try to elaborate the object lifetime defaults and present those to the user. This should
-            // make it clear where the region constraint is coming from.
+            // We try to elaborate the object lifetime defaults and present those to the user. This
+            // should make it clear where the region constraint is coming from.
             let generics = tcx.generics_of(def.did());
 
             let mut has_dyn = false;
@@ -403,9 +405,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_lifetime_bound_suggestion_to_diagnostic(
+    fn add_lifetime_bound_suggestion_to_diagnostic<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
@@ -432,14 +434,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-fn suggest_rewrite_if_let(
+fn suggest_rewrite_if_let<G: EmissionGuarantee>(
     tcx: TyCtxt<'_>,
     expr: &hir::Expr<'_>,
     pat: &str,
     init: &hir::Expr<'_>,
     conseq: &hir::Expr<'_>,
     alt: Option<&hir::Expr<'_>>,
-    err: &mut Diag<'_>,
+    err: &mut Diag<'_, G>,
 ) {
     let source_map = tcx.sess.source_map();
     err.span_note(
@@ -531,9 +533,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mut use_in_later_iteration_of_loop = false;
 
         if region_sub == borrow_region_vid {
-            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow is
-            // issued is the same location that invalidates the reference), this is likely a loop iteration
-            // - in this case, try using the loop terminator location in `find_sub_region_live_at`.
+            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow
+            // is issued is the same location that invalidates the reference), this is likely a
+            // loop iteration. In this case, try using the loop terminator location in
+            // `find_sub_region_live_at`.
             if let Some(loop_terminator_location) =
                 regioncx.find_loop_terminator_location(borrow.region, body)
             {

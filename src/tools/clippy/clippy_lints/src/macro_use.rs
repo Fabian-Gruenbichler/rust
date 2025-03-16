@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -43,7 +42,6 @@ impl MacroRefData {
 }
 
 #[derive(Default)]
-#[expect(clippy::module_name_repetitions)]
 pub struct MacroUseImports {
     /// the actual import path used and the span of the attribute above it. The value is
     /// the location, where the lint should be emitted.
@@ -105,7 +103,7 @@ impl LateLintPass<'_> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, item.span);
         }
     }
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
         if attr.span.from_expansion() {
             self.push_unique_macro(cx, attr.span);
         }

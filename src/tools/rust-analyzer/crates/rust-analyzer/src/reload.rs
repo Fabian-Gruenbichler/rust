@@ -18,7 +18,7 @@ use std::{iter, mem};
 use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
 use ide::CrateId;
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
+    base_db::{ra_salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -33,7 +33,9 @@ use vfs::{AbsPath, AbsPathBuf, ChangeKind};
 use crate::{
     config::{Config, FilesWatcher, LinkedProject},
     flycheck::{FlycheckConfig, FlycheckHandle},
-    global_state::{FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState},
+    global_state::{
+        FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+    },
     lsp_ext,
     main_loop::{DiscoverProjectParam, Task},
     op_queue::Cause,
@@ -68,7 +70,6 @@ impl GlobalState {
     /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
-            && self.last_reported_status.is_some()
             && !self.fetch_workspaces_queue.op_in_progress()
             && !self.fetch_build_data_queue.op_in_progress()
             && !self.fetch_proc_macros_queue.op_in_progress()
@@ -314,9 +315,7 @@ impl GlobalState {
                         LinkedProject::InlineJsonProject(it) => {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
-                                cargo_config.target.as_deref(),
-                                &cargo_config.extra_env,
-                                &cargo_config.cfg_overrides,
+                                &cargo_config,
                             );
                             Ok(workspace)
                         }
@@ -475,7 +474,9 @@ impl GlobalState {
 
         if same_workspaces {
             let (workspaces, build_scripts) = match self.fetch_build_data_queue.last_op_result() {
-                Some((workspaces, build_scripts)) => (workspaces.clone(), build_scripts.as_slice()),
+                Some(FetchBuildDataResponse { workspaces, build_scripts }) => {
+                    (workspaces.clone(), build_scripts.as_slice())
+                }
                 None => (Default::default(), Default::default()),
             };
 
@@ -588,7 +589,7 @@ impl GlobalState {
             }
 
             watchers.extend(
-                iter::once(Config::user_config_path())
+                iter::once(Config::user_config_dir_path().as_deref())
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
@@ -611,7 +612,11 @@ impl GlobalState {
         }
 
         let files_config = self.config.files();
-        let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
+        let project_folders = ProjectFolders::new(
+            &self.workspaces,
+            &files_config.exclude,
+            Config::user_config_dir_path().as_deref(),
+        );
 
         if (self.proc_macro_clients.is_empty() || !same_workspaces)
             && self.config.expand_proc_macros()
@@ -769,12 +774,14 @@ impl GlobalState {
     pub(super) fn fetch_build_data_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        let Some((_, ws)) = &self.fetch_build_data_queue.last_op_result() else {
+        let Some(FetchBuildDataResponse { build_scripts, .. }) =
+            &self.fetch_build_data_queue.last_op_result()
+        else {
             return Ok(());
         };
 
-        for ws in ws {
-            match ws {
+        for script in build_scripts {
+            match script {
                 Ok(data) => {
                     if let Some(stderr) = data.error() {
                         stdx::format_to!(buf, "{:#}\n", stderr)

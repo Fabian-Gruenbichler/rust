@@ -52,7 +52,7 @@ use crate::core::{PackageId, PackageSet, SourceId, TargetKind, Workspace};
 use crate::drop_println;
 use crate::ops;
 use crate::ops::resolve::WorkspaceResolve;
-use crate::util::context::GlobalContext;
+use crate::util::context::{GlobalContext, WarningHandling};
 use crate::util::interning::InternedString;
 use crate::util::{CargoResult, StableHasher};
 
@@ -138,7 +138,11 @@ pub fn compile_with_exec<'a>(
     exec: &Arc<dyn Executor>,
 ) -> CargoResult<Compilation<'a>> {
     ws.emit_warnings()?;
-    compile_ws(ws, options, exec)
+    let compilation = compile_ws(ws, options, exec)?;
+    if ws.gctx().warning_handling()? == WarningHandling::Deny && compilation.warning_count > 0 {
+        anyhow::bail!("warnings are denied by `build.warnings` configuration")
+    }
+    Ok(compilation)
 }
 
 /// Like [`compile_with_exec`] but without warnings from manifest parsing.
@@ -286,8 +290,13 @@ pub fn create_bcx<'a, 'gctx>(
     } = resolve;
 
     let std_resolve_features = if let Some(crates) = &gctx.cli_unstable().build_std {
-        let (std_package_set, std_resolve, std_features) =
-            standard_lib::resolve_std(ws, &mut target_data, &build_config, crates)?;
+        let (std_package_set, std_resolve, std_features) = standard_lib::resolve_std(
+            ws,
+            &mut target_data,
+            &build_config,
+            crates,
+            &build_config.requested_kinds,
+        )?;
         pkg_set.add_set(std_package_set);
         Some((std_resolve, std_features))
     } else {
@@ -394,10 +403,11 @@ pub fn create_bcx<'a, 'gctx>(
         Vec::new()
     };
 
-    let std_roots = if let Some(crates) = standard_lib::std_crates(gctx, Some(&units)) {
+    let std_roots = if let Some(crates) = gctx.cli_unstable().build_std.as_ref() {
         let (std_resolve, std_features) = std_resolve_features.as_ref().unwrap();
         standard_lib::generate_std_roots(
             &crates,
+            &units,
             std_resolve,
             std_features,
             &explicit_host_kinds,
@@ -652,7 +662,7 @@ fn traverse_and_share(
         .collect();
     // Here, we have recursively traversed this unit's dependencies, and hashed them: we can
     // finalize the dep hash.
-    let new_dep_hash = dep_hash.finish();
+    let new_dep_hash = Hasher::finish(&dep_hash);
 
     // This is the key part of the sharing process: if the unit is a runtime dependency, whose
     // target is the same as the host, we canonicalize the compile kind to `CompileKind::Host`.
@@ -743,7 +753,7 @@ fn traverse_and_share(
     new_unit
 }
 
-/// Removes duplicate CompileMode::Doc units that would cause problems with
+/// Removes duplicate `CompileMode::Doc` units that would cause problems with
 /// filename collisions.
 ///
 /// Rustdoc only separates units by crate name in the file directory

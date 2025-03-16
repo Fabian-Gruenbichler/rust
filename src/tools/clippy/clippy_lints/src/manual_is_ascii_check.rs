@@ -1,7 +1,7 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_in_const_context, path_to_local, peel_ref_operators};
 use rustc_ast::LitKind::{Byte, Char};
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
                 check_is_ascii(cx, macro_call.span, recv, &range, None);
             }
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
-            && path.ident.name == sym!(contains)
+            && path.ident.name.as_str() == "contains"
             && let Some(higher::Range {
                 start: Some(start),
                 end: Some(end),

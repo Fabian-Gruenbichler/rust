@@ -4,8 +4,7 @@ use rustc_errors::{
     SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_requires_cfg_pattern)]
@@ -143,6 +142,78 @@ pub(crate) struct BenchSig {
 pub(crate) struct AllocMustStatics {
     #[primary_span]
     pub(crate) span: Span,
+}
+
+#[cfg(llvm_enzyme)]
+pub(crate) use autodiff::*;
+
+#[cfg(llvm_enzyme)]
+mod autodiff {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_missing_config)]
+    pub(crate) struct AutoDiffMissingConfig {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_unknown_activity)]
+    pub(crate) struct AutoDiffUnknownActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_ty_activity)]
+    pub(crate) struct AutoDiffInvalidTypeForActivity {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) act: String,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_number_activities)]
+    pub(crate) struct AutoDiffInvalidNumberActivities {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) expected: usize,
+        pub(crate) found: usize,
+    }
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode_activity)]
+    pub(crate) struct AutoDiffInvalidApplicationModeAct {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+        pub(crate) act: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_mode)]
+    pub(crate) struct AutoDiffInvalidMode {
+        #[primary_span]
+        pub(crate) span: Span,
+        pub(crate) mode: String,
+    }
+
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff)]
+    pub(crate) struct AutoDiffInvalidApplication {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
+}
+
+#[cfg(not(llvm_enzyme))]
+pub(crate) use ad_fallback::*;
+#[cfg(not(llvm_enzyme))]
+mod ad_fallback {
+    use super::*;
+    #[derive(Diagnostic)]
+    #[diag(builtin_macros_autodiff_not_build)]
+    pub(crate) struct AutoDiffSupportNotBuild {
+        #[primary_span]
+        pub(crate) span: Span,
+    }
 }
 
 #[derive(Diagnostic)]
@@ -298,26 +369,21 @@ pub(crate) struct DerivePathArgsValue {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_no_default_variant)]
-#[help]
+#[diag(builtin_macros_no_default_variant, code = E0665)]
 pub(crate) struct NoDefaultVariant {
     #[primary_span]
     pub(crate) span: Span,
+    #[label]
+    pub(crate) item_span: Span,
     #[subdiagnostic]
     pub(crate) suggs: Vec<NoDefaultVariantSugg>,
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    builtin_macros_suggestion,
-    code = "#[default] {ident}",
-    applicability = "maybe-incorrect",
-    style = "tool-only"
-)]
+#[suggestion(builtin_macros_suggestion, code = "#[default] ", applicability = "maybe-incorrect")]
 pub(crate) struct NoDefaultVariantSugg {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) ident: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -352,6 +418,7 @@ pub(crate) struct MultipleDefaultsSugg {
 pub(crate) struct NonUnitDefault {
     #[primary_span]
     pub(crate) span: Span,
+    pub(crate) post: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -550,6 +617,17 @@ pub(crate) enum InvalidFormatStringSuggestion {
     RemoveRawIdent {
         #[primary_span]
         span: Span,
+    },
+    #[suggestion(
+        builtin_macros_format_reorder_format_parameter,
+        code = "{replacement}",
+        style = "verbose",
+        applicability = "machine-applicable"
+    )]
+    ReorderFormatParameter {
+        #[primary_span]
+        span: Span,
+        replacement: String,
     },
 }
 

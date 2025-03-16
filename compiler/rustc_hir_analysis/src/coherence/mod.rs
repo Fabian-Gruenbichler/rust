@@ -53,7 +53,7 @@ fn enforce_trait_manually_implementable(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls {
+    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls() {
         feature_err(
             &tcx.sess,
             sym::freeze_impls,
@@ -86,8 +86,8 @@ fn enforce_trait_manually_implementable(
 
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
     {
-        if !tcx.features().specialization
-            && !tcx.features().min_specialization
+        if !tcx.features().specialization()
+            && !tcx.features().min_specialization()
             && !impl_header_span.allows_unstable(sym::specialization)
             && !impl_header_span.allows_unstable(sym::min_specialization)
         {
@@ -206,7 +206,9 @@ fn check_object_overlap<'tcx>(
                 // so this is valid.
             } else {
                 let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
-                if supertrait_def_ids.any(|d| d == trait_def_id) {
+                if supertrait_def_ids
+                    .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
+                {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(
                         tcx.dcx(),

@@ -17,7 +17,7 @@ The specific `Ty` we are referring to is [`rustc_middle::ty::Ty`][ty_ty] (and no
 into the details of `ty::Ty`.
 
 [ty_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
-[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Ty.html
+[hir_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Ty.html
 
 ## `rustc_hir::Ty` vs `ty::Ty`
 
@@ -65,7 +65,7 @@ Here is a summary:
 | `fn foo(x: u32) → u32 { }` - Two `rustc_hir::Ty` representing each usage of `u32`, each has its own `Span`s, and `rustc_hir::Ty` doesn’t tell us that both are the same type | `fn foo(x: u32) → u32 { }` - One `ty::Ty` for all instances of `u32` throughout the program, and `ty::Ty` tells us that both usages of `u32` mean the same type. |
 | `fn foo(x: &u32) -> &u32)` - Two `rustc_hir::Ty` again. Lifetimes for the references show up in the `rustc_hir::Ty`s using a special marker, [`LifetimeName::Implicit`][implicit]. | `fn foo(x: &u32) -> &u32)`- A single `ty::Ty`. The `ty::Ty` has the hidden lifetime param. |
 
-[implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.LifetimeName.html#variant.Implicit
+[implicit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.LifetimeName.html#variant.Implicit
 
 **Order**
 
@@ -314,3 +314,13 @@ a redundant delayed bug.
 
 [terr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error
 [terrmsg]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html#method.new_error_with_message
+
+
+## `TyKind` variant shorthand syntax
+
+When looking at the debug output of `Ty` or simply talking about different types in the compiler, you may encounter syntax that is not valid rust but is used to concisely represent internal information about types. Below is a quick reference cheat sheet to tell what the various syntax actually means, these should be covered in more depth in later chapters.
+
+- Generic parameters: `{name}/#{index}` e.g. `T/#0`, where `index` corresponds to its position in the list of generic parameters
+- Inference variables: `?{id}` e.g. `?x`/`?0`, where `id` identifies the inference variable
+- Variables from binders: `^{binder}_{index}` e.g. `^0_x`/`^0_2`, where `binder` and `index` identify which variable from which binder is being referred to
+- Placeholders: `!{id}` or `!{id}_{universe}` e.g. `!x`/`!0`/`!x_2`/`!0_2`, representing some unique type in the specified universe. The universe is often elided when it is `0`

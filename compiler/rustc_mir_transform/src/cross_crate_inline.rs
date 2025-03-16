@@ -1,4 +1,4 @@
-use rustc_attr::InlineAttr;
+use rustc_attr_parsing::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
@@ -48,6 +48,16 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         InlineAttr::Never => return false,
         InlineAttr::Hint | InlineAttr::Always => return true,
         _ => {}
+    }
+
+    let sig = tcx.fn_sig(def_id).instantiate_identity();
+    for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
+    {
+        // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip
+        // codegen if the function is not used.
+        if ty == &tcx.types.f16 || ty == &tcx.types.f128 {
+            return true;
+        }
     }
 
     // Don't do any inference when incremental compilation is enabled; the additional inlining that

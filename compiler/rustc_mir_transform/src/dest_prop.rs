@@ -169,10 +169,7 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let live = MaybeLiveLocals
-            .into_engine(tcx, body)
-            .pass_name("MaybeLiveLocals-DestinationPropagation")
-            .iterate_to_fixpoint();
+        let live = MaybeLiveLocals.iterate_to_fixpoint(tcx, body, Some("MaybeLiveLocals-DestProp"));
         let points = DenseLocationMap::new(body);
         let mut live = save_as_intervals(&points, body, live);
 
@@ -220,11 +217,6 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
                 else {
                     continue;
                 };
-                if !tcx.consider_optimizing(|| {
-                    format!("{} round {}", tcx.def_path_str(def_id), round_count)
-                }) {
-                    break;
-                }
 
                 // Replace `src` by `dest` everywhere.
                 merges.insert(*src, *dest);
@@ -584,7 +576,7 @@ impl WriteInfo {
                     | Rvalue::RawPtr(_, _)
                     | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
-                    | Rvalue::CopyForDeref(_) => (),
+                    | Rvalue::CopyForDeref(_) => {}
                 }
             }
             // Retags are technically also reads, but reporting them as a write suffices
@@ -599,7 +591,8 @@ impl WriteInfo {
             | StatementKind::Coverage(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::PlaceMention(_) => (),
+            | StatementKind::BackwardIncompatibleDropHint { .. }
+            | StatementKind::PlaceMention(_) => {}
             StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {
                 bug!("{:?} not found in this MIR phase", statement)
             }

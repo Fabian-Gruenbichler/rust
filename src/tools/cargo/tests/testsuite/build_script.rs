@@ -156,7 +156,7 @@ fn custom_build_env_vars() {
                 authors = ["wycats@example.com"]
 
                 [features]
-                bar_feat = ["bar/foo"]
+                bar_feat = ["bar/foo", "bar/other-feature"]
 
                 [dependencies.bar]
                 path = "bar"
@@ -176,6 +176,7 @@ fn custom_build_env_vars() {
 
                 [features]
                 foo = []
+                other-feature = []
             "#,
         )
         .file("bar/src/lib.rs", "pub fn hello() {}");
@@ -213,6 +214,8 @@ fn custom_build_env_vars() {
                 let _host = env::var("HOST").unwrap();
 
                 let _feat = env::var("CARGO_FEATURE_FOO").unwrap();
+                let feat = env::var("CARGO_CFG_FEATURE").unwrap();
+                assert_eq!(feat, "foo,other-feature");
 
                 let cargo = env::var("CARGO").unwrap();
                 if env::var_os("CHECK_CARGO_IS_RUSTC").is_some() {{
@@ -3779,7 +3782,6 @@ fn custom_target_dir() {
     p.cargo("build -v").run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn panic_abort_with_build_scripts() {
     let p = project()
@@ -3871,14 +3873,106 @@ fn warnings_emitted() {
         )
         .build();
 
-    p.cargo("build -v")
+    p.cargo("build")
         .with_stderr_data(str![[r#"
 [COMPILING] foo v0.5.0 ([ROOT]/foo)
-[RUNNING] `rustc --crate-name build_script_build [..]`
-[RUNNING] `[ROOT]/foo/target/debug/build/foo-[HASH]/build-script-build`
 [WARNING] foo@0.5.0: foo
 [WARNING] foo@0.5.0: bar
-[RUNNING] `rustc --crate-name foo [..]`
+[FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
+
+"#]])
+        .run();
+}
+
+#[cargo_test]
+fn errors_and_warnings_emitted_and_build_failed() {
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.5.0"
+                edition = "2015"
+                authors = []
+                build = "build.rs"
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .file(
+            "build.rs",
+            r#"
+                fn main() {
+                    println!("cargo::warning=foo");
+                    println!("cargo::warning=bar");
+                    println!("cargo::error=foo err");
+                    println!("cargo::error=bar err");
+                }
+            "#,
+        )
+        .build();
+
+    p.cargo("build")
+        .with_status(101)
+        .with_stderr_data(str![[r#"
+[COMPILING] foo v0.5.0 ([ROOT]/foo)
+[WARNING] foo@0.5.0: foo
+[WARNING] foo@0.5.0: bar
+[ERROR] foo@0.5.0: foo err
+[ERROR] foo@0.5.0: bar err
+[ERROR] build script logged errors
+
+"#]])
+        .run();
+}
+
+#[cargo_test]
+fn warnings_emitted_from_path_dep() {
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.5.0"
+                edition = "2015"
+                authors = []
+
+                [dependencies]
+                a = { path = "a" }
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .file(
+            "a/Cargo.toml",
+            r#"
+                [package]
+                name = "a"
+                version = "0.5.0"
+                edition = "2015"
+                authors = []
+                build = "build.rs"
+            "#,
+        )
+        .file("a/src/lib.rs", "")
+        .file(
+            "a/build.rs",
+            r#"
+                fn main() {
+                    println!("cargo::warning=foo");
+                    println!("cargo::warning=bar");
+                }
+            "#,
+        )
+        .build();
+
+    p.cargo("build")
+        .with_stderr_data(str![[r#"
+[LOCKING] 1 package to latest compatible version
+[COMPILING] a v0.5.0 ([ROOT]/foo/a)
+[WARNING] a@0.5.0: foo
+[WARNING] a@0.5.0: bar
+[COMPILING] foo v0.5.0 ([ROOT]/foo)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
 
 "#]])
@@ -3906,7 +4000,7 @@ fn warnings_emitted_when_build_script_panics() {
                 fn main() {
                     println!("cargo::warning=foo");
                     println!("cargo::warning=bar");
-                    panic!();
+                    panic!("our crate panicked");
                 }
             "#,
         )
@@ -3916,10 +4010,154 @@ fn warnings_emitted_when_build_script_panics() {
         .with_status(101)
         .with_stdout_data("")
         .with_stderr_data(str![[r#"
-...
+[COMPILING] foo v0.5.0 ([ROOT]/foo)
 [WARNING] foo@0.5.0: foo
 [WARNING] foo@0.5.0: bar
+[ERROR] failed to run custom build command for `foo v0.5.0 ([ROOT]/foo)`
+
+Caused by:
+  process didn't exit successfully: `[ROOT]/foo/target/debug/build/foo-[HASH]/build-script-build` ([EXIT_STATUS]: 101)
+  --- stdout
+  cargo::warning=foo
+  cargo::warning=bar
+
+  --- stderr
 ...
+[..]our crate panicked[..]
+...
+"#]])
+        .run();
+}
+
+#[cargo_test]
+fn warnings_emitted_when_dependency_panics() {
+    Package::new("published", "0.1.0")
+        .file(
+            "build.rs",
+            r#"
+                fn main() {
+                    println!("cargo::warning=foo");
+                    println!("cargo::warning=bar");
+                    panic!("dependency panicked");
+                }
+            "#,
+        )
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "published"
+                version = "0.1.0"
+                edition = "2015"
+                authors = []
+                build = "build.rs"
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .publish();
+
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.5.0"
+                edition = "2015"
+                authors = []
+
+                [dependencies]
+                published = "*"
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .build();
+
+    p.cargo("build")
+    .with_status(101)
+    .with_stderr_data(str![[r#"
+[UPDATING] `dummy-registry` index
+[LOCKING] 1 package to latest compatible version
+[DOWNLOADING] crates ...
+[DOWNLOADED] published v0.1.0 (registry `dummy-registry`)
+[COMPILING] published v0.1.0
+[WARNING] published@0.1.0: foo
+[WARNING] published@0.1.0: bar
+[ERROR] failed to run custom build command for `published v0.1.0`
+
+Caused by:
+  process didn't exit successfully: `[ROOT]/foo/target/debug/build/published-[HASH]/build-script-build` ([EXIT_STATUS]: 101)
+  --- stdout
+  cargo::warning=foo
+  cargo::warning=bar
+
+  --- stderr
+...
+[..]dependency panicked[..]
+...
+"#]])
+        .run();
+}
+
+#[cargo_test]
+fn log_messages_emitted_when_dependency_logs_errors() {
+    Package::new("published", "0.1.0")
+        .file(
+            "build.rs",
+            r#"
+                fn main() {
+                    println!("cargo::warning=foo");
+                    println!("cargo::warning=bar");
+                    println!("cargo::error=foo err");
+                    println!("cargo::error=bar err");
+                }
+            "#,
+        )
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "published"
+                version = "0.1.0"
+                edition = "2015"
+                authors = []
+                build = "build.rs"
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .publish();
+
+    let p = project()
+        .file(
+            "Cargo.toml",
+            r#"
+                [package]
+                name = "foo"
+                version = "0.5.0"
+                edition = "2015"
+                authors = []
+
+                [dependencies]
+                published = "*"
+            "#,
+        )
+        .file("src/lib.rs", "")
+        .build();
+
+    p.cargo("build")
+        .with_status(101)
+        .with_stderr_data(str![[r#"
+[UPDATING] `dummy-registry` index
+[LOCKING] 1 package to latest compatible version
+[DOWNLOADING] crates ...
+[DOWNLOADED] published v0.1.0 (registry `dummy-registry`)
+[COMPILING] published v0.1.0
+[WARNING] published@0.1.0: foo
+[WARNING] published@0.1.0: bar
+[ERROR] published@0.1.0: foo err
+[ERROR] published@0.1.0: bar err
+[ERROR] build script logged errors
+
 "#]])
         .run();
 }
@@ -4997,7 +5235,7 @@ fn dev_dep_with_links() {
         .file("bar/build.rs", "fn main() {}")
         .file("bar/src/lib.rs", "")
         .build();
-    p.cargo("check --tests").run()
+    p.cargo("check --tests").run();
 }
 
 #[cargo_test]

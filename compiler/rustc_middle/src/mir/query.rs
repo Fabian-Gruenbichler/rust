@@ -4,19 +4,18 @@ use std::cell::Cell;
 use std::fmt::{self, Debug};
 
 use derive_where::derive_where;
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
-use rustc_target::abi::{FieldIdx, VariantIdx};
+use rustc_span::{Span, Symbol};
 use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
-use crate::mir;
+use crate::ty::fold::fold_regions;
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt};
 
 rustc_index::newtype_index! {
@@ -315,9 +314,12 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
     /// All regions of `ty` must be of kind `ReVar` and must represent
     /// universal regions *external* to the closure.
     pub fn bind(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
+        let inner = fold_regions(tcx, ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
-                let br = ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon };
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::new(vid.index()),
+                    kind: ty::BoundRegionKind::Anon,
+                };
                 ty::Region::new_bound(tcx, depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
@@ -331,7 +333,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
-        tcx.fold_regions(self.inner, |r, depth| match r.kind() {
+        fold_regions(tcx, self.inner, |r, depth| match r.kind() {
             ty::ReBound(debruijn, br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::new(br.var.index()))
@@ -346,21 +348,4 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
 pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [(ConstValue<'tcx>, Ty<'tcx>)],
-}
-
-/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-/// have had a chance to potentially remove some of them.
-///
-/// Used by the `coverage_ids_info` query.
-#[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
-pub struct CoverageIdsInfo {
-    /// Coverage codegen needs to know the highest counter ID that is ever
-    /// incremented within a function, so that it can set the `num-counters`
-    /// argument of the `llvm.instrprof.increment` intrinsic.
-    ///
-    /// This may be less than the highest counter ID emitted by the
-    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
-    /// were removed by MIR optimizations.
-    pub max_counter_id: mir::coverage::CounterId,
 }

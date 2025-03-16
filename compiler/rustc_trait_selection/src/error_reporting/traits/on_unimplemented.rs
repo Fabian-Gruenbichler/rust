@@ -1,21 +1,21 @@
 use std::iter;
 use std::path::PathBuf;
 
-use rustc_ast::{AttrArgs, AttrArgsEq, AttrKind, Attribute, MetaItemInner};
+use rustc_ast::MetaItemInner;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{AttrArgs, AttrKind, Attribute};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::bug;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, GenericParamDefKind, ToPolyTraitRef, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 use tracing::{debug, info};
-use {rustc_attr as attr, rustc_hir as hir};
+use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
@@ -108,14 +108,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     pub fn on_unimplemented_note(
         &self,
-        trait_ref: ty::PolyTraitRef<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_file: &mut Option<PathBuf>,
     ) -> OnUnimplementedNote {
+        if trait_pred.polarity() != ty::PredicatePolarity::Positive {
+            return OnUnimplementedNote::default();
+        }
+
         let (def_id, args) = self
-            .impl_similar_to(trait_ref, obligation)
-            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().args));
-        let trait_ref = trait_ref.skip_binder();
+            .impl_similar_to(trait_pred.to_poly_trait_ref(), obligation)
+            .unwrap_or_else(|| (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args));
+        let trait_pred = trait_pred.skip_binder();
 
         let mut flags = vec![];
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
@@ -144,13 +148,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             flags.push((sym::cause, Some("MainFunctionType".to_string())));
         }
 
-        flags.push((sym::Trait, Some(trait_ref.print_trait_sugared().to_string())));
+        flags.push((sym::Trait, Some(trait_pred.trait_ref.print_trait_sugared().to_string())));
 
         // Add all types without trimmed paths or visible paths, ensuring they end up with
         // their "canonical" def path.
         ty::print::with_no_trimmed_paths!(ty::print::with_no_visible_paths!({
             let generics = self.tcx.generics_of(def_id);
-            let self_ty = trait_ref.self_ty();
+            let self_ty = trait_pred.self_ty();
             // This is also included through the generics list as `Self`,
             // but the parser won't allow you to use it
             flags.push((sym::_Self, Some(self_ty.to_string())));
@@ -227,7 +231,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // Arrays give us `[]`, `[{ty}; _]` and `[{ty}; N]`
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_string())));
-                let len = len.try_to_valtree().and_then(|v| v.try_to_target_usize(self.tcx));
+                let len = len.try_to_target_usize(self.tcx);
                 flags.push((sym::_Self, Some(format!("[{aty}; _]"))));
                 if let Some(n) = len {
                     flags.push((sym::_Self, Some(format!("[{aty}; {n}]"))));
@@ -266,7 +270,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
-            command.evaluate(self.tcx, trait_ref, &flags, long_ty_file)
+            command.evaluate(self.tcx, trait_pred.trait_ref, &flags, long_ty_file)
         } else {
             OnUnimplementedNote::default()
         }
@@ -635,8 +639,7 @@ impl<'tcx> OnUnimplementedDirective {
                 let report_span = match &item.args {
                     AttrArgs::Empty => item.path.span,
                     AttrArgs::Delimited(args) => args.dspan.entire(),
-                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
-                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                    AttrArgs::Eq { eq_span, expr } => eq_span.to(expr.span),
                 };
 
                 if let Some(item_def_id) = item_def_id.as_local() {
@@ -651,7 +654,7 @@ impl<'tcx> OnUnimplementedDirective {
             }
         } else if is_diagnostic_namespace_variant {
             match &attr.kind {
-                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                AttrKind::Normal(p) if !matches!(p.args, AttrArgs::Empty) => {
                     if let Some(item_def_id) = item_def_id.as_local() {
                         tcx.emit_node_span_lint(
                             UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,

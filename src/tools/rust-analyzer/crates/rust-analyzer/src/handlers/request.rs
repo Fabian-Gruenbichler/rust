@@ -4,17 +4,19 @@
 use std::{
     fs,
     io::Write as _,
+    ops::Not,
     process::{self, Stdio},
 };
 
 use anyhow::Context;
 
+use base64::{prelude::BASE64_STANDARD, Engine};
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
+    FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
+    RangeInfo, ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
-use ide_db::SymbolKind;
+use ide_db::{FxHashMap, SymbolKind};
 use itertools::Itertools;
 use lsp_server::ErrorCode;
 use lsp_types::{
@@ -35,7 +37,9 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
+    completion_item_hash,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
+    diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
@@ -119,7 +123,7 @@ pub(crate) fn handle_analyzer_status(
     format_to!(buf, "{}", crate::version());
 
     buf.push_str("\nConfiguration: \n");
-    format_to!(buf, "{:?}", snap.config);
+    format_to!(buf, "{:#?}", snap.config);
 
     Ok(buf)
 }
@@ -457,9 +461,9 @@ pub(crate) fn handle_on_type_formatting(
     if char_typed == '>' {
         return Ok(None);
     }
+    let chars_to_exclude = snap.config.typing_exclude_chars();
 
-    let edit =
-        snap.analysis.on_char_typed(position, char_typed, snap.config.typing_autoclose_angle())?;
+    let edit = snap.analysis.on_char_typed(position, char_typed, chars_to_exclude)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
@@ -471,6 +475,82 @@ pub(crate) fn handle_on_type_formatting(
 
     let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
     Ok(Some(change))
+}
+
+pub(crate) fn handle_document_diagnostics(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::DocumentDiagnosticParams,
+) -> anyhow::Result<lsp_types::DocumentDiagnosticReportResult> {
+    let empty = || {
+        lsp_types::DocumentDiagnosticReportResult::Report(
+            lsp_types::DocumentDiagnosticReport::Full(
+                lsp_types::RelatedFullDocumentDiagnosticReport {
+                    related_documents: None,
+                    full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                        result_id: Some("rust-analyzer".to_owned()),
+                        items: vec![],
+                    },
+                },
+            ),
+        )
+    };
+
+    let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
+    let source_root = snap.analysis.source_root_id(file_id)?;
+    if !snap.analysis.is_local_source_root(source_root)? {
+        return Ok(empty());
+    }
+    let config = snap.config.diagnostics(Some(source_root));
+    if !config.enabled {
+        return Ok(empty());
+    }
+    let line_index = snap.file_line_index(file_id)?;
+    let supports_related = snap.config.text_document_diagnostic_related_document_support();
+
+    let mut related_documents = FxHashMap::default();
+    let diagnostics = snap
+        .analysis
+        .full_diagnostics(&config, AssistResolveStrategy::None, file_id)?
+        .into_iter()
+        .filter_map(|d| {
+            let file = d.range.file_id;
+            if file == file_id {
+                let diagnostic = convert_diagnostic(&line_index, d);
+                return Some(diagnostic);
+            }
+            if supports_related {
+                let (diagnostics, line_index) = related_documents
+                    .entry(file)
+                    .or_insert_with(|| (Vec::new(), snap.file_line_index(file).ok()));
+                let diagnostic = convert_diagnostic(line_index.as_mut()?, d);
+                diagnostics.push(diagnostic);
+            }
+            None
+        });
+    Ok(lsp_types::DocumentDiagnosticReportResult::Report(
+        lsp_types::DocumentDiagnosticReport::Full(lsp_types::RelatedFullDocumentDiagnosticReport {
+            full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
+                result_id: Some("rust-analyzer".to_owned()),
+                items: diagnostics.collect(),
+            },
+            related_documents: related_documents.is_empty().not().then(|| {
+                related_documents
+                    .into_iter()
+                    .map(|(id, (items, _))| {
+                        (
+                            to_proto::url(&snap, id),
+                            lsp_types::DocumentDiagnosticReportKind::Full(
+                                lsp_types::FullDocumentDiagnosticReport {
+                                    result_id: Some("rust-analyzer".to_owned()),
+                                    items,
+                                },
+                            ),
+                        )
+                    })
+                    .collect()
+            }),
+        }),
+    ))
 }
 
 pub(crate) fn handle_document_symbol(
@@ -539,18 +619,11 @@ pub(crate) fn handle_document_symbol(
         url: &Url,
         res: &mut Vec<SymbolInformation>,
     ) {
-        let mut tags = Vec::new();
-
-        #[allow(deprecated)]
-        if let Some(true) = symbol.deprecated {
-            tags.push(SymbolTag::DEPRECATED)
-        }
-
         #[allow(deprecated)]
         res.push(SymbolInformation {
             name: symbol.name.clone(),
             kind: symbol.kind,
-            tags: Some(tags),
+            tags: symbol.tags.clone(),
             deprecated: symbol.deprecated,
             location: Location::new(url.clone(), symbol.range),
             container_name,
@@ -1019,9 +1092,11 @@ pub(crate) fn handle_completion(
 
     let items = to_proto::completion_items(
         &snap.config,
+        &completion_config.fields_to_resolve,
         &line_index,
         snap.file_version(position.file_id),
         text_document_position,
+        completion_trigger_character,
         items,
     );
 
@@ -1054,36 +1129,77 @@ pub(crate) fn handle_completion_resolve(
     };
     let source_root = snap.analysis.source_root_id(file_id)?;
 
-    let additional_edits = snap
-        .analysis
-        .resolve_completion_edits(
-            &snap.config.completion(Some(source_root)),
-            FilePosition { file_id, offset },
-            resolve_data
-                .imports
-                .into_iter()
-                .map(|import| (import.full_import_path, import.imported_name)),
-        )?
-        .into_iter()
-        .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
-        .collect::<Vec<_>>();
+    let mut forced_resolve_completions_config = snap.config.completion(Some(source_root));
+    forced_resolve_completions_config.fields_to_resolve = CompletionFieldsToResolve::empty();
 
-    if !all_edits_are_disjoint(&original_completion, &additional_edits) {
-        return Err(LspError::new(
-            ErrorCode::InternalError as i32,
-            "Import edit overlaps with the original completion edits, this is not LSP-compliant"
-                .into(),
-        )
-        .into());
+    let position = FilePosition { file_id, offset };
+    let Some(completions) = snap.analysis.completions(
+        &forced_resolve_completions_config,
+        position,
+        resolve_data.trigger_character,
+    )?
+    else {
+        return Ok(original_completion);
+    };
+    let Ok(resolve_data_hash) = BASE64_STANDARD.decode(resolve_data.hash) else {
+        return Ok(original_completion);
+    };
+
+    let Some(corresponding_completion) = completions.into_iter().find(|completion_item| {
+        // Avoid computing hashes for items that obviously do not match
+        // r-a might append a detail-based suffix to the label, so we cannot check for equality
+        original_completion.label.starts_with(completion_item.label.primary.as_str())
+            && resolve_data_hash == completion_item_hash(completion_item, resolve_data.for_ref)
+    }) else {
+        return Ok(original_completion);
+    };
+
+    let mut resolved_completions = to_proto::completion_items(
+        &snap.config,
+        &forced_resolve_completions_config.fields_to_resolve,
+        &line_index,
+        snap.file_version(position.file_id),
+        resolve_data.position,
+        resolve_data.trigger_character,
+        vec![corresponding_completion],
+    );
+    let Some(mut resolved_completion) = resolved_completions.pop() else {
+        return Ok(original_completion);
+    };
+
+    if !resolve_data.imports.is_empty() {
+        let additional_edits = snap
+            .analysis
+            .resolve_completion_edits(
+                &forced_resolve_completions_config,
+                position,
+                resolve_data
+                    .imports
+                    .into_iter()
+                    .map(|import| (import.full_import_path, import.imported_name)),
+            )?
+            .into_iter()
+            .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
+            .collect::<Vec<_>>();
+
+        if !all_edits_are_disjoint(&resolved_completion, &additional_edits) {
+            return Err(LspError::new(
+                ErrorCode::InternalError as i32,
+                "Import edit overlaps with the original completion edits, this is not LSP-compliant"
+                    .into(),
+            )
+            .into());
+        }
+
+        if let Some(original_additional_edits) = resolved_completion.additional_text_edits.as_mut()
+        {
+            original_additional_edits.extend(additional_edits)
+        } else {
+            resolved_completion.additional_text_edits = Some(additional_edits);
+        }
     }
 
-    if let Some(original_additional_edits) = original_completion.additional_text_edits.as_mut() {
-        original_additional_edits.extend(additional_edits)
-    } else {
-        original_completion.additional_text_edits = Some(additional_edits);
-    }
-
-    Ok(original_completion)
+    Ok(resolved_completion)
 }
 
 pub(crate) fn handle_folding_range(
@@ -1329,7 +1445,13 @@ pub(crate) fn handle_code_action(
     }
 
     // Fixes from `cargo check`.
-    for fix in snap.check_fixes.values().filter_map(|it| it.get(&frange.file_id)).flatten() {
+    for fix in snap
+        .check_fixes
+        .values()
+        .flat_map(|it| it.values())
+        .filter_map(|it| it.get(&frange.file_id))
+        .flatten()
+    {
         // FIXME: this mapping is awkward and shouldn't exist. Refactor
         // `snap.check_fixes` to not convert to LSP prematurely.
         let intersect_fix_range = fix
@@ -1672,7 +1794,8 @@ pub(crate) fn handle_call_hierarchy_incoming(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.incoming_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.incoming_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -1709,7 +1832,8 @@ pub(crate) fn handle_call_hierarchy_outgoing(
     let frange = from_proto::file_range(&snap, &doc, item.selection_range)?;
     let fpos = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let call_items = match snap.analysis.outgoing_calls(fpos)? {
+    let config = snap.config.call_hierarchy();
+    let call_items = match snap.analysis.outgoing_calls(config, fpos)? {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -2165,14 +2289,14 @@ fn run_rustfmt(
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
             let mut cmd = match target_spec {
-                Some(TargetSpec::Cargo(spec)) => {
-                    // approach: if the command name contains a path separator, join it with the workspace root.
+                Some(TargetSpec::Cargo(_)) => {
+                    // approach: if the command name contains a path separator, join it with the project root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        spec.workspace_root.join(cmd).into()
+                        snap.config.root_path().join(cmd).into()
                     } else {
                         cmd
                     };
@@ -2236,6 +2360,10 @@ fn run_rustfmt(
                     %captured_stderr,
                     "rustfmt exited with status 1"
                 );
+                Ok(None)
+            }
+            // rustfmt panicked at lexing/parsing the file
+            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
                 Ok(None)
             }
             _ => {

@@ -39,7 +39,7 @@ declare_clippy_lint! {
     ///     let r2 = x % NonZeroU64::from(y);
     /// }
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.83.0"]
     pub NON_ZERO_SUGGESTIONS,
     restriction,
     "suggests using `NonZero#` from `u#` or `i#` for more efficient and type-safe conversions"
@@ -71,7 +71,7 @@ fn check_non_zero_conversion(cx: &LateContext<'_>, expr: &Expr<'_>, applicabilit
     if let ExprKind::Call(func, [arg]) = expr.kind
         && let ExprKind::Path(qpath) = &func.kind
         && let Some(def_id) = cx.qpath_res(qpath, func.hir_id).opt_def_id()
-        && let ExprKind::MethodCall(rcv_path, receiver, _, _) = &arg.kind
+        && let ExprKind::MethodCall(rcv_path, receiver, [], _) = &arg.kind
         && rcv_path.ident.name.as_str() == "get"
     {
         let fn_name = cx.tcx.item_name(def_id);

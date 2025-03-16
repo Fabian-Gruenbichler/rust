@@ -210,7 +210,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), origin_expr, .. } => {
-                    origin_expr.then_some(ConsiderAddingAwait::FutureSugg {
+                    origin_expr.is_some().then_some(ConsiderAddingAwait::FutureSugg {
                         span: then_span.shrink_to_hi(),
                     })
                 }
@@ -740,9 +740,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
                         left, right,
                     ) {
-                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                        // FIXME: Suspicious
+                        (hir::GenericBound::Trait(tl), hir::GenericBound::Trait(tr))
                             if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && tl.modifiers == tr.modifiers =>
                         {
                             true
                         }

@@ -37,7 +37,7 @@ data structure basically just contains the root module, the HIR
 `Crate` structure contains a number of maps and other things that
 serve to organize the content of the crate for easier access.
 
-[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Crate.html
+[`Crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Crate.html
 
 For example, the contents of individual items (e.g. modules,
 functions, traits, impls, etc) in the HIR are not immediately
@@ -55,7 +55,7 @@ struct) would only have the **`ItemId`** `I` of `bar()`. To get the
 details of the function `bar()`, we would lookup `I` in the
 `items` map.
 
-[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Mod.html
+[`Mod`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Mod.html
 
 One nice result from this representation is that one can iterate
 over all items in the crate by iterating over the key-value pairs
@@ -72,24 +72,47 @@ function to lookup the contents of `bar()` given its id; this gives
 the compiler a chance to observe that you accessed the data for
 `bar()`, and then record the dependency.
 
-[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Item.html
+[`&rustc_hir::Item`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Item.html
 
-<a name="hir-id"></a>
+<a id="hir-id"></a>
 
 ## Identifiers in the HIR
 
-There are a bunch of different identifiers to refer to other nodes or definitions
-in the HIR. In short:
-- A [`DefId`] refers to a *definition* in any crate.
-- A [`LocalDefId`] refers to a *definition* in the currently compiled crate.
-- A [`HirId`] refers to *any node* in the HIR.
+The HIR uses a bunch of different identifiers that coexist and serve different purposes.
 
-For more detailed information, check out the [chapter on identifiers][ids].
+- A [`DefId`], as the name suggests, identifies a particular definition, or top-level
+  item, in a given crate. It is composed of two parts: a [`CrateNum`] which identifies
+  the crate the definition comes from, and a [`DefIndex`] which identifies the definition
+  within the crate. Unlike [`HirId`]s, there isn't a [`DefId`] for every expression, which
+  makes them more stable across compilations.
+
+- A [`LocalDefId`] is basically a [`DefId`] that is known to come from the current crate.
+  This allows us to drop the [`CrateNum`] part, and use the type system to ensure that
+  only local definitions are passed to functions that expect a local definition.
+
+- A [`HirId`] uniquely identifies a node in the HIR of the current crate. It is composed
+  of two parts: an `owner` and a `local_id` that is unique within the `owner`. This
+  combination makes for more stable values which are helpful for incremental compilation.
+  Unlike [`DefId`]s, a [`HirId`] can refer to [fine-grained entities][Node] like expressions,
+  but stays local to the current crate.
+
+- A [`BodyId`] identifies a HIR [`Body`] in the current crate. It is currently only
+  a wrapper around a [`HirId`]. For more info about HIR bodies, please refer to the
+  [HIR chapter][hir-bodies].
+
+These identifiers can be converted into one another through the [HIR map][map].
 
 [`DefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefId.html
 [`LocalDefId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.LocalDefId.html
 [`HirId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir_id/struct.HirId.html
-[ids]: ./identifiers.md#in-the-hir
+[`BodyId`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.BodyId.html
+[Node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
+[`CrateNum`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.CrateNum.html
+[`DefIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/def_id/struct.DefIndex.html
+[`Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
+[hir-map]: ./hir.md#the-hir-map
+[hir-bodies]: ./hir.md#hir-bodies
+[map]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html
 
 ## The HIR Map
 
@@ -120,9 +143,9 @@ that `n` must be some HIR expression, you can do
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
-[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/enum.Node.html
+[`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
 [expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.expect_expr
-[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Expr.html
+[Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via
 calls like [`tcx.hir().get_parent(n)`][get_parent].
@@ -139,6 +162,6 @@ associated with an **owner**, which is typically some kind of item
 associated with a given def-id ([`maybe_body_owned_by`]) or to find
 the owner of a body ([`body_owner_def_id`]).
 
-[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/struct.Body.html
+[`rustc_hir::Body`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Body.html
 [`maybe_body_owned_by`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.maybe_body_owned_by
 [`body_owner_def_id`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.body_owner_def_id

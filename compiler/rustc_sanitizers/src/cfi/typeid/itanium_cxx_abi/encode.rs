@@ -7,6 +7,7 @@
 
 use std::fmt::Write as _;
 
+use rustc_abi::{ExternAbi, Integer};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
@@ -18,8 +19,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
-use rustc_target::abi::Integer;
-use rustc_target::spec::abi::Abi;
 use tracing::instrument;
 
 use crate::cfi::typeid::TypeIdOptions;
@@ -133,7 +132,9 @@ fn encode_const<'tcx>(
             // bool value false is encoded as 0 and true as 1.
             match ct_ty.kind() {
                 ty::Int(ity) => {
-                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let bits = c
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
                         s.push('n');
@@ -141,7 +142,9 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Uint(_) => {
-                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all());
+                    let val = c
+                        .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
+                        .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
                 ty::Bool => {
@@ -181,7 +184,7 @@ fn encode_fnsig<'tcx>(
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
     match fn_sig.abi {
-        Abi::C { .. } => {
+        ExternAbi::C { .. } => {
             encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
         }
         _ => {
@@ -618,6 +621,11 @@ pub(crate) fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // FIXME(unsafe_binders): Implement this.
+        ty::UnsafeBinder(_) => {
+            todo!()
+        }
+
         // Trait types
         ty::Dynamic(predicates, region, kind) => {
             // u3dynI<element-type1[..element-typeN]>E, where <element-type> is <predicate>, as
@@ -713,8 +721,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
             | hir::definitions::DefPathData::MacroNs(..)
-            | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::AnonAdt => {
+            | hir::definitions::DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }
         });

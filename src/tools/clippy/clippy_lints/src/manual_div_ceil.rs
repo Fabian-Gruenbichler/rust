@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_ast::{BinOpKind, LitKind};
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// let y: i32 = 4;
     /// let div = x.div_ceil(y);
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.83.0"]
     pub MANUAL_DIV_CEIL,
     complexity,
     "manually reimplementing `div_ceil`"
@@ -111,11 +111,7 @@ fn check_int_ty_and_feature(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr);
     match expr_ty.peel_refs().kind() {
         ty::Uint(_) => true,
-        ty::Int(_) => cx
-            .tcx
-            .features()
-            .declared_features
-            .contains(&Symbol::intern("int_roundings")),
+        ty::Int(_) => cx.tcx.features().enabled(Symbol::intern("int_roundings")),
 
         _ => false,
     }

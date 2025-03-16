@@ -33,8 +33,7 @@ use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     MACRO_USE_EXTERN_CRATE, UNUSED_EXTERN_CRATES, UNUSED_IMPORTS, UNUSED_QUALIFICATIONS,
 };
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, kw};
 
 use crate::imports::{Import, ImportKind};
 use crate::{LexicalScopeBinding, NameBindingKind, Resolver, module_to_string};
@@ -184,11 +183,11 @@ impl<'a, 'ra, 'tcx> UnusedImportCheckVisitor<'a, 'ra, 'tcx> {
 
             // If the extern crate isn't in the extern prelude,
             // there is no way it can be written as a `use`.
-            if !self
+            if self
                 .r
                 .extern_prelude
                 .get(&extern_crate.ident)
-                .is_some_and(|entry| !entry.introduced_by_item)
+                .is_none_or(|entry| entry.introduced_by_item)
             {
                 continue;
             }

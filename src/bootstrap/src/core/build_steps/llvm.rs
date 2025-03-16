@@ -217,6 +217,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         ("powerpc-unknown-linux-gnu", false),
         ("powerpc64-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-gnu", false),
+        ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
         ("s390x-unknown-linux-gnu", false),
         ("x86_64-unknown-freebsd", false),
@@ -470,6 +471,21 @@ impl Step for Llvm {
             enabled_llvm_projects.sort();
             enabled_llvm_projects.dedup();
             cfg.define("LLVM_ENABLE_PROJECTS", enabled_llvm_projects.join(";"));
+        }
+
+        let mut enabled_llvm_runtimes = Vec::new();
+
+        if builder.config.llvm_offload {
+            enabled_llvm_runtimes.push("offload");
+            //FIXME(ZuseZ4): LLVM intends to drop the offload dependency on openmp.
+            //Remove this line once they achieved it.
+            enabled_llvm_runtimes.push("openmp");
+        }
+
+        if !enabled_llvm_runtimes.is_empty() {
+            enabled_llvm_runtimes.sort();
+            enabled_llvm_runtimes.dedup();
+            cfg.define("LLVM_ENABLE_RUNTIMES", enabled_llvm_runtimes.join(";"));
         }
 
         if let Some(num_linkers) = builder.config.llvm_link_jobs {

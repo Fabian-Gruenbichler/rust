@@ -3,9 +3,6 @@
 #[allow(unused_imports)]
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use crate::core_arch::arch::*;
-#[unstable(feature = "naked_functions", issue = "90957")]
-#[cfg(bootstrap)]
-pub use crate::naked_asm;
 
 /// Inline assembly.
 ///
@@ -28,39 +25,7 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
 #[unstable(feature = "naked_functions", issue = "90957")]
-#[macro_export]
-#[cfg(bootstrap)]
-macro_rules! naked_asm {
-    ([$last:expr], [$($pushed:expr),*]) => {
-        #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-        {
-            core::arch::asm!($($pushed),*, options(att_syntax, noreturn))
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
-        {
-            core::arch::asm!($($pushed),* , $last, options(noreturn))
-        }
-    };
-
-    ([$first:expr $(, $rest:expr)*], [$($pushed:expr),*]) => {
-        naked_asm!([$($rest),*], [$($pushed,)* $first]);
-    };
-
-    ($($expr:expr),* $(,)?) => {
-        naked_asm!([$($expr),*], []);
-    };
-}
-
-/// Inline assembly used in combination with `#[naked]` functions.
-///
-/// Refer to [Rust By Example] for a usage guide and the [reference] for
-/// detailed information about the syntax and available options.
-///
-/// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
-/// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-#[unstable(feature = "naked_functions", issue = "90957")]
 #[rustc_builtin_macro]
-#[cfg(not(bootstrap))]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
 }
@@ -76,4 +41,31 @@ pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?)
 #[rustc_builtin_macro]
 pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
+}
+
+/// Compiles to a target-specific software breakpoint instruction or equivalent.
+///
+/// This will typically abort the program. It may result in a core dump, and/or the system logging
+/// debug information. Additional target-specific capabilities may be possible depending on
+/// debuggers or other tooling; in particular, a debugger may be able to resume execution.
+///
+/// If possible, this will produce an instruction sequence that allows a debugger to resume *after*
+/// the breakpoint, rather than resuming *at* the breakpoint; however, the exact behavior is
+/// target-specific and debugger-specific, and not guaranteed.
+///
+/// If the target platform does not have any kind of debug breakpoint instruction, this may compile
+/// to a trapping instruction (e.g. an undefined instruction) instead, or to some other form of
+/// target-specific abort that may or may not support convenient resumption.
+///
+/// The precise behavior and the precise instruction generated are not guaranteed, except that in
+/// normal execution with no debug tooling involved this will not continue executing.
+///
+/// - On x86 targets, this produces an `int3` instruction.
+/// - On aarch64 targets, this produces a `brk #0xf000` instruction.
+// When stabilizing this, update the comment on `core::intrinsics::breakpoint`.
+#[unstable(feature = "breakpoint", issue = "133724")]
+#[inline(always)]
+#[cfg(not(bootstrap))]
+pub fn breakpoint() {
+    core::intrinsics::breakpoint();
 }

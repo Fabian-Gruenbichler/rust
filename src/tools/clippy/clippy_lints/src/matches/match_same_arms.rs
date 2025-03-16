@@ -74,8 +74,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                         // check if using the same bindings as before
                         HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
                     }
-                // the names technically don't have to match; this makes the lint more conservative
-                && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
+                    // the names technically don't have to match; this makes the lint more conservative
+                    && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
                     && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
                     && pat_contains_local(lhs.pat, a_id)
                     && pat_contains_local(rhs.pat, b_id)
@@ -114,7 +114,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
     let indexed_arms: Vec<(usize, &Arm<'_>)> = arms.iter().enumerate().collect();
     for (&(i, arm1), &(j, arm2)) in search_same(&indexed_arms, hash, eq) {
         if matches!(arm2.pat.kind, PatKind::Wild) {
-            if !cx.tcx.features().non_exhaustive_omitted_patterns_lint
+            if !cx.tcx.features().non_exhaustive_omitted_patterns_lint()
                 || is_lint_allowed(cx, NON_EXHAUSTIVE_OMITTED_PATTERNS, arm2.hir_id)
             {
                 let arm_span = adjusted_arm_span(cx, arm1.span);
@@ -149,16 +149,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     let move_pat_snip = snippet_with_applicability(cx, move_arm.pat.span, "<pat2>", &mut appl);
                     let keep_pat_snip = snippet_with_applicability(cx, keep_arm.pat.span, "<pat1>", &mut appl);
 
-                    diag.span_suggestion(
-                        keep_arm.pat.span,
-                        "or try merging the arm patterns",
-                        format!("{keep_pat_snip} | {move_pat_snip}"),
-                        appl,
-                    )
-                    .span_suggestion(
-                        adjusted_arm_span(cx, move_arm.span),
-                        "and remove this obsolete arm",
-                        "",
+                    diag.multipart_suggestion(
+                        "or try merging the arm patterns and removing the obsolete arm",
+                        vec![
+                            (keep_arm.pat.span, format!("{keep_pat_snip} | {move_pat_snip}")),
+                            (adjusted_arm_span(cx, move_arm.span), String::new()),
+                        ],
                         appl,
                     )
                     .help("try changing either arm body");

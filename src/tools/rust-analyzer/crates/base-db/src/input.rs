@@ -288,6 +288,11 @@ pub struct CrateData {
     /// The cfg options that could be used by the crate
     pub potential_cfg_options: Option<Arc<CfgOptions>>,
     pub env: Env,
+    /// The dependencies of this crate.
+    ///
+    /// Note that this may contain more dependencies than the crate actually uses.
+    /// A common example is the test crate which is included but only actually is active when
+    /// declared in source via `extern crate test`.
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
@@ -540,29 +545,6 @@ impl CrateGraph {
         }
 
         None
-    }
-
-    // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
-    // As hacky as it gets.
-    pub fn patch_cfg_if(&mut self) -> bool {
-        // we stupidly max by version in an attempt to have all duplicated std's depend on the same cfg_if so that deduplication still works
-        let cfg_if =
-            self.hacky_find_crate("cfg_if").max_by_key(|&it| self.arena[it].version.clone());
-        let std = self.hacky_find_crate("std").next();
-        match (cfg_if, std) {
-            (Some(cfg_if), Some(std)) => {
-                self.arena[cfg_if].dependencies.clear();
-                self.arena[std]
-                    .dependencies
-                    .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
-        self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
 
     /// Removes all crates from this crate graph except for the ones in `to_keep` and fixes up the dependencies.

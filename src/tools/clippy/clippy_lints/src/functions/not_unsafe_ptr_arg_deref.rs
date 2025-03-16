@@ -42,7 +42,7 @@ fn check_raw_ptr<'tcx>(
     body: &'tcx hir::Body<'tcx>,
     def_id: LocalDefId,
 ) {
-    if safety == hir::Safety::Safe && cx.effective_visibilities.is_exported(def_id) {
+    if safety.is_safe() && cx.effective_visibilities.is_exported(def_id) {
         let raw_ptrs = iter_input_pats(decl, body)
             .filter_map(|arg| raw_ptr_arg(cx, arg))
             .collect::<HirIdSet>();
@@ -58,7 +58,7 @@ fn check_raw_ptr<'tcx>(
                     },
                     hir::ExprKind::MethodCall(_, recv, args, _) => {
                         let def_id = typeck.type_dependent_def_id(e.hir_id).unwrap();
-                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety == hir::Safety::Unsafe {
+                        if cx.tcx.fn_sig(def_id).skip_binder().skip_binder().safety.is_unsafe() {
                             check_arg(cx, &raw_ptrs, recv);
                             for arg in args {
                                 check_arg(cx, &raw_ptrs, arg);
@@ -87,7 +87,7 @@ fn raw_ptr_arg(cx: &LateContext<'_>, arg: &hir::Param<'_>) -> Option<HirId> {
 }
 
 fn check_arg(cx: &LateContext<'_>, raw_ptrs: &HirIdSet, arg: &hir::Expr<'_>) {
-    if path_to_local(arg).map_or(false, |id| raw_ptrs.contains(&id)) {
+    if path_to_local(arg).is_some_and(|id| raw_ptrs.contains(&id)) {
         span_lint(
             cx,
             NOT_UNSAFE_PTR_ARG_DEREF,

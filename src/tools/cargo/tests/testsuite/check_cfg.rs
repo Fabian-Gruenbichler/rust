@@ -30,7 +30,6 @@ macro_rules! x {
     }};
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features() {
     let p = project()
@@ -52,11 +51,10 @@ fn features() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_with_deps() {
     let p = project()
@@ -83,11 +81,10 @@ fn features_with_deps() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_with_opt_deps() {
     let p = project()
@@ -115,11 +112,10 @@ fn features_with_opt_deps() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "bar" "default" "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_with_namespaced_features() {
     let p = project()
@@ -146,11 +142,10 @@ fn features_with_namespaced_features() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_fingerprint() {
     let p = project()
@@ -228,7 +223,6 @@ fn features_fingerprint() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn well_known_names_values() {
     let p = project()
@@ -238,11 +232,10 @@ fn well_known_names_values() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_test() {
     let p = project()
@@ -264,11 +257,10 @@ fn features_test() {
 
     p.cargo("test -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_doctest() {
     let p = project()
@@ -292,12 +284,11 @@ fn features_doctest() {
     p.cargo("test -v --doc")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "default" "f_a" "f_b"))
         .with_stderr_contains(x!("rustdoc" => "cfg" of "feature" with "default" "f_a" "f_b"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
-        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
+        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn well_known_names_values_test() {
     let p = project()
@@ -307,11 +298,10 @@ fn well_known_names_values_test() {
 
     p.cargo("test -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn well_known_names_values_doctest() {
     let p = project()
@@ -322,12 +312,11 @@ fn well_known_names_values_doctest() {
     p.cargo("test -v --doc")
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with))
         .with_stderr_contains(x!("rustdoc" => "cfg" of "feature" with))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
-        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
+        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn features_doc() {
     let p = project()
@@ -350,11 +339,10 @@ fn features_doc() {
 
     p.cargo("doc -v")
         .with_stderr_contains(x!("rustdoc" => "cfg" of "feature" with "default" "f_a" "f_b"))
-        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustdoc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn build_script_feedback() {
     let p = project()
@@ -378,11 +366,10 @@ fn build_script_feedback() {
 
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "foo"))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn build_script_doc() {
     let p = project()
@@ -421,7 +408,6 @@ fn build_script_doc() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn build_script_override() {
     let target = cargo_test_support::rustc_host();
@@ -456,7 +442,7 @@ fn build_script_override() {
     p.cargo("check -v")
         .with_stderr_contains(x!("rustc" => "cfg" of "foo"))
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with))
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs"))
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test"))
         .run();
 }
 
@@ -531,7 +517,6 @@ test [..] ... ok
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_simple() {
     let p = project()
@@ -557,7 +542,6 @@ fn config_simple() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_workspace() {
     let p = project()
@@ -599,7 +583,6 @@ fn config_workspace() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_workspace_not_inherited() {
     let p = project()
@@ -631,7 +614,6 @@ fn config_workspace_not_inherited() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_invalid_position() {
     let p = project()
@@ -746,7 +728,6 @@ Caused by:
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_and_features() {
     let p = project()
@@ -836,7 +817,6 @@ fn config_with_cargo_test() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_and_build_script() {
     let p = project()
@@ -866,7 +846,6 @@ fn config_and_build_script() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_features_and_build_script() {
     let p = project()
@@ -898,11 +877,10 @@ fn config_features_and_build_script() {
         .with_stderr_contains(x!("rustc" => "cfg" of "foo")) // from build.rs
         .with_stderr_contains(x!("rustc" => "cfg" of "bar")) // from config
         .with_stderr_contains(x!("rustc" => "cfg" of "feature" with "json" "serde")) // features
-        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs")) // Cargo well known
+        .with_stderr_contains(x!("rustc" => "cfg" of "docsrs,test")) // Cargo well known
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn config_fingerprint() {
     let p = project()
@@ -945,7 +923,7 @@ fn config_fingerprint() {
 
     p.cargo("check -v")
         // we check that the fingerprint is indeed dirty
-        .with_stderr_contains("[..]Dirty[..]the profile configuration changed")
+        .with_stderr_contains("[..][DIRTY][..]the profile configuration changed")
         // that cause rustc to be called again with the new check-cfg args
         .with_stderr_contains(x!("rustc" => "cfg" of "bar"))
         .with_stderr_contains(x!("rustc" => "cfg" of "foo"))

@@ -148,7 +148,7 @@ fn prepare_lto(
     // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
     // should have default visibility.
-    symbols_below_threshold.push(CString::new("__llvm_profile_counter_bias").unwrap());
+    symbols_below_threshold.push(c"__llvm_profile_counter_bias".to_owned());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
@@ -165,13 +165,14 @@ fn get_bitcode_slice_from_object_data<'a>(
     // We drop the "__LLVM," prefix here because on Apple platforms there's a notion of "segment
     // name" which in the public API for sections gets treated as part of the section name, but
     // internally in MachOObjectFile.cpp gets treated separately.
-    let section_name = bitcode_section_name(cgcx).trim_start_matches("__LLVM,");
+    let section_name = bitcode_section_name(cgcx).to_str().unwrap().trim_start_matches("__LLVM,");
     let mut len = 0;
     let data = unsafe {
         llvm::LLVMRustGetSliceFromObjectDataByName(
             obj.as_ptr(),
             obj.len(),
             section_name.as_ptr(),
+            section_name.len(),
             &mut len,
         )
     };
@@ -502,9 +503,9 @@ fn thin_lto(
         // upstream...
         let data = llvm::LLVMRustCreateThinLTOData(
             thin_modules.as_ptr(),
-            thin_modules.len() as u32,
+            thin_modules.len(),
             symbols_below_threshold.as_ptr(),
-            symbols_below_threshold.len() as u32,
+            symbols_below_threshold.len(),
         )
         .ok_or_else(|| write::llvm_err(dcx, LlvmError::PrepareThinLtoContext))?;
 
@@ -569,7 +570,7 @@ fn thin_lto(
 
             info!(" - {}: re-compiled", module_name);
             opt_jobs.push(LtoModuleCodegen::Thin(ThinModule {
-                shared: shared.clone(),
+                shared: Arc::clone(&shared),
                 idx: module_index,
             }));
         }
@@ -601,22 +602,15 @@ pub(crate) fn run_pass_manager(
     // This code is based off the code found in llvm's LTO code generator:
     //      llvm/lib/LTO/LTOCodeGenerator.cpp
     debug!("running the pass manager");
+    let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
+    let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
+
+    // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
+    // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
+    let first_run = true;
+    debug!("running llvm pm opt pipeline");
     unsafe {
-        if !llvm::LLVMRustHasModuleFlag(
-            module.module_llvm.llmod(),
-            "LTOPostLink".as_ptr().cast(),
-            11,
-        ) {
-            llvm::LLVMRustAddModuleFlagU32(
-                module.module_llvm.llmod(),
-                llvm::LLVMModFlagBehavior::Error,
-                c"LTOPostLink".as_ptr(),
-                1,
-            );
-        }
-        let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
-        let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage)?;
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
     }
     debug!("lto done");
     Ok(())

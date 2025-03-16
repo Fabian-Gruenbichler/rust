@@ -406,7 +406,6 @@ fn check_all() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn check_all_exclude() {
     let p = project()
@@ -433,7 +432,6 @@ fn check_all_exclude() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn check_all_exclude_glob() {
     let p = project()
@@ -491,7 +489,6 @@ fn check_virtual_all_implied() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn check_virtual_manifest_one_project() {
     let p = project()
@@ -518,7 +515,6 @@ fn check_virtual_manifest_one_project() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn check_virtual_manifest_glob() {
     let p = project()
@@ -559,7 +555,6 @@ fn exclude_warns_on_non_existing_package() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn targets_selected_default() {
     let foo = project()
@@ -633,7 +628,6 @@ error[E0425]: cannot find value `badtext` in this scope
         .run();
 }
 
-#[expect(deprecated)]
 // Verify what is checked with various command-line filters.
 #[cargo_test]
 fn check_filters() {
@@ -1000,7 +994,6 @@ WRAPPER CALLED: rustc --crate-name foo [..]
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn rustc_workspace_wrapper_respects_primary_units() {
     let p = project()
@@ -1024,7 +1017,6 @@ fn rustc_workspace_wrapper_respects_primary_units() {
         .run();
 }
 
-#[expect(deprecated)]
 #[cargo_test]
 fn rustc_workspace_wrapper_excludes_published_deps() {
     let p = project()
@@ -1085,14 +1077,12 @@ fn warn_manifest_with_project() {
         .run();
 }
 
-#[cargo_test(nightly, reason = "edition2024")]
+#[cargo_test]
 fn error_manifest_with_project_on_2024() {
     let p = project()
         .file(
             "Cargo.toml",
             r#"
-                cargo-features = ["edition2024"]
-
                 [project]
                 name = "foo"
                 version = "0.0.1"
@@ -1103,7 +1093,6 @@ fn error_manifest_with_project_on_2024() {
         .build();
 
     p.cargo("check")
-        .masquerade_as_nightly_cargo(&["edition2024"])
         .with_status(101)
         .with_stderr_data(str![[r#"
 [ERROR] failed to parse manifest at `[ROOT]/foo/Cargo.toml`
@@ -1656,7 +1645,7 @@ fn pkgid_querystring_works() {
 
     p.cargo("generate-lockfile").run();
 
-    let output = p.cargo("pkgid").arg("gitdep").exec_with_output().unwrap();
+    let output = p.cargo("pkgid").arg("gitdep").run();
     let gitdep_pkgid = String::from_utf8(output.stdout).unwrap();
     let gitdep_pkgid = gitdep_pkgid.trim();
     assert_e2e().eq(

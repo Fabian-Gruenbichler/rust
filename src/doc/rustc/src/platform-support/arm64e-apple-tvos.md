@@ -6,7 +6,7 @@ ARM64e tvOS (10.0+)
 
 ## Target maintainers
 
-- Artyom Tetyukhin ([@arttet](https://github.com/https://github.com/arttet))
+- Artyom Tetyukhin ([@arttet](https://github.com/arttet))
 
 ## Requirements
 
@@ -19,7 +19,7 @@ You can build Rust with support for the targets by adding it to the `target` lis
 
 ```toml
 [build]
-target = [ "arm64e-apple-tvos" ]
+target = ["arm64e-apple-tvos"]
 ```
 
 ## Building Rust programs

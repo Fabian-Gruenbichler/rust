@@ -36,6 +36,8 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--button-border-radius: 2px;
 	--toolbar-button-border-radius: 6px;
 	--code-block-border-radius: 6px;
+	--impl-items-indent: 0.3em;
+	--docblock-indent: 24px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -44,7 +46,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Fira Sans'),
-		url("FiraSans-Regular-018c141bf0843ffd.woff2") format("woff2");
+		url("FiraSans-Regular-0fe48ade.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -52,7 +54,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 500;
 	src: local('Fira Sans Medium'),
-		url("FiraSans-Medium-8f9a781e4970d388.woff2") format("woff2");
+		url("FiraSans-Medium-e1aa3f0a.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -62,7 +64,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 400;
 	src: local('Source Serif 4'),
-		url("SourceSerif4-Regular-46f98efaafac5295.ttf.woff2") format("woff2");
+		url("SourceSerif4-Regular-6b053e98.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -70,7 +72,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: italic;
 	font-weight: 400;
 	src: local('Source Serif 4 Italic'),
-		url("SourceSerif4-It-acdfaf1a8af734b1.ttf.woff2") format("woff2");
+		url("SourceSerif4-It-ca3b17ed.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
@@ -78,7 +80,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-style: normal;
 	font-weight: 700;
 	src: local('Source Serif 4 Bold'),
-		url("SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2") format("woff2");
+		url("SourceSerif4-Bold-6d4fd4c0.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
@@ -89,28 +91,28 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	font-weight: 400;
 	/* Avoid using locally installed font because bad versions are in circulation:
 	 * see https://github.com/rust-lang/rust/issues/24355 */
-	src: url("SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Regular-8badfe75.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: italic;
 	font-weight: 400;
-	src: url("SourceCodePro-It-1cc31594bf4f1f79.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-It-fc8b9304.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 @font-face {
 	font-family: 'Source Code Pro';
 	font-style: normal;
 	font-weight: 600;
-	src: url("SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2") format("woff2");
+	src: url("SourceCodePro-Semibold-aa29a496.ttf.woff2") format("woff2");
 	font-display: swap;
 }
 
 /* Avoid using legacy CJK serif fonts in Windows like Batang. */
 @font-face {
 	font-family: 'NanumBarunGothic';
-	src: url("NanumBarunGothic-0f09457c7a19b7c6.ttf.woff2") format("woff2");
+	src: url("NanumBarunGothic-13b3dcba.ttf.woff2") format("woff2");
 	font-display: swap;
 	unicode-range: U+AC00-D7AF, U+1100-11FF, U+3130-318F, U+A960-A97F, U+D7B0-D7FF;
 }
@@ -185,7 +187,7 @@ h1, h2, h3, h4 {
 	grid-template-columns: minmax(105px, 1fr) minmax(0, max-content);
 	grid-template-rows: minmax(25px, min-content) min-content min-content;
 	padding-bottom: 6px;
-	margin-bottom: 11px;
+	margin-bottom: 15px;
 }
 .rustdoc-breadcrumbs {
 	grid-area: main-heading-breadcrumbs;
@@ -230,7 +232,7 @@ h4.code-header {
 	padding: 0;
 	white-space: pre-wrap;
 }
-.structfield {
+.structfield, .sub-variant-field {
 	margin: 0.6em 0;
 }
 
@@ -264,6 +266,7 @@ a.anchor,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
+.search-results li,
 .stab,
 .result-name i {
 	color: var(--main-color);
@@ -379,7 +382,7 @@ details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, .code-header {
+code, pre, .code-header, .type-signature {
 	font-family: "Source Code Pro", monospace;
 }
 .docblock code, .docblock-short code {
@@ -908,7 +911,7 @@ both the code example and the line numbers, so we need to remove the radius in t
 .docblock h6 { font-size: 0.875rem; }
 
 .docblock {
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
 	position: relative;
 }
 
@@ -959,7 +962,7 @@ pre, .rustdoc.src .example-wrap, .example-wrap .src-line-numbers {
 	background: var(--table-alt-row-background-color);
 }
 
-.docblock .stab, .docblock-short .stab {
+.docblock .stab, .docblock-short .stab, .docblock p code {
 	display: inline-block;
 }
 
@@ -981,7 +984,11 @@ div.where {
 
 .item-info {
 	display: block;
-	margin-left: 24px;
+	margin-left: var(--docblock-indent);
+}
+.impl-items > .item-info {
+	/* Margin of docblocks + margin of impl block items. */
+	margin-left: calc(var(--docblock-indent) + var(--impl-items-indent));
 }
 
 .item-info code {
@@ -1004,6 +1011,7 @@ nav.sub {
 	display: flex;
 	height: 34px;
 	flex-grow: 1;
+	margin-bottom: 4px;
 }
 .src nav.sub {
 	margin: 0 0 -10px 0;
@@ -1204,22 +1212,28 @@ so that we can apply CSS-filters to change the arrow color in themes */
 
 .search-results.active {
 	display: block;
+	margin: 0;
+	padding: 0;
 }
 
 .search-results > a {
-	display: flex;
+	display: grid;
+	grid-template-areas:
+		"search-result-name search-result-desc"
+		"search-result-type-signature search-result-type-signature";
+	grid-template-columns: .6fr .4fr;
 	/* A little margin ensures the browser's outlining of focused links has room to display. */
 	margin-left: 2px;
 	margin-right: 2px;
 	border-bottom: 1px solid var(--search-result-border-color);
-	gap: 1em;
+	column-gap: 1em;
 }
 
 .search-results > a > div.desc {
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
-	flex: 2;
+	grid-area: search-result-desc;
 }
 
 .search-results a:hover,
@@ -1231,7 +1245,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	display: flex;
 	align-items: center;
 	justify-content: start;
-	flex: 3;
+	grid-area: search-result-name;
 }
 .search-results .result-name .alias {
 	color: var(--search-results-alias-color);
@@ -1251,6 +1265,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 .search-results .result-name .path > * {
 	display: inline;
+}
+.search-results .type-signature {
+	grid-area: search-result-type-signature;
+	white-space: pre-wrap;
 }
 
 .popover {
@@ -2154,6 +2172,15 @@ details.toggle > summary:not(.hideme)::before {
 	left: -24px;
 }
 
+/* We indent items of an impl block to have a visual marker that these items are part
+	of this impl block. */
+.impl-items > *:not(.item-info),
+/* We also indent the first top doc comment the same to still keep an indent on the
+	doc block while aligning it with the impl block items. */
+.implementors-toggle > .docblock {
+	margin-left: var(--impl-items-indent);
+}
+
 details.big-toggle > summary:not(.hideme)::before {
 	left: -34px;
 	top: 9px;
@@ -2181,6 +2208,39 @@ details.toggle[open] > summary::before {
 
 details.toggle[open] > summary::after {
 	content: "Collapse";
+}
+
+details.toggle:not([open]) > summary .docblock {
+	max-height: calc(1.5em + 0.75em);
+	overflow-y: hidden;
+}
+details.toggle:not([open]) > summary .docblock > :first-child {
+	max-width: 100%;
+	overflow: hidden;
+	width: fit-content;
+	white-space: nowrap;
+	position: relative;
+	padding-right: 1em;
+}
+details.toggle:not([open]) > summary .docblock > :first-child::after {
+	content: "…";
+	position: absolute;
+	right: 0;
+	top: 0;
+	bottom: 0;
+	z-index: 1;
+	background-color: var(--main-background-color);
+	font: 1rem/1.5 "Source Serif 4", NanumBarunGothic, serif;
+	/* To make it look a bit better and not have it stuck to the preceding element. */
+	padding-left: 0.2em;
+}
+details.toggle:not([open]) > summary .docblock > div:first-child::after {
+	/* This is to make the "..." always appear at the bottom. */
+	padding-top: calc(1.5em + 0.75em - 1.2rem);
+}
+
+details.toggle > summary .docblock {
+	margin-top: 0.75em;
 }
 
 /* This is needed in docblocks to have the "▶" element to be on the same line. */
@@ -2243,6 +2303,10 @@ If you update this line, then you also need to update the line with the same war
 in src-script.js and main.js
 */
 @media (max-width: 700px) {
+	:root {
+		--impl-items-indent: 0.7em;
+	}
+
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
 	   or visiting a URL with a fragment like `#method.new`, we don't want the item to be obscured
 	   by the topbar. Anything with an `id` gets scroll-margin-top equal to .mobile-topbar's size.
@@ -2253,7 +2317,12 @@ in src-script.js and main.js
 
 	/* We don't display this button on mobile devices. */
 	#copy-path {
-		display: none;
+		/* display: none; avoided as a layout hack.
+			When there's one line, we get an effective line-height of 34px,
+			because that's how big the image is, but if the header wraps,
+			they're packed more tightly than that. */
+		width: 0;
+		visibility: hidden;
 	}
 
 	/* Text label takes up too much space at this size. */
@@ -2437,19 +2506,20 @@ in src-script.js and main.js
 		padding-top: 0;
 	}
 
-	/* Position of the "[-]" element. */
-	details.toggle:not(.top-doc) > summary, .impl-items > section  {
+	details.implementors-toggle:not(.top-doc) > summary  {
 		margin-left: 10px;
 	}
-	.impl-items > details.toggle > summary:not(.hideme)::before,
-	#main-content > details.toggle:not(.top-doc) > summary::before,
-	#main-content > div > details.toggle > summary::before {
-		left: -11px;
+
+	.impl-items > details.toggle > summary:not(.hideme)::before {
+		left: -20px;
 	}
 
 	/* Align summary-nested and unnested item-info gizmos. */
+	summary > .item-info {
+		margin-left: 10px;
+	}
 	.impl-items > .item-info {
-		margin-left: 34px;
+		margin-left: calc(var(--impl-items-indent) + 10px);
 	}
 
 	.src nav.sub {
@@ -2483,14 +2553,14 @@ in src-script.js and main.js
 }
 
 @media print {
+	:root {
+		--docblock-indent: 0;
+	}
+
 	nav.sidebar, nav.sub, .out-of-band, a.src, #copy-path,
 	details.toggle[open] > summary::before, details.toggle > summary::before,
 	details.toggle.top-doc > summary {
 		display: none;
-	}
-
-	.docblock {
-		margin-left: 0;
 	}
 
 	main {
@@ -2499,8 +2569,8 @@ in src-script.js and main.js
 }
 
 @media (max-width: 464px) {
-	.docblock {
-		margin-left: 12px;
+	:root {
+		--docblock-indent: 12px;
 	}
 
 	.docblock code {
