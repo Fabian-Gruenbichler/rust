@@ -47,3 +47,4 @@ build/ci_rustc-disable-test-that-requires-upstream-git-repo.patch
 build/bootstrap-don-t-attempt-to-download-rustc-in-tests.patch
 behaviour/proc-macro-srv-make-usage-of-RTLD_DEEPBIND-portable.patch
 bootstrap/bootstrap-revert-cross-build-breaking-change.patch
+vendor/cargo-update-git2-bindings.patch
