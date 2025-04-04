@@ -1,3 +1,9 @@
+rustc (1.85.0+dfsg2-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 04 Apr 2025 18:24:50 +0200
+
 rustc (1.85.0+dfsg2-1) experimental; urgency=medium
 
   * d/control: bump libgit2-dev version
