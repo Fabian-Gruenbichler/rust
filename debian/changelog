@@ -1,3 +1,9 @@
+rustc (1.85.0+dfsg2-3) unstable; urgency=medium
+
+  * baseline: enable SSE2 for i386 build (Closes: #1095862)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 11 Apr 2025 13:40:09 +0200
+
 rustc (1.85.0+dfsg2-2) unstable; urgency=medium
 
   * Upload to unstable
