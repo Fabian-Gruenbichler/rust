@@ -15,7 +15,7 @@ Forwarded: not-needed
  5 files changed, 2 insertions(+), 57 deletions(-)
 
 diff --git a/Cargo.toml b/Cargo.toml
-index b773030..7d9b7ba 100644
+index 97e782d..3dfb5a9 100644
 --- a/Cargo.toml
 +++ b/Cargo.toml
 @@ -21,21 +21,15 @@ members = [
@@ -41,13 +41,13 @@ index b773030..7d9b7ba 100644
    "src/tools/lld-wrapper",
    "src/tools/collect-license-metadata",
 diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
-index 535bdec..3726682 100644
+index 01a9792..84a2aa3 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
-@@ -1129,10 +1129,6 @@ class RustBuild(object):
-             "-Zroot-dir=" + self.rust_root,
-         ]
-         args.extend("--verbose" for _ in range(self.verbose))
+@@ -1133,10 +1133,6 @@ class RustBuild(object):
+         if "BOOTSTRAP_TRACING" in env:
+             args.append("--features=tracing")
+ 
 -        if self.use_locked_deps:
 -            args.append("--locked")
 -        if self.use_vendored_sources:
@@ -56,10 +56,10 @@ index 535bdec..3726682 100644
              args.append("--features")
              args.append("build-metrics")
 diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
-index 432fbb8..a73e6cf 100644
+index 1ec3e60..95b8504 100644
 --- a/src/bootstrap/src/core/builder/cargo.rs
 +++ b/src/bootstrap/src/core/builder/cargo.rs
-@@ -1140,10 +1140,7 @@ impl Builder<'_> {
+@@ -1176,10 +1176,7 @@ impl Builder<'_> {
              }
          }
  
@@ -72,10 +72,10 @@ index 432fbb8..a73e6cf 100644
          }
  
 diff --git a/src/bootstrap/src/core/builder/mod.rs b/src/bootstrap/src/core/builder/mod.rs
-index 30e42a5..579918d 100644
+index ecec589..c518f7b 100644
 --- a/src/bootstrap/src/core/builder/mod.rs
 +++ b/src/bootstrap/src/core/builder/mod.rs
-@@ -841,26 +841,14 @@ impl<'a> Builder<'a> {
+@@ -870,26 +870,14 @@ impl<'a> Builder<'a> {
                  tool::Linkchecker,
                  tool::CargoTest,
                  tool::Compiletest,
@@ -102,7 +102,7 @@ index 30e42a5..579918d 100644
                  tool::OptimizedDist,
                  tool::CoverageDump,
                  tool::LlvmBitcodeLinker,
-@@ -901,10 +889,6 @@ impl<'a> Builder<'a> {
+@@ -931,10 +919,6 @@ impl<'a> Builder<'a> {
                  check::Rustdoc,
                  check::CodegenBackend,
                  check::Clippy,
@@ -113,7 +113,7 @@ index 30e42a5..579918d 100644
                  check::Rustfmt,
                  check::RustAnalyzer,
                  check::TestFloatParse,
-@@ -958,8 +942,6 @@ impl<'a> Builder<'a> {
+@@ -984,8 +968,6 @@ impl<'a> Builder<'a> {
                  test::EmbeddedBook,
                  test::EditionGuide,
                  test::Rustfmt,
@@ -122,7 +122,7 @@ index 30e42a5..579918d 100644
                  test::Clippy,
                  test::CompiletestTest,
                  test::CrateRunMakeSupport,
-@@ -1000,7 +982,6 @@ impl<'a> Builder<'a> {
+@@ -1026,7 +1008,6 @@ impl<'a> Builder<'a> {
                  doc::CargoBook,
                  doc::Clippy,
                  doc::ClippyBook,
@@ -130,7 +130,7 @@ index 30e42a5..579918d 100644
                  doc::EmbeddedBook,
                  doc::EditionGuide,
                  doc::StyleGuide,
-@@ -1023,11 +1004,9 @@ impl<'a> Builder<'a> {
+@@ -1049,11 +1030,9 @@ impl<'a> Builder<'a> {
                  dist::Analysis,
                  dist::Src,
                  dist::Cargo,
@@ -142,7 +142,7 @@ index 30e42a5..579918d 100644
                  dist::LlvmTools,
                  dist::LlvmBitcodeLinker,
                  dist::RustDev,
-@@ -1053,7 +1032,6 @@ impl<'a> Builder<'a> {
+@@ -1079,7 +1058,6 @@ impl<'a> Builder<'a> {
                  install::RustAnalyzer,
                  install::Rustfmt,
                  install::Clippy,
@@ -150,7 +150,7 @@ index 30e42a5..579918d 100644
                  install::LlvmTools,
                  install::Src,
              ),
-@@ -1061,7 +1039,6 @@ impl<'a> Builder<'a> {
+@@ -1087,7 +1065,6 @@ impl<'a> Builder<'a> {
                  run::BuildManifest,
                  run::BumpStage0,
                  run::ReplaceVersionPlaceholder,
