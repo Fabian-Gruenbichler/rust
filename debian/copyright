@@ -1027,7 +1027,53 @@ Files: C*.md
        .cargo/config.toml
 Copyright: 2006-2009 Graydon Hoare
            2009-2012 Mozilla Foundation
-           2012-2017 The Rust Project Developers (see AUTHORS.txt)
+           2012-2025 The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT or Apache-2.0
+
+Files: compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp
+Copyright: 2003-2019 University of Illinois at Urbana-Champaign
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 with LLVM exception and (Apache-2.0 or MIT)
+
+Files: library/backtrace/*
+Copyright: 2014 Alex Crichton
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 or MIT
+
+Files: library/core/src/unicode/unicode_data.rs
+Copyright: 1991-2024 Unicode, Inc
+License: Unicode-Data-Files-and-Software-License
+
+Files: library/std/src/sync/mpmc/*
+Copyright: 2019 The Crossbeam Project Developers
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 or MIT
+
+Files: library/std/src/sys/sync/mutex/fuchsia.rs
+Copyright: 2016 The Fuchsia Authors
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: BSD-2-Clause and (Apache-2.0 or MIT)
+
+Files: src/doc/embedded-book/*
+Copyright: Rust on Embedded Devices Working Group
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: Apache-2.0 or MIT
+
+Files: src/doc/rustc-dev-guide/mermaid.min.js
+Copyright: 2014-2021 Knut Sveidqvist
+License: MIT
+
+Files: src/librustdoc/html/static/css/*
+Copyright: 2016 Ike Ku, Jessica Stokes and Leon Guan
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT or Apache-2.0
+
+Files: src/librustdoc/html/static/css/normalize.css
+Copyright: Nicolas Gallagher and Jonathan Neal
+License: MIT
+
+Files: src/librustdoc/html/static/css/noscript.css
+Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
 Files: src/librustdoc/html/static/fonts/FiraSans*
