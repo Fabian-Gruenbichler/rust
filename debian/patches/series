@@ -45,3 +45,4 @@ build/ci_rustc-disable-test-that-requires-upstream-git-repo.patch
 build/bootstrap-don-t-attempt-to-download-rustc-in-tests.patch
 vendor/gitoxide-backport-fix-for-CVE-2025-31130.patch
 upstream/RUSTSEC-2025-0024-sync-mpsc-prevent-double-free-on-Drop.patch
+vendor/mdbook-Fix-issue-with-None-source_path.patch
