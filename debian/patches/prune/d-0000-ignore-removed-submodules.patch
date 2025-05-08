@@ -7,12 +7,13 @@ order to both reduce the orig tarball and the vendored crates within.
 
 Forwarded: not-needed
 ---
- Cargo.toml                              |  6 ------
- src/bootstrap/bootstrap.py              |  4 ----
- src/bootstrap/src/core/builder/cargo.rs |  5 +----
- src/bootstrap/src/core/builder/mod.rs   | 23 -----------------------
- src/build_helper/src/util.rs            | 21 +--------------------
- 5 files changed, 2 insertions(+), 57 deletions(-)
+ Cargo.toml                                   |  6 ------
+ src/bootstrap/bootstrap.py                   |  4 ----
+ src/bootstrap/src/core/build_steps/vendor.rs |  5 -----
+ src/bootstrap/src/core/builder/cargo.rs      |  5 +----
+ src/bootstrap/src/core/builder/mod.rs        | 23 -----------------------
+ src/build_helper/src/util.rs                 | 21 +--------------------
+ 6 files changed, 2 insertions(+), 62 deletions(-)
 
 diff --git a/Cargo.toml b/Cargo.toml
 index 97e782d..3dfb5a9 100644
@@ -55,6 +56,25 @@ index 01a9792..84a2aa3 100644
          if self.get_toml("metrics", "build"):
              args.append("--features")
              args.append("build-metrics")
+diff --git a/src/bootstrap/src/core/build_steps/vendor.rs b/src/bootstrap/src/core/build_steps/vendor.rs
+index 410dbc0..6c0eba1 100644
+--- a/src/bootstrap/src/core/build_steps/vendor.rs
++++ b/src/bootstrap/src/core/build_steps/vendor.rs
+@@ -15,14 +15,9 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
+     [
+         ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
+         ("src/tools/rust-analyzer/Cargo.toml", vec![]),
+-        ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
+-        ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
+         ("library/Cargo.toml", vec![]),
+         ("src/bootstrap/Cargo.toml", vec![]),
+         ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
+-        ("src/tools/rustc-perf/Cargo.toml", vec!["src/tools/rustc-perf"]),
+-        ("src/tools/opt-dist/Cargo.toml", vec![]),
+-        ("src/doc/book/packages/trpl/Cargo.toml", vec![]),
+     ]
+     .into_iter()
+     .map(|(path, submodules)| (builder.src.join(path), submodules))
 diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
 index 1ec3e60..95b8504 100644
 --- a/src/bootstrap/src/core/builder/cargo.rs
