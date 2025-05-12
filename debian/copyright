@@ -1010,6 +1010,8 @@ Files: C*.md
        git-commit-hash
        git-commit-info
        library/*
+       license-metadata.json
+       REUSE.toml
        src/README.md
        src/bootstrap/*
        src/build_helper/*
@@ -1023,6 +1025,8 @@ Files: C*.md
        src/version
        tests/*
        version
+       x
+       x.ps1
        x.py
        .cargo/config.toml
 Copyright: 2006-2009 Graydon Hoare
@@ -1966,15 +1970,12 @@ Copyright:
 License: Apache-2.0 or MIT
 Comment: see https://github.com/gimli-rs/gimli
 
-FIles: extra/sha1-checked-*/*
+Files: extra/sha1-checked-*/*
 Copyright: 2024 RustCrypto Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/RustCrypto/hashes
 
 Files:
- extra/git2/*
- extra/git2-curl/*
- extra/libgit2-sys/*
  vendor/git2-*/*
  vendor/git2-curl-*/*
  vendor/libgit2-sys-*/*
@@ -2431,10 +2432,10 @@ Copyright: 2017-2020 Frommi <daniil.liferenko@gmail.com>
 License: MIT
 Comment: see https://github.com/Frommi/miniz_oxide
 
-Files: vendor/mio-0.*/*
-Copyright: 2014-2024 Carl Lerche <me@carllerche.com>
-           2014-2024 Thomas de Zeeuw <thomasdezeeuw@gmail.com>
-           2014-2024 Tokio Contributors <team@tokio.rs>
+Files: vendor/mio-1.*/*
+Copyright: 2014-2025 Carl Lerche <me@carllerche.com>
+           2014-2025 Thomas de Zeeuw <thomasdezeeuw@gmail.com>
+           2014-2025 Tokio Contributors <team@tokio.rs>
 License: MIT
 Comment: see https://github.com/tokio-rs/mio
 
@@ -2459,11 +2460,16 @@ Copyright: 2016-2018 Richard Dodd <richdodj@gmail.com>
 License: Apache-2.0
 Comment: see https://github.com/derekdreery/normalize-line-endings
 
-Files: vendor/notify-6.*/*
+Files: vendor/notify-8.*/*
 Copyright: 2014-2025 Félix Saparelli <me@passcod.name>
            2014-2025 Daniel Faust <hessijames@gmail.com>
            2014-2025 Aron Heinecke <Ox0p54r36@t-online.de>
 License: CC0-1.0
+Comment: see https://github.com/notify-rs/notify.git
+
+Files: vendor/notify-types-2.*/*
+Copyright: 2014-2025 Daniel Faust <hessijames@gmail.com>
+License: MIT OR Apache-2.0
 Comment: see https://github.com/notify-rs/notify.git
 
 Files: vendor/nu-ansi-term-*/*
@@ -2828,6 +2834,14 @@ Comment:
  see https://github.com/redox-os/syscall
 
 Files:
+ vendor/ref-cast-1.*/*
+ vendor/ref-cast-impl-1.*/*
+Copyright: 2017-2025 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/ref-cast
+
+
+Files:
  vendor/regex-automata-*/*
  vendor/regex-automata-0.1.*/*
  vendor/regex-automata-0.2.*/*
@@ -2909,8 +2923,8 @@ License: Apache-2.0 or BSL-1.0
 Comment: see https://github.com/dtolnay/ryu
 
 Files:
- vendor/schemars-0.*/*
- vendor/schemars_derive-0.*/*
+ vendor/schemars-1.*/*
+ vendor/schemars_derive-1.*/*
 Copyright: 2019-2024 Graham Esau <gesau@hotmail.co.uk>
 License: MIT
 Comment: see https://github.com/GREsau/schemars
@@ -3523,6 +3537,11 @@ Copyright:
  2014-2023 Geoffroy Couprie <contact@geoffroycouprie.com>
 License: MIT
 Comment: see https://github.com/winnow-rs/winnow
+
+Files: vendor/wit-bindgen-rt-0.33.0/*
+Copyright: 2019-2025 Alex Crichton <alex@alexcrichton.com>
+License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
+Comment: see https://github.com/bytecodealliance/wit-bindgen
 
 Files: vendor/xattr-*/*
 Copyright: 2015-2017 Steven Allen <steven@stebalien.com>
