@@ -1,8 +1,13 @@
-rustc (1.86.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.86.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * config: set ninja and lld to false
+  * patches: re-add accidentally dropped hunk of gitoxide patch
+  * mdbook: cherry-pick upstream fix for error-index book
+  * prune: also prune input list for generating copyright information
+  * rust-docs: install upstream copyright and license files
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 07 May 2025 11:48:32 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 13 May 2025 10:11:12 +0200
 
 rustc (1.85.0+dfsg3-1) unstable; urgency=medium
 
