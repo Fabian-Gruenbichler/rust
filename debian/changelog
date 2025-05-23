@@ -1,3 +1,9 @@
+rustc (1.86.0+dfsg1-1~exp2) UNRELEASED; urgency=medium
+
+  * install: drop generated copyright/licenses
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 23 May 2025 12:39:31 +0200
+
 rustc (1.86.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release

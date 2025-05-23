@@ -483,9 +483,6 @@ ifeq (true,$(BUILD_DOCS))
 
 	# mv cargo book to cargo-docs
 	mv $(DEB_DESTDIR)/usr/share/doc/docs/html/cargo $(DEB_DESTDIR)/usr/share/doc/cargo/book
-
-	# mv rustc copyright files into rust-docs
-	mv $(DEB_DESTDIR)/usr/share/doc/rustc/COPYRIGHT*.html $(DEB_DESTDIR)/usr/share/doc/rustc/licenses $(DEB_DESTDIR)/usr/share/doc/docs/html/
 endif
 	# Remove Cargo made package cache
 	rm -vf $(CURDIR)/debian/cargo/.package-cache
