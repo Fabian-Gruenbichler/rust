@@ -1887,11 +1887,6 @@ Copyright: 2015-2024 Fiat Crypto library authors <jgross@mit.edu>
 License: MIT OR Apache-2.0 OR BSD-1-Clause-fiat-crypto
 Comment: see https://github.com/mit-plv/fiat-crypto
 
-Files: vendor/field-offset-*/*
-Copyright: 2016-2023 Diggory Blake <diggsey@googlemail.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/Diggsey/rust-field-offset
-
 Files: vendor/fixedbitset-0.*/*
 Copyright: 2015-2024 bluss
 License: MIT or Apache-2.0
@@ -3079,11 +3074,6 @@ Comment:
  see https://github.com/doubleopen-project/spdx-expression
  see https://github.com/doubleopen-project/spdx-rs
 
-Files: vendor/sptr-0.*/*
-Copyright: 2022 Ralf Jung
-License: MIT OR Apache-2.0
-Comment: see https://github.com/Gankra/sptr
-
 Files: vendor/stable_deref_trait-*/*
 Copyright: 2017-2017 Robert Grosse <n210241048576@gmail.com>
 License: MIT or Apache-2.0
@@ -3521,12 +3511,6 @@ License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
  this contains pre-generated files which are also MIT or Apache-2.0 licensed,
  see vendor/windows-bindgen-*/default/readme.md
-
-Files: vendor/windows-metadata-*/*
-Copyright: Microsoft 2024
-License: MIT or Apache-2.0
-Comment:
- see https://github.com/microsoft/windows-rs
 
 Files:
  vendor/winnow-*/*
