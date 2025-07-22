@@ -1,3 +1,16 @@
+rustc (1.86.0+dfsg1-1~exp3) experimental; urgency=medium
+
+  * fix bswap codegen test broken on some 64-bit architectures
+  * fix x32 bootstrap (Closes: #1109669)
+  * d/rules: allow ~exp version and 'unreleased' distribution
+  * d/copyright: update FSF address
+  * cargo wrapper: support 'terse' DEB_BUILD_OPTION (Closes: #1103509)
+  * d/rules: properly cleanup after build (Closes: #1048141)
+  * d/rules: don't configure twice in arch+indep build
+  * d/rules: replace libzlma-sys hack with patch
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 22 Jul 2025 22:20:24 +0200
+
 rustc (1.86.0+dfsg1-1~exp2) experimental; urgency=medium
 
   * install: drop generated copyright/licenses
