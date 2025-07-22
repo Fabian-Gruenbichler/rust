@@ -47,3 +47,4 @@ vendor/gitoxide-backport-fix-for-CVE-2025-31130.patch
 upstream/RUSTSEC-2025-0024-sync-mpsc-prevent-double-free-on-Drop.patch
 vendor/mdbook-Fix-issue-with-None-source_path.patch
 upstream/test-convert-version_check-ui-test-to-run-make.patch
+upstream/tests-fix-autovectorization-bswaps-test.patch
