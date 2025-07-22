@@ -247,12 +247,12 @@ debian/config.toml: debian/config.toml.in debian/rules
 		sed -i -e 's/^debuginfo-level = .*/debuginfo-level = 0/g' "$@"; \
 	fi
 
-check-no-old-llvm:
+debian/check-no-old-llvm.stamp:
 	# fail the build if we have any instances of OLD_LLVM_VERSION in debian, except for debian/changelog
 	! grep --color=always -i '\(clang\|ll\(..\|d\)\)-\?$(subst .,\.,$(OLD_LLVM_VERSION))' --exclude=changelog --exclude=copyright --exclude='*.patch' --exclude-dir='.debhelper' -R debian
-.PHONY: check-no-old-llvm
+	touch "$@"
 
-extra-vendor:
+debian/extra-vendor.stamp:
 	if [ -d extra ]; then \
 	  cd extra; \
 	  for c in *; do \
@@ -263,10 +263,9 @@ extra-vendor:
 	    cp -r ./"$$c" ../vendor/; \
 	  done; \
 	fi
+	touch "$@"
 
-.PHONY: extra-vendor
-
-debian/dh_auto_configure.stamp: debian/config.toml check-no-old-llvm extra-vendor
+debian/dh_auto_configure.stamp: debian/config.toml debian/check-no-old-llvm.stamp debian/extra-vendor.stamp
 	# fail the build if we accidentally vendored openssl, indicates we pulled in unnecessary dependencies
 	test ! -e vendor/openssl-src-*
 	# fail the build if our version contains ~exp and we are not releasing to experimental
@@ -303,6 +302,16 @@ ifeq (true,$(BUILD_DOCS))
 endif
 
 override_dh_auto_clean:
+	if [ -e debian/extra-vendor.stamp ]; then \
+	  cd extra; \
+	  for c in *; do \
+	    echo "removing extra vendored dependency '$$c'"; \
+	    rm -rf ../vendor/"$$c"; \
+	    if [ -e ../vendor/"$$c".backup ]; then \
+	      mv -v ../vendor/"$$c".backup ../vendor/"$$c" ; \
+	    fi ; \
+	  done; \
+	fi
 	$(RM) -rf build tmp debian/cargo_home config.stamp config.mk Makefile
 	$(RM) -rf $(TEST_LOG) debian/config.toml debian/*.stamp
 	$(RM) -rf $(SRC_CLEAN) config.toml
@@ -312,17 +321,6 @@ override_dh_auto_clean:
 	done
 	# We removed some checksums that we need to restore here
 	find vendor -name .cargo-checksum.json.orig -execdir mv "{}" ".cargo-checksum.json" \;
-
-	if [ -d extra ]; then \
-	  cd extra; \
-	  for c in *; do \
-	    echo "removing extra vendored dependency '$$c'"; \
-	    if [ -e ../vendor/"$$c".backup ]; then \
-	      rm -rf ../vendor/"$$c"; \
-	      mv -v ../vendor/"$$c".backup ../vendor/"$$c" ; \
-	    fi ; \
-	  done; \
-	fi
 
 debian/dh_auto_build.stamp:
 	$(RUSTBUILD) build $(RUSTBUILD_FLAGS)
