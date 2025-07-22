@@ -286,7 +286,7 @@ debian/dh_auto_configure.stamp: debian/config.toml check-no-old-llvm extra-vendo
 	  if [ -f "$$ws/Cargo.lock" ]; then mv "$$ws/Cargo.lock" "$$ws/Cargo.lock.orig"; fi \
 	done
 	# We patched some crates so have to rm the checksums
-	find vendor -name .cargo-checksum.json -execdir "$(CURDIR)/debian/prune-checksums" "{}" +
+	find vendor -name .cargo-checksum.json -execdir cp "{}" "{}.orig" \; -execdir "$(CURDIR)/debian/prune-checksums" "{}" +
 	# Link against system liblzma, see https://github.com/alexcrichton/xz2-rs/issues/16
 	for c in vendor/lzma-sys-*; do \
 		echo 'fn main() { println!("cargo:rustc-link-lib=lzma"); }' > "$$c/build.rs"; \
@@ -306,6 +306,23 @@ override_dh_auto_clean:
 	$(RM) -rf build tmp debian/cargo_home config.stamp config.mk Makefile
 	$(RM) -rf $(TEST_LOG) debian/config.toml debian/*.stamp
 	$(RM) -rf $(SRC_CLEAN) config.toml
+	# keep in sync with d/prune-unused-deps
+	for ws in . src/bootstrap library src/tools/rust-analyzer src/tools/cargo src/tools/rustbook; do \
+	  if [ -f "$$ws/Cargo.lock.orig" ]; then mv "$$ws/Cargo.lock.orig" "$$ws/Cargo.lock"; fi \
+	done
+	# We removed some checksums that we need to restore here
+	find vendor -name .cargo-checksum.json.orig -execdir mv "{}" ".cargo-checksum.json" \;
+
+	if [ -d extra ]; then \
+	  cd extra; \
+	  for c in *; do \
+	    echo "removing extra vendored dependency '$$c'"; \
+	    if [ -e ../vendor/"$$c".backup ]; then \
+	      rm -rf ../vendor/"$$c"; \
+	      mv -v ../vendor/"$$c".backup ../vendor/"$$c" ; \
+	    fi ; \
+	  done; \
+	fi
 
 debian/dh_auto_build.stamp:
 	$(RUSTBUILD) build $(RUSTBUILD_FLAGS)
