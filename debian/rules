@@ -286,10 +286,6 @@ debian/dh_auto_configure.stamp: debian/config.toml debian/check-no-old-llvm.stam
 	done
 	# We patched some crates so have to rm the checksums
 	find vendor -name .cargo-checksum.json -execdir cp "{}" "{}.orig" \; -execdir "$(CURDIR)/debian/prune-checksums" "{}" +
-	# Link against system liblzma, see https://github.com/alexcrichton/xz2-rs/issues/16
-	for c in vendor/lzma-sys-*; do \
-		echo 'fn main() { println!("cargo:rustc-link-lib=lzma"); }' > "$$c/build.rs"; \
-	done
 	# We don't run ./configure because we use debian/config.toml directly
 	ln -sf debian/config.toml config.toml
 	touch "$@"
