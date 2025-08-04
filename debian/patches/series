@@ -50,3 +50,4 @@ upstream/test-convert-version_check-ui-test-to-run-make.patch
 upstream/tests-fix-autovectorization-bswaps-test.patch
 upstream/fix-bootstrapping-on-x32.patch
 vendor/cargo-do-not-force-liblzma-sys-static-linking.patch
+behaviour/ppc64-downgrade-baseline-to-Power4.patch
