@@ -1,3 +1,9 @@
+rustc (1.86.0+dfsg1-1~exp4) experimental; urgency=medium
+
+  * ppc64: downgrade baseline to Power4+ (Closes: #1110059)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 04 Aug 2025 18:03:21 +0200
+
 rustc (1.86.0+dfsg1-1~exp3) experimental; urgency=medium
 
   * fix bswap codegen test broken on some 64-bit architectures
