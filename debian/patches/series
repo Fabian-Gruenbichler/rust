@@ -49,3 +49,4 @@ upstream/tests-fix-autovectorization-bswaps-test.patch
 upstream/fix-bootstrapping-on-x32.patch
 vendor/cargo-do-not-force-liblzma-sys-static-linking.patch
 behaviour/ppc64-downgrade-baseline-to-Power4.patch
+upstream/Fix-profiler_builtins-build-script-to-handle-full-path-to.patch
