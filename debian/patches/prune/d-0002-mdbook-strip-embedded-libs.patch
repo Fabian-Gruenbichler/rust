@@ -9,14 +9,14 @@ in debian/rust-doc.links
 Forwarded: not-needed
 ---
  src/tools/linkchecker/main.rs                      | 28 +++++++-
- vendor/mdbook-0.4.47/src/book/init.rs              | 19 ------
+ vendor/mdbook-0.4.47/src/book/init.rs              | 19 -----
  .../src/renderer/html_handlebars/search.rs         |  2 -
- .../src/renderer/html_handlebars/static_files.rs   | 79 +++++-----------------
+ .../src/renderer/html_handlebars/static_files.rs   | 84 +++++-----------------
  vendor/mdbook-0.4.47/src/theme/index.hbs           | 48 +------------
- vendor/mdbook-0.4.47/src/theme/mod.rs              | 27 --------
+ vendor/mdbook-0.4.47/src/theme/mod.rs              | 27 -------
  vendor/mdbook-0.4.47/src/theme/searcher/mod.rs     |  2 -
  vendor/mdbook-0.4.47/src/theme/toc.html.hbs        |  3 +-
- 8 files changed, 46 insertions(+), 162 deletions(-)
+ 8 files changed, 48 insertions(+), 165 deletions(-)
 
 diff --git a/src/tools/linkchecker/main.rs b/src/tools/linkchecker/main.rs
 index 84cba3f..4e11bd8 100644
@@ -115,10 +115,17 @@ index d3f67fe..4062d8a 100644
      }
  
 diff --git a/vendor/mdbook-0.4.47/src/renderer/html_handlebars/static_files.rs b/vendor/mdbook-0.4.47/src/renderer/html_handlebars/static_files.rs
-index 1ecf2d5..215c248 100644
+index 1ecf2d5..3263acb 100644
 --- a/vendor/mdbook-0.4.47/src/renderer/html_handlebars/static_files.rs
 +++ b/vendor/mdbook-0.4.47/src/renderer/html_handlebars/static_files.rs
-@@ -12,6 +12,7 @@ use crate::utils;
+@@ -6,12 +6,13 @@ use once_cell::sync::Lazy;
+ use crate::config::HtmlConfig;
+ use crate::errors::*;
+ use crate::renderer::html_handlebars::helpers::resources::ResourceHelper;
+-use crate::theme::{self, playground_editor, Theme};
++use crate::theme::{self, Theme};
+ use crate::utils;
+ 
  use std::borrow::Cow;
  use std::collections::HashMap;
  use std::fs::{self, File};
@@ -126,7 +133,7 @@ index 1ecf2d5..215c248 100644
  use std::path::{Path, PathBuf};
  
  /// Map static files to their final names and contents.
-@@ -59,72 +60,26 @@ impl StaticFiles {
+@@ -59,72 +60,8 @@ impl StaticFiles {
          if let Some(contents) = &theme.favicon_svg {
              this.add_builtin("favicon.svg", contents);
          }
@@ -134,11 +141,7 @@ index 1ecf2d5..215c248 100644
          this.add_builtin("tomorrow-night.css", &theme.tomorrow_night_css);
          this.add_builtin("ayu-highlight.css", &theme.ayu_highlight_css);
 -        this.add_builtin("highlight.js", &theme.highlight_js);
-+        symlink(
-+            "/usr/share/javascript/highlight.js/styles/atelier-dune-light.css",
-+            destination.join("highlight.css"),
-+        )?;
-         this.add_builtin("clipboard.min.js", &theme.clipboard_js);
+-        this.add_builtin("clipboard.min.js", &theme.clipboard_js);
 -        this.add_builtin("FontAwesome/css/font-awesome.css", theme::FONT_AWESOME);
 -        this.add_builtin(
 -            "FontAwesome/fonts/fontawesome-webfont.eot",
@@ -187,15 +190,7 @@ index 1ecf2d5..215c248 100644
 -        }
 -
 -        let playground_config = &html_config.playground;
-+        symlink(
-+            "/usr/share/fonts-font-awesome/css/font-awesome.min.css",
-+            destination.join("css/font-awesome.min.css"),
-+        )?;
-+        symlink(
-+            "/usr/share/fonts-font-awesome/fonts",
-+            destination.join("fonts"),
-+        )?;
- 
+-
 -        // Ace is a very large dependency, so only load it when requested
 -        if playground_config.editable && playground_config.copy_js {
 -            // Load the editor
@@ -208,13 +203,33 @@ index 1ecf2d5..215c248 100644
 -                playground_editor::THEME_TOMORROW_NIGHT_JS,
 -            );
 -        }
+ 
+         let custom_files = html_config
+             .additional_css
+@@ -292,6 +229,23 @@ impl StaticFiles {
+                 }
+             }
+         }
++        symlink(
++            "/usr/share/javascript/highlight.js/styles/atelier-dune-light.css",
++            destination.join("highlight.css"),
++        )?;
++        symlink(
++            "/usr/share/fonts-font-awesome/css/font-awesome.min.css",
++            destination.join("css/font-awesome.min.css"),
++        )?;
++        symlink(
++            "/usr/share/fonts-font-awesome/fonts",
++            destination.join("fonts"),
++        )?;
++
 +        symlink(
 +            "/usr/share/javascript/mathjax/MathJax.js",
 +            destination.join("MathJax.js"),
 +        )?;
- 
-         let custom_files = html_config
-             .additional_css
+         let hash_map = self.hash_map;
+         Ok(ResourceHelper { hash_map })
+     }
 diff --git a/vendor/mdbook-0.4.47/src/theme/index.hbs b/vendor/mdbook-0.4.47/src/theme/index.hbs
 index b9d37f3..0c80a8d 100644
 --- a/vendor/mdbook-0.4.47/src/theme/index.hbs
