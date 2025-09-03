@@ -50,3 +50,5 @@ upstream/fix-bootstrapping-on-x32.patch
 vendor/cargo-do-not-force-liblzma-sys-static-linking.patch
 behaviour/ppc64-downgrade-baseline-to-Power4.patch
 upstream/Fix-profiler_builtins-build-script-to-handle-full-path-to.patch
+build/bootstrap-ignore-x.py-shell-completion-diff.patch
+build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
