@@ -1,3 +1,9 @@
+rustc (1.86.0+dfsg1-1~bpo13+2) trixie-backports; urgency=medium
+
+  * no-change source-only upload
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 05 Sep 2025 09:20:38 +0200
+
 rustc (1.86.0+dfsg1-1~bpo13+1) trixie-backports; urgency=medium
 
   * Rebuild for trixie-backports.
