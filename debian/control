@@ -27,11 +27,10 @@ Build-Depends:
 # needed by some vendor crates
  pkgconf:native,
  pkgconf,
+ liblzma-dev,
 # this is sometimes needed by rustc_llvm
  zlib1g-dev:native,
  zlib1g-dev,
-# used by rust-installer
- liblzma-dev:native,
 # used by cargo
  bash-completion,
  libcurl4-openssl-dev | libcurl4-gnutls-dev,
