@@ -1021,7 +1021,7 @@ Files: C*.md
        LICENSE*
        compiler/*
        configure
-       config.example.toml
+       bootstrap.example.toml
        git-commit-hash
        git-commit-info
        library/*
@@ -1033,6 +1033,7 @@ Files: C*.md
        src/ci/*
        src/doc/*
        src/etc/*
+       src/gcc/notice.txt
        src/lib*
        src/rust*
        src/stage0
@@ -1077,10 +1078,6 @@ Files: src/doc/embedded-book/*
 Copyright: Rust on Embedded Devices Working Group
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: Apache-2.0 or MIT
-
-Files: src/doc/rustc-dev-guide/mermaid.min.js
-Copyright: 2014-2021 Knut Sveidqvist
-License: MIT
 
 Files: src/librustdoc/html/static/css/*
 Copyright: 2016 Ike Ku, Jessica Stokes and Leon Guan
@@ -1472,11 +1469,6 @@ Files: vendor/byteorder-*/*
 Copyright: 2015-2023 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense OR MIT
 Comment: see https://github.com/BurntSushi/byteorder
-
-Files: vendor/bytesize-*/*
-Copyright: 2015-2023 Hyunsik Choi <hyunsik.choi@gmail.com>
-License: Apache-2.0
-Comment: see https://github.com/hyunsik/bytesize/
 
 Files:
  vendor/globset-*/*
@@ -2227,7 +2219,9 @@ Copyright: 2023-2024 Ed Page <eopage@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/polyfill-rs/is_terminal_polyfill
 
-Files: vendor/jiff-0.*/*
+Files:
+ vendor/jiff-0.*/*
+ vendor/jiff-static-0.*/*
 Copyright: 2024-2025 Andrew Gallant <jamslam@gmail.com>
 License: Unlicense OR MIT
 Comment: see https://github.com/BurntSushi/jiff
@@ -2251,16 +2245,16 @@ License: MIT or Apache-2.0
 Comment:
  see https://github.com/rustwasm/wasm-bindgen
 
+Files: vendor/jsonpath-rust-1.*/*
+Copyright: 2021-2025 BorisZhguchev <zhguchev@gmail.com>
+License: MIT
+Comment: see https://github.com/besok/jsonpath-rust
+
 Files: vendor/web-sys-*/*
 Copyright: 2018-2024 The wasm-bindgen Developers
 License: MIT or Apache-2.0
 Comment:
  see https://github.com/rustwasm/wasm-bindgen/tee/master/crates/web-sys
-
-Files: vendor/jsonpath_lib-*/*
-Copyright: 2018-2021 Changseok Han <freestrings@gmail.com>
-License: MIT
-Comment: see https://github.com/freestrings/jsonpath
 
 Files: vendor/kqueue-1.*/*
 Copyright: 2016-2024 William Orr <will@worrbase.com>
@@ -2393,6 +2387,11 @@ Files: vendor/matchers-*/*
 Copyright: 2019-2019 Eliza Weisman <eliza@buoyant.io>
 License: MIT
 Comment: see https://github.com/hawkw/matchers
+
+Files: vendor/match_token-0.*/*
+Copyright: 2014-2025 UNKNOWN AUTHORS
+License: MIT OR Apache-2.0
+Comment: see https://github.com/servo/html5ever
 
 Files: vendor/maybe-async-*/*
 Copyright: 2020-2024 Guoli Lyu <guoli-lv@hotmail.com>
@@ -2604,6 +2603,11 @@ Copyright: 2015-2024 Jan Schulte <hello@unexpected-co.de>
            2015-2024 Stanislav Tkach <stanislav.tkach@gmail.com>
 License: MIT
 Comment: see https://github.com/stanislav-tkach/os_info
+
+Files: vendor/os_pipe-1.*/*
+Copyright: 2016-2025 Jack O'Connor
+License: MIT
+Comment: see https://github.com/oconnor663/os_pipe.rs
 
 Files: vendor/overload-*/*
 Copyright: 2019-2022 Daniel Salvadori <danaugrs@gmail.com>
@@ -2874,6 +2878,7 @@ Comment: see https://github.com/rust-analyzer/rowan
 
 Files:
  vendor/ra-ap-rustc_abi-*/*
+ vendor/ra-ap-rustc_hashes-*/*
  vendor/ra-ap-rustc_index-*/*
  vendor/ra-ap-rustc_index_macros-*/*
  vendor/ra-ap-rustc_lexer-*/*
@@ -2887,11 +2892,6 @@ Files: vendor/rustc_apfloat-*/*
 Copyright: 2003-2017 University of Illinois at Urbana-Champaign.
 License: Apache-2.0 with LLVM exception
 Comment: see https://github.com/rust-lang/rustc_apfloat , in particular LICENSE-DETAILS.md
-
-Files: vendor/rustc_tools_util-*/*
-Copyright: 2014-2022 The Rust Project Developers
-License: MIT or Apache-2.0
-Comment: see https://github.com/rust-lang/rust-clippy/tree/master/rustc_tools_util
 
 Files: vendor/rustc_version-*/*
 Copyright: 2015-2021 Dirkjan Ochtman <dirkjan@ochtman.nl>
