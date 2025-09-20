@@ -53,3 +53,6 @@ upstream/Fix-profiler_builtins-build-script-to-handle-full-path-to.patch
 build/bootstrap-ignore-x.py-shell-completion-diff.patch
 build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 upstream/run-make-support-set-rustc-dylib-path-for-cargo-wrapper.patch
+build/Revert-rustc_target-Add-target-features-for-LoongArch-v1..patch
+build/Revert-Enable-f16-for-LoongArch.patch
+build/Revert-Enable-f16-for-MIPS.patch
