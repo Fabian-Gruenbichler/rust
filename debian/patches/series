@@ -56,3 +56,4 @@ upstream/run-make-support-set-rustc-dylib-path-for-cargo-wrapper.patch
 build/Revert-rustc_target-Add-target-features-for-LoongArch-v1..patch
 build/Revert-Enable-f16-for-LoongArch.patch
 build/Revert-Enable-f16-for-MIPS.patch
+upstream/tests-fix-broken-pipe-no-ice-to-use-bare_rustc-rustc.patch
