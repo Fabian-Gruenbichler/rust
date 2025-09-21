@@ -13,12 +13,13 @@ Signed-off-by: Fabian Grünbichler <git@fabian.gruenbichler.email>
 ---
  src/tools/compiletest/src/directive-list.rs           | 1 +
  src/tools/compiletest/src/header/tests.rs             | 1 +
+ tests/crashes/108499.rs                               | 1 +
  tests/crashes/115994.rs                               | 1 +
  tests/run-make/long-linker-command-lines/foo.rs       | 7 +++++++
  tests/ui/associated-consts/issue-93775.rs             | 1 +
  tests/ui/issues/issue-74564-if-expr-stack-overflow.rs | 1 +
  tests/ui/threads-sendsync/mpsc_stress.rs              | 1 +
- 7 files changed, 13 insertions(+)
+ 8 files changed, 14 insertions(+)
 
 diff --git a/src/tools/compiletest/src/directive-list.rs b/src/tools/compiletest/src/directive-list.rs
 index b2ad5a3..7939329 100644
@@ -44,6 +45,16 @@ index 007318b..8a58c2e 100644
      assert!(check_ignore(&config, "//@ ignore-unix"));
      assert!(check_ignore(&config, "//@ ignore-gnu"));
      assert!(check_ignore(&config, "//@ ignore-64bit"));
+diff --git a/tests/crashes/108499.rs b/tests/crashes/108499.rs
+index 4a0638c..658d631 100644
+--- a/tests/crashes/108499.rs
++++ b/tests/crashes/108499.rs
+@@ -1,4 +1,5 @@
+ //@ known-bug: #108499
++//@ ignore-hurd
+ 
+ // at lower recursion limits the recursion limit is reached before the bug happens
+ #![recursion_limit = "2000"]
 diff --git a/tests/crashes/115994.rs b/tests/crashes/115994.rs
 index 23d1507..e0714e5 100644
 --- a/tests/crashes/115994.rs
