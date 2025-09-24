@@ -11,7 +11,7 @@ Can be dropped once rustc switches to LLVM20+
  1 file changed, 4 insertions(+)
 
 diff --git a/compiler/rustc_codegen_llvm/src/llvm_util.rs b/compiler/rustc_codegen_llvm/src/llvm_util.rs
-index 8f57f09..bffa996 100644
+index 8f57f09..3c50808 100644
 --- a/compiler/rustc_codegen_llvm/src/llvm_util.rs
 +++ b/compiler/rustc_codegen_llvm/src/llvm_util.rs
 @@ -458,6 +458,10 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
@@ -19,7 +19,7 @@ index 8f57f09..bffa996 100644
          ("csky", _) => false,
          ("hexagon", _) => false,
 +        // Debian: requires LLVM 20+
-+        ("llongarch64") => false,
++        ("llongarch64", _) => false,
 +        // Debian: requires LLVM 20+
 +        ("mips" | "mips64" | "mips32r6" | "mips64r6", _) => false,
          ("powerpc" | "powerpc64", _) => false,
