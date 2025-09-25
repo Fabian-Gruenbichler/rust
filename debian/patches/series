@@ -51,4 +51,7 @@ build/bootstrap-ignore-x.py-shell-completion-diff.patch
 build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 build/Revert-rustc_target-Add-target-features-for-LoongArch-v1..patch
 build/Revert-Enable-f16-for-LoongArch-and-Mips.patch
+upstream/run-make-support-support-ejecting-the-underlying-std-comm.patch
 upstream/tests-fix-broken-pipe-no-ice-to-use-bare_rustc-rustc.patch
+build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
+upstream/Fix-normalization-in-linker-warning.patch
