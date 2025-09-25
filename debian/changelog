@@ -1,8 +1,9 @@
-rustc (1.88.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.88.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * fix or disable more broken tests
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Wed, 24 Sep 2025 13:24:21 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 25 Sep 2025 10:36:50 +0200
 
 rustc (1.87.0+dfsg1-1) unstable; urgency=medium
 
