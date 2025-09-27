@@ -1,3 +1,9 @@
+rustc (1.87.0+dfsg1-1~bpo13+1) trixie-backports; urgency=medium
+
+  * Rebuild for trixie-backports.
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sat, 27 Sep 2025 22:10:20 +0200
+
 rustc (1.87.0+dfsg1-1) unstable; urgency=medium
 
   * revert changes requiring LLVM >=20 (fix loongarch64/mips64el)
