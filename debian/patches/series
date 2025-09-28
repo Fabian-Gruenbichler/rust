@@ -55,3 +55,4 @@ upstream/run-make-support-support-ejecting-the-underlying-std-comm.patch
 upstream/tests-fix-broken-pipe-no-ice-to-use-bare_rustc-rustc.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 upstream/Fix-normalization-in-linker-warning.patch
+vendor/hurd-Fix-build-from-missing-fpos_t.patch
