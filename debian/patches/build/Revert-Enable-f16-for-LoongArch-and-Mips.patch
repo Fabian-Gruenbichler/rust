@@ -19,7 +19,7 @@ index 8f57f09..3c50808 100644
          ("csky", _) => false,
          ("hexagon", _) => false,
 +        // Debian: requires LLVM 20+
-+        ("llongarch64", _) => false,
++        ("loongarch64", _) => false,
 +        // Debian: requires LLVM 20+
 +        ("mips" | "mips64" | "mips32r6" | "mips64r6", _) => false,
          ("powerpc" | "powerpc64", _) => false,
