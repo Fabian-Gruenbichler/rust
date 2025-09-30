@@ -1,3 +1,10 @@
+rustc (1.88.0+dfsg1-1) unstable; urgency=medium
+
+  * cherry-pick libc fix for hurd
+  * loongarch64: fix typo in patch disabling f16
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 30 Sep 2025 08:45:39 +0200
+
 rustc (1.88.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
