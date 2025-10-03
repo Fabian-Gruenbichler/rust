@@ -1,3 +1,10 @@
+rustc (1.88.0+dfsg1-2) unstable; urgency=medium
+
+  * add lld-19 to Build-Depends-Indep
+  * fix cargo-doc references in rust-doc
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 03 Oct 2025 10:19:57 +0200
+
 rustc (1.88.0+dfsg1-1) unstable; urgency=medium
 
   * cherry-pick libc fix for hurd
