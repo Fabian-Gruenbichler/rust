@@ -237,8 +237,8 @@ index 3e926ed..4a6e3a9 100644
 -[cargo reference]: ../cargo/reference/index.html
 +[the Rust Reference repository]: ../reference/index.html
 +[Unstable Book]: ../unstable-book/index.html
-+[cargo book]: ../../../cargo/index.html
-+[cargo reference]: ../../../cargo/reference/index.html
++[cargo book]: ../../../cargo/book/index.html
++[cargo reference]: ../../../cargo/book/reference/index.html
  [example rule]: example.rule.label
  [expressions chapter]: expressions.html
  [file an issue]: https://github.com/rust-lang/reference/issues
