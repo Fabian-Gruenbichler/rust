@@ -55,6 +55,7 @@ Build-Depends-Indep:
  wasi-libc (>= 0.0~git20241209.574b88d~~) <!nowasm>,
  wasi-libc (<= 0.0~git20241209.574b88d++) <!nowasm>,
  clang-19:native,
+ lld-19:native,
 # see #1057780, gdb now Conflicts gdb-minimal
 #Build-Conflicts: gdb-minimal <!nocheck>
 Standards-Version: 4.7.0
