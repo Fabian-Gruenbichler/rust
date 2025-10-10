@@ -1,8 +1,9 @@
-rustc (1.89.0+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.89.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * update config.toml.in
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 09 Oct 2025 15:32:28 +0200
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 10 Oct 2025 11:57:40 +0200
 
 rustc (1.88.0+dfsg1-2) unstable; urgency=medium
 
