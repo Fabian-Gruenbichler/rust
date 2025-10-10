@@ -978,11 +978,6 @@ Files: src/librustdoc/html/static/fonts/SourceSerif4*
 Copyright: 2014-2021 Adobe Systems Incorporated
 License: SIL-OPEN-FONT
 
-Files: vendor/compiler_builtins-*/*
-Copyright: 2016-2019 Jorge Aparicio <japaricious@gmail.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/rust-lang-nursery/compiler-builtins
-
 Files: vendor/ahash-*/*
 Copyright: 2019-2022 Tom Kaitchuck <Tom.Kaitchuck@gmail.com>
 License: MIT OR Apache-2.0
@@ -1163,12 +1158,6 @@ Copyright:
 License: Apache-2.0 or MIT
 Comment: see https://github.com/gimli-rs/addr2line
 
-Files: 
- vendor/adler-*/*
-Copyright: 2020-2021 Jonas Schievink <jonasschievink@gmail.com>
-License: 0BSD or MIT or Apache-2.0
-Comment: see https://github.com/jonas-schievink/adler.git
-
 Files: vendor/adler2-*/*
 Copyright: 2020-2024 Jonas Schievink <jonasschievink@gmail.com>
            2020-2024 oyvindln <oyvindln@users.noreply.github.com>
@@ -1338,9 +1327,15 @@ Copyright: 2016-2020 Andre Bogus <bogusandre@gmail.de>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/llogiq/bytecount
 
+Files: vendor/byteorder-*/*
+Copyright: 2015-2024 Andrew Gallant <jamslam@gmail.com>
+License: Unlicense OR MIT
+Comment: see https://github.com/BurntSushi/byteorder
+
 Files:
  vendor/globset-*/*
  vendor/globset-0.*/*
+ vendor/grep-regex-0.*/*
  vendor/ignore-*/*
  vendor/ignore-0.*/*
  vendor/same-file-*/*
@@ -1353,6 +1348,7 @@ Comment:
  see https://github.com/BurntSushi/walkdir
  see https://github.com/BurntSushi/winapi-util
  see https://github.com/BurntSushi/ripgrep/tree/master/globset
+ see https://github.com/BurntSushi/ripgrep/tree/master/grep-regex
  see https://github.com/BurntSushi/ripgrep/tree/master/ignore
  see https://github.com/BurntSushi/ripgrep/tree/master/termcolor
 
@@ -1363,6 +1359,17 @@ Copyright: 2020-2022 Without Boats <saoirse@without.boats>
            2020-2022 Rain <rain@sunshowers.io>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/withoutboats/camino
+
+Files:
+ vendor/cargo-credential-0.*/*
+ vendor/cargo-util-schemas-0.*/*
+Copyright:
+ 2014-2025 The Rust Project Developers
+ 2014-2025 Yehuda Katz <wycats@gmail.com>
+ 2014-2025 Carl Lerche <me@carllerche.com>
+ 2014-2025 Alex Crichton <alex@alexcrichton.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-lang/cargo
 
 Files:
  vendor/cargo_metadata-*/*
@@ -1840,11 +1847,6 @@ Copyright: 2015-2018 Keegan McAllister <kmcallister@mozilla.com>
 License: MIT  or  Apache-2.0
 Comment: see https://github.com/servo/futf
 
-Files: vendor/generator-0.*/*
-Copyright: 2015-2025 Xudong Huang <huangxu008@hotmail.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/Xudong-Huang/generator-rs.git
-
 Files:
  vendor/generic-array-*/*
 Copyright:
@@ -1950,10 +1952,22 @@ Copyright: 2014-2017 Ning Sun <sunng@about.me>
 License: MIT
 Comment: see https://github.com/sunng87/handlebars-rust
 
+Files: vendor/hash32-0.*/*
+Copyright: 2018-2025 Jorge Aparicio <jorge@japaric.io>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/japaric/hash32
+
 Files: vendor/hashlink-*/*
 Copyright: 2019-2024 kyren <kerriganw@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/kyren/hashlink
+
+Files: vendor/heapless-0.*/*
+Copyright: 2017-2025 Jorge Aparicio <jorge@japaric.io>
+           2017-2025 Per Lindgren <per.lindgren@ltu.se>
+           2017-2025 Emil Fresk <emil.fresk@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/rust-embedded/heapless
 
 Files: vendor/heck-*/*
 Copyright: 2017-2018 Without Boats <woboats@gmail.com>
@@ -2085,6 +2099,11 @@ Files: vendor/inotify-sys-0.*/*
 Copyright: 2017-2021 Hanno Braun <hb@hannobraun.de>
 License: ISC
 Comment: see https://github.com/hannobraun/inotify-sys
+
+Files: vendor/insta-*/*
+Copyright: 2019-2025 Armin Ronacher <armin.ronacher@active-4.com>
+License: Apache-2.0
+Comment: see https://github.com/mitsuhiko/insta
 
 Files: vendor/intl_pluralrules-*/*
 Copyright: 2018-2021 Kekoa Riggin <kekoariggin@gmail.com>
@@ -2225,17 +2244,17 @@ License: MIT
 Comment: see https://github.com/rusqlite/rusqlite
 
 Files:
+ vendor/libz-rs-sys-0.*/include/zconf.h
+ vendor/libz-rs-sys-0.*/include/zlib.h
+Copyright: 1995-2024 Jean-loup Gailly, Mark Adler
+License: Zlib
+
+Files:
  vendor/libz-rs-sys-0.*/*
  vendor/zlib-rs-0.*/*
 Copyright: 2024 Trifecta Tech Foundation 
 License: Zlib
 Comment: see https://github.com/trifectatechfoundation/zlib-rs
-
-Files:
- vendor/libz-rs-sys-0.*/include/zconf.h
- vendor/libz-rs-sys-0.*/include/zlib.h
-Copyright: 1995-2024 Jean-loup Gailly, Mark Adler
-License: Zlib
 
 Files: vendor/libz-sys-*/*
 Copyright: 2014-2024 Alex Crichton <alex@alexcrichton.com>
@@ -2259,11 +2278,6 @@ Files: vendor/linux-raw-sys-*/*
 Copyright: 2021-2022 Dan Gohman <dev@sunfishcode.online>
 License: Apache-2.0 with LLVM exception OR Apache-2.0 OR MIT
 Comment: see https://github.com/sunfishcode/linux-raw-sys
-
-Files: vendor/loom-0.*/*
-Copyright: 2018-2025 Carl Lerche <me@carllerche.com>
-License: MIT
-Comment: see https://github.com/tokio-rs/loom
 
 Files: vendor/lsp-server-*/*
 Copyright: 2024 rust-analyzer team
@@ -2674,11 +2688,6 @@ Copyright: 2015-2019 mcarton <cartonmartin+git@gmail.com>
 License: MIT
 Comment: see https://github.com/mcarton/rust-punycode.git
 
-Files: vendor/quickcheck-0.4.1/*
-Copyright: 2014-2023 Andrew Gallant <jamslam@gmail.com>
-License: Unlicense or MIT
-Comment: see https://github.com/BurntSushi/quickcheck
-
 Files: vendor/quick-error-*/*
 Copyright:
  2015-2023 Paul Colomiets <paul@colomiets.name>
@@ -2699,8 +2708,6 @@ Comment: see https://github.com/lukaslueg/railroad
 Files:
  vendor/rayon-*/*
  vendor/rayon-core-*/*
- vendor/rustc-rayon-*/*
- vendor/rustc-rayon-core-*/*
 Copyright: 2014-2018 Niko Matsakis <niko@alum.mit.edu>
            2014-2018 Josh Stone <cuviper@gmail.com>
 License: Apache-2.0 or MIT
@@ -2828,8 +2835,8 @@ License: Apache-2.0 OR MIT
 Comment: see https://github.com/salsa-rs/salsa
 
 Files:
- vendor/schemars-1.*/*
- vendor/schemars_derive-1.*/*
+ vendor/schemars-*/*
+ vendor/schemars_derive-*/*
 Copyright: 2019-2024 Graham Esau <gesau@hotmail.co.uk>
 License: MIT
 Comment: see https://github.com/GREsau/schemars
@@ -2839,9 +2846,7 @@ Copyright: 2022 TJ DeVries
 License: Apache-2.0
 Comment: see https://github.com/sourcegraph/scip
 
-Files:
- vendor/self_cell-*/*
- vendor/self_cell-0.*/*
+Files: vendor/self_cell-*/*
 Copyright: 2020-2021 Lukas Bergdoll <lukas.bergdoll@gmail.com>
 License: Apache-2.0
 Comment: see https://github.com/Voultapher/self_cell
@@ -3251,11 +3256,6 @@ Copyright: 2021-2024 Gary Guo <gary@garyguo.net>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/nbdd0121/unwinding/
 
-Files: vendor/utf16_iter-*/*
-Copyright: 2022-2023 Henri Sivonen <hsivonen@hsivonen.fi>
-License: Apache-2.0 OR MIT
-Comment: see https://github.com/hsivonen/utf16_iter
-
 Files: vendor/utf8_iter-*/*
 Copyright: 2022-2023 Henri Sivonen <hsivonen@hsivonen.fi>
 License: Apache-2.0 OR MIT
@@ -3409,6 +3409,16 @@ Comment: see https://github.com/microsoft/windows-rs
  this contains pre-generated files which are also MIT or Apache-2.0 licensed,
  see vendor/windows-bindgen-*/default/readme.md
 
+Files: vendor/windows-link-0.1.3/*
+Copyright: 2019-2025 Microsoft
+License: MIT OR Apache-2.0
+Comment: see https://github.com/microsoft/windows-rs
+
+Files: vendor/windows-threading-0.1.0/*
+Copyright: 2019-2025 Microsoft
+License: MIT OR Apache-2.0
+Comment: see https://github.com/microsoft/windows-rs
+
 Files:
  vendor/winnow-*/*
  vendor/winnow-0.*/*
@@ -3510,11 +3520,6 @@ Copyright: Copyright (c) 2023 dAxpeDDa
 License: MIT OR Apache-2.0
 Comment: see https://github.com/daxpedda/web-time
 
-Files: vendor/write16-*/*
-Copyright: 2022-2023 Henri Sivonen <hsivonen@hsivonen.fi>
-License: Apache-2.0 OR MIT
-Comment: see https://github.com/hsivonen/write16
-
 Files: vendor/write-json-*/*
 Copyright: 2020-2020 Aleksey Kladov <aleksey.kladov@gmail.com>
 License: MIT OR Apache-2.0
@@ -3545,6 +3550,7 @@ Files:
  vendor/icu_collections-*/*
  vendor/icu_list-*/*
  vendor/icu_list_data-*/*
+ vendor/icu_locale_core-*/*
  vendor/icu_locid-*/*
  vendor/icu_locid_transform-*/*
  vendor/icu_locid_transform_data-*/*
@@ -3556,6 +3562,7 @@ Files:
  vendor/icu_provider_adapters-*/*
  vendor/icu_provider_macros-*/*
  vendor/litemap-*/*
+ vendor/potential_utf-*/*
  vendor/yoke-*/*
  vendor/yoke-derive-*/*
  vendor/writeable-*/*
@@ -3563,9 +3570,12 @@ Files:
  vendor/zerofrom-derive-*/*
  vendor/zerovec-*/*
  vendor/zerovec-derive-*/*
-Copyright: 1999-2022 Unicode, Inc.
+ vendor/zerotrie-*/*
+Copyright:
+ 1999-2025 Unicode, Inc.
+ 1995-2016 International Business Machines Corporation and others.
 License: Unicode-Data-Files-and-Software-License
-Comment: See https://github.com/unicode-org/icu4x
+Comment: See https://github.com/unicode-org/icu4x , parts adapted from ICU4C and/or ICU4J
 
 Files: debian/*
 Copyright: 2013-2018 Debian Rust Maintainers <pkg-rust-maintainers@alioth-lists.debian.net>
