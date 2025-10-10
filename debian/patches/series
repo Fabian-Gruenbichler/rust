@@ -51,3 +51,4 @@ build/Revert-rustc_target-Add-target-features-for-LoongArch-v1..patch
 build/Revert-Enable-f16-for-LoongArch-and-Mips.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 upstream/Fix-normalization-in-linker-warning.patch
+upstream/Don-t-always-panic-if-WASI_SDK_PATH-is-not-set-when-detec.patch
