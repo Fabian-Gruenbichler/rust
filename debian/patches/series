@@ -55,3 +55,4 @@ upstream/Don-t-always-panic-if-WASI_SDK_PATH-is-not-set-when-detec.patch
 upstream/Don-t-include-current-rustc-version-string-in-feature-rem.patch
 upstream/Always-use-the-pure-Rust-fallback-instead-of-llvm.-maximu.patch
 upstream/Fix-LoongArch-C-function-ABI-when-passing-returning-struc.patch
+behaviour/x32-set-panic-strategy-to-aborting.patch
