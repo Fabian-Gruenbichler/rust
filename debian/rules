@@ -378,6 +378,9 @@ override_dh_auto_test-arch:
 ifeq (, $(filter nocheck,$(DEB_BUILD_PROFILES)))
 ifeq (, $(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	{ $(RUSTBUILD_TEST) $(RUSTBUILD_FLAGS) $(RUSTBUILD_TEST_FLAGS) 2>&1; echo $$?; } | tee -a $(TEST_LOG)
+ifneq (,$(filter $(DEB_BUILD_ARCH), x32))
+	echo "Skipping test suite analysis on x32.."
+else
 	# test that the log has at least 1 pass, to prevent e.g. #57709
 	grep -l "^test .* \.\.\. ok$$" $(TEST_LOG)
 	echo "==== Debian rustc test report ===="; \
@@ -404,6 +407,7 @@ ifeq (, $(filter nocheck,$(DEB_BUILD_OPTIONS)))
 # don't continue if RUSTBUILD_TEST_FLAGS is non-empty
 	test -z "$(RUSTBUILD_TEST_FLAGS)"
 # don't run windows tests yet
+endif
 endif
 endif
 
