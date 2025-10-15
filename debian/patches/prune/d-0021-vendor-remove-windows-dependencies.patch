@@ -63,7 +63,6 @@ Signed-off-by: Fabian Grünbichler <f.gruenbichler@proxmox.com>
  vendor/parking_lot_core-0.9.11/Cargo.toml     |  3 -
  vendor/portable-atomic-1.11.1/Cargo.toml      |  7 ---
  vendor/process-wrap-8.2.1/Cargo.toml          | 12 ----
- vendor/ring-0.17.14/Cargo.toml                |  7 ---
  vendor/rustix-1.0.8/Cargo.toml                | 15 -----
  vendor/same-file-1.0.6/Cargo.toml             |  2 -
  vendor/seize-0.5.0/Cargo.toml                 |  6 --
@@ -80,7 +79,7 @@ Signed-off-by: Fabian Grünbichler <f.gruenbichler@proxmox.com>
  vendor/walkdir-2.5.0/Cargo.toml               |  3 -
  vendor/wasm-component-ld-0.5.15/Cargo.toml    |  7 ---
  vendor/yansi-term-0.1.2/Cargo.toml            |  3 -
- 60 files changed, 2 insertions(+), 542 deletions(-)
+ 59 files changed, 2 insertions(+), 535 deletions(-)
 
 diff --git a/vendor/android-tzdata-0.1.1/Cargo.toml b/vendor/android-tzdata-0.1.1/Cargo.toml
 index 805128a..0682717 100644
@@ -902,24 +901,6 @@ index 43c7d65..a2151d1 100644
 -[target."cfg(windows)".dependencies.windows]
 -version = "0.61.1"
 -optional = true
-diff --git a/vendor/ring-0.17.14/Cargo.toml b/vendor/ring-0.17.14/Cargo.toml
-index f445e18..da29036 100644
---- a/vendor/ring-0.17.14/Cargo.toml
-+++ b/vendor/ring-0.17.14/Cargo.toml
-@@ -253,13 +253,6 @@ version = "0.9"
- version = "1.2.8"
- default-features = false
- 
--[target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_os = "windows"))'.dependencies.windows-sys]
--version = "0.52"
--features = [
--    "Win32_Foundation",
--    "Win32_System_Threading",
--]
--
- [target.'cfg(all(all(target_arch = "aarch64", target_endian = "little"), target_vendor = "apple", any(target_os = "ios", target_os = "macos", target_os = "tvos", target_os = "visionos", target_os = "watchos")))'.dependencies.libc]
- version = "0.2.155"
- default-features = false
 diff --git a/vendor/rustix-1.0.8/Cargo.toml b/vendor/rustix-1.0.8/Cargo.toml
 index 0ed08f5..b778eb9 100644
 --- a/vendor/rustix-1.0.8/Cargo.toml
