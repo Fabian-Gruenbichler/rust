@@ -51,3 +51,4 @@ build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 upstream/Fix-LoongArch-C-function-ABI-when-passing-returning-struc.patch
 behaviour/x32-set-panic-strategy-to-aborting.patch
 prune/d-0022-prune-ring-dependencies.patch
+build/std_detect-remove-unstable-loongarch-features.patch
