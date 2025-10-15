@@ -577,6 +577,7 @@ Files-Excluded:
  vendor/reqwest-0.12.15
  vendor/reqwest-0.12.7
  vendor/rgb-0.8.36
+ vendor/ring-0.17.14
  vendor/rmp-0.8.11
  vendor/rmp-serde-1.1.1
  vendor/rusqlite-0.28.0
