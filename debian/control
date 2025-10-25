@@ -369,7 +369,7 @@ Multi-Arch: allowed
 Depends: ${misc:Depends}, ${shlibs:Depends},
  libstd-rust-1.90 (= ${binary:Version}),
 Conflicts: rustup
-Recommends: cargo
+Recommends: cargo, rust-src
 Description: Rust Language Server Protocol (LSP) implementation
  Rust is a curly-brace, block-structured expression language.  It
  visually resembles the C language family, but differs significantly
