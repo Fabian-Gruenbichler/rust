@@ -1,3 +1,9 @@
+rustc (1.90.0+dfsg1-1~bpo13+1) trixie-backports; urgency=medium
+
+  * Rebuild for trixie-backports.
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Thu, 30 Oct 2025 09:06:17 +0100
+
 rustc (1.90.0+dfsg1-1) unstable; urgency=medium
 
   * rust-src: add lintian override for jquery copy in benchmark input
