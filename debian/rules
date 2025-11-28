@@ -65,6 +65,8 @@ PROFILER = "true"
 PROFILER_PATH = profiler = \"/usr/lib/llvm-$(LLVM_VERSION)/lib/clang/$(LLVM_VERSION)/lib/linux/libclang_rt.profile-$(CLANG_RT_ARCH).a\"
 endif
 
+COMPILER_RT_PATH = /usr/lib/llvm-$(LLVM_VERSION)/lib/clang/$(LLVM_VERSION)/lib/linux/libclang_rt.builtins-$(CLANG_RT_ARCH).a
+
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 NJOBS := -j $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
@@ -238,6 +240,7 @@ debian/config.toml: debian/config.toml.in debian/rules
 		-DPROFILER="$(PROFILER)" \
 		-DPROFILER_PATH="$(PROFILER_PATH)" \
 		-DWINDOWS_ARCH="$(WINDOWS_ARCH)" \
+		-DCOMPILER_RT_PATH="$(COMPILER_RT_PATH)" \
 		"$<" > "$@"
 	if $(DOWNLOAD_BOOTSTRAP) || [ $(HAVE_BINARY_TARBALL) != 0 ]; \
 	  then sed -i -e '/^rustc = /d' -e '/^cargo = /d' "$@"; fi
