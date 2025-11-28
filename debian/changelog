@@ -1,3 +1,9 @@
+rustc (1.91.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+
+  * New upstream release
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 28 Nov 2025 17:32:21 +0100
+
 rustc (1.90.0+dfsg1-1) unstable; urgency=medium
 
   * rust-src: add lintian override for jquery copy in benchmark input
