@@ -317,6 +317,10 @@ override_dh_auto_clean:
 	done
 	# We removed some checksums that we need to restore here
 	find vendor -name .cargo-checksum.json.orig -execdir mv "{}" ".cargo-checksum.json" \;
+	# undo debian/scripts/build-wit-bindgen.sh
+	rm -f vendor/wit-bindgen-*/src/rt/wit_bindgen_*.{rs,o,c}
+	rm -f vendor/wit-bindgen-*/src/rt/libwit_bindgen_cabi.a
+
 
 debian/dh_auto_build.stamp:
 	$(RUSTBUILD) build $(RUSTBUILD_FLAGS)
@@ -331,6 +335,7 @@ endif
 
 override_dh_auto_build-indep: debian/dh_auto_build.stamp
 ifeq (true,$(BUILD_WASM))
+	debian/scripts/build-wit-bindgen.sh
 	$(RUSTBUILD) build $(RUSTBUILD_FLAGS) \
 	  --host $(DEB_BUILD_RUST_TYPE) \
 	  --target $(WASM_TARGETS) \

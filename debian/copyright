@@ -48,6 +48,7 @@ Files-Excluded:
  vendor/mdbook-*/src/front-end/playground_editor
  vendor/psm-*/src/arch/wasm32.o
 # See https://github.com/bytecodealliance/wit-bindgen/issues/1288
+# See debian/scripts/build-wit-bindgen.sh
  vendor/wit-bindgen-*/src/rt/*.a
  vendor/wit-bindgen-*/src/rt/*.c
  vendor/wit-bindgen-*/src/rt/*.o
