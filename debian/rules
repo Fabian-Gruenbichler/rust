@@ -156,6 +156,12 @@ ifneq (,$(findstring nowasm,$(DEB_BUILD_PROFILES)))
   BUILD_WASM := false
 endif
 
+BUILD_BPF := true
+BPF_TARGETS := "bpfeb-unknown-none,bpfel-unknown-none"
+ifneq (,$(findstring pkg.rustc.nobpf,$(DEB_BUILD_PROFILES)))
+  BUILD_BPF := false
+endif
+
 WINDOWS_SUPPORT := amd64 i386
 BUILD_WINDOWS := false
 ifneq (,$(findstring pkg.rustc.windows,$(DEB_BUILD_PROFILES)))
@@ -344,6 +350,12 @@ ifeq (true,$(BUILD_WASM))
 	  --target $(WASM_TARGETS) \
 	  library/std
 endif
+ifeq (true,$(BUILD_BPF))
+	$(RUSTBUILD) build $(RUSTBUILD_FLAGS) \
+	  --host $(DEB_BUILD_RUST_TYPE) \
+	  --target $(BPF_TARGETS) \
+	  library/std
+endif
 ifeq (true,$(BUILD_DOCS))
 	$(RUSTBUILD_DOCS) doc $(RUSTBUILD_FLAGS)
 	$(RUSTBUILD_DOCS) doc $(RUSTBUILD_FLAGS) cargo # document cargo APIs
@@ -486,6 +498,12 @@ ifeq (true,$(BUILD_WASM))
 	DESTDIR=$(DEB_DESTDIR) $(RUSTBUILD) install $(RUSTBUILD_FLAGS) \
 	  --host $(DEB_BUILD_RUST_TYPE) \
 	  --target $(WASM_TARGETS) \
+	  library/std
+endif
+ifeq (true,$(BUILD_BPF))
+	DESTDIR=$(DEB_DESTDIR) $(RUSTBUILD) install $(RUSTBUILD_FLAGS) \
+	  --host $(DEB_BUILD_RUST_TYPE) \
+	  --target $(BPF_TARGETS) \
 	  library/std
 endif
 ifeq (true,$(BUILD_DOCS))
