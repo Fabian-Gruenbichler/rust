@@ -1,8 +1,12 @@
-rustc (1.91.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.91.1+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * upgrade to LLVM 21
+  * regenerate wit-bindgen object files
+  * config: set LLVM compiler-rt as optimized-compiler-builtins
+  * build: add bpfel/bpfeb stdlib package
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 28 Nov 2025 17:32:21 +0100
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 12 Dec 2025 15:37:41 +0100
 
 rustc (1.90.0+dfsg1-1) unstable; urgency=medium
 
