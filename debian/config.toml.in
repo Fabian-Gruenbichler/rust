@@ -33,7 +33,7 @@ tools = [
   "wasm-component-ld",
 ]
 
-optimized-compiler-builtins = "COMPILER_RT_PATH"
+optimized-compiler-builtins = COMPILER_RT_PATH
 
 [install]
 prefix = "/usr"
