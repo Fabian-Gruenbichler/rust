@@ -1,3 +1,9 @@
+rustc (1.91.1+dfsg1-1~exp2) experimental; urgency=medium
+
+  * config: fix optimized-compiler-rt on sparc64/hurd
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 15 Dec 2025 15:21:33 +0100
+
 rustc (1.91.1+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
