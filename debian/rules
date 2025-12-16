@@ -76,6 +76,12 @@ RUSTBUILD = $(RUSTBUILD_COMMON) $(NJOBS)
 # force reproducibility
 RUSTBUILD_DOCS = $(RUSTBUILD_COMMON) -j1
 RUSTBUILD_FLAGS = --stage 2 --config debian/config.toml --on-fail env
+
+# 1.90 had no locking support yet, but 1.91.1 requires it, drop this with 1.92 again
+ifneq (,$(filter $(DEB_TARGET_ARCH),hurd-i386 hurd-amd64))
+RUSTBUILD_FLAGS = --stage 2 --config debian/config.toml --on-fail env --bypass-bootstrap-lock
+endif
+
 # rust-tidy depends on lots of modules that we strip out of the build.
 # it also tries to access the network for some reason. so just disable it.
 RUSTBUILD_TEST = $(RUSTBUILD) test --no-fail-fast --exclude src/tools/tidy
