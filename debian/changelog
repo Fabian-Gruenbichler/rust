@@ -1,3 +1,12 @@
+rustc (1.91.1+dfsg1-1~exp3) experimental; urgency=medium
+
+  * build: skip compiler-rt on x32
+  * hurd: enable flock support
+  * build: bypass bootstrap lock on hurd
+  * rules: fix dh_auto_clean if no extra vendor tarball exists
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 16 Dec 2025 13:00:29 +0100
+
 rustc (1.91.1+dfsg1-1~exp2) experimental; urgency=medium
 
   * config: fix optimized-compiler-rt on sparc64/hurd
