@@ -314,7 +314,7 @@ ifeq (true,$(BUILD_DOCS))
 endif
 
 override_dh_auto_clean:
-	if [ -e debian/extra-vendor.stamp ]; then \
+	if [ -e debian/extra-vendor.stamp -a -d extra ]; then \
 	  cd extra; \
 	  for c in *; do \
 	    echo "removing extra vendored dependency '$$c'"; \
