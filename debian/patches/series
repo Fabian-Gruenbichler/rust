@@ -47,3 +47,4 @@ build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 behaviour/x32-set-panic-strategy-to-aborting.patch
 prune/d-0022-prune-ring-dependencies.patch
+upstream/Enable-file-locking-support-for-Hurd.patch
