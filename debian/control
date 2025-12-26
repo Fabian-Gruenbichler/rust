@@ -52,7 +52,7 @@ Build-Depends:
  curl <pkg.rustc.dlstage0>,
  ca-certificates <pkg.rustc.dlstage0>,
 Build-Depends-Indep:
- wasi-libc (>= 0.0~git20250726.3f7eb4c~~) <!nowasm>,
+ wasi-libc (>= 0.0~git20250726.3f7eb4c-4~) <!nowasm>,
  wasi-libc (<= 0.0~git20250726.3f7eb4c++) <!nowasm>,
  clang-21:native,
  lld-21:native,
