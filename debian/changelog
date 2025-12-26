@@ -1,3 +1,9 @@
+rustc (1.91.1+dfsg1-1) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Fri, 26 Dec 2025 20:54:51 +0100
+
 rustc (1.91.1+dfsg1-1~exp3) experimental; urgency=medium
 
   * build: skip compiler-rt on x32
