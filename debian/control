@@ -21,7 +21,6 @@ Build-Depends:
  gcc-mingw-w64-x86-64-posix:native [amd64] <pkg.rustc.windows>,
  gcc-mingw-w64-i686-posix:native [i386] <pkg.rustc.windows>,
  libllvm21 (>= 1:19.0.0),
- libclang-rt-21-dev:native,
  libclang-rt-21-dev,
  cmake (>= 3.0),
 # needed by some vendor crates
