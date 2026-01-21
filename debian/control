@@ -317,6 +317,7 @@ Description: Rust systems programming language - Documentation
 
 Package: rust-src
 Architecture: all
+Multi-Arch: foreign
 Depends: ${misc:Depends}
 Conflicts: rustup
 Description: Rust systems programming language - source code
