@@ -39,6 +39,8 @@ Build-Depends:
  libgit2-dev (>= 1.9),
  libgit2-dev (<< 1.10~~),
  libhttp-parser-dev,
+# used by rustbook
+ libonig-dev:native,
  libonig-dev,
 # test dependencies:
  binutils (>= 2.26) <!nocheck> | binutils-2.26 <!nocheck>,
