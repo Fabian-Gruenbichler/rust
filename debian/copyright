@@ -1262,8 +1262,6 @@ Comment: see https://github.com/alexcrichton/
 Files:
  vendor/chalk-derive-0.*/*
  vendor/chalk-ir-0.*/*
- vendor/chalk-recursive-0.*/*
- vendor/chalk-solve-0.*/*
 Copyright: 2015-2025 Rust Compiler Team
            2015-2025 Chalk developers
 License: MIT OR Apache-2.0
@@ -1739,6 +1737,11 @@ Files: vendor/diff-*/*
 Copyright: 2015-2017 Utkarsh Kukreti <utkarshkukreti@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/utkarshkukreti/diff.rs
+
+Files: vendor/dispatch-0.*/*
+Copyright: 2015-2020 Steven Sheldon
+License: MIT
+Comment: see http://github.com/SSheldon/rust-dispatch
 
 Files:
  vendor/anyhow-*/*
@@ -2297,6 +2300,11 @@ Copyright: 2016-2024 Amanieu d'Antras <amanieu@gmail.com>
 License: Apache-2.0 or MIT
 Comment: see https://github.com/Amanieu/intrusive-rs
 
+Files: vendor/inventory-0.*/*
+Copyright: 2018-2026 David Tolnay <dtolnay@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/dtolnay/inventory
+
 Files: vendor/io-uring-0.*/*
 Copyright: 2019-2025 quininer <quininer@live.com>
 License: MIT OR Apache-2.0
@@ -2551,6 +2559,11 @@ Copyright: 2014-2025 Carl Lerche <me@carllerche.com>
 License: MIT
 Comment: see https://github.com/tokio-rs/mio
 
+Files: vendor/moto-rt-0.*/*
+Copyright: 2023-2026 The Motor OS Project Developers
+License: MIT OR Apache-2.0
+Comment: see https://github.com/moturus/motor-os
+
 Files: vendor/new_debug_unreachable-*/*
 Copyright: 2014-2018 Matt Brubeck <mbrubeck@limpet.net>
            2014-2018 Jonathan Reem <jonathan.reem@gmail.com>
@@ -2720,11 +2733,6 @@ Comment:
 Files: vendor/pad-*/*
 Copyright: 2018-2024 Ben S <ogham@bsago.me>
 License: MIT
-
-Files: vendor/papaya-0.*/*
-Copyright: 2024-2025 Ibraheem Ahmed <ibraheem@ibraheem.ca>
-License: MIT
-Comment: see https://github.com/ibraheemdev/papaya
 
 Files: vendor/papergrid-*/*
 Copyright: 2020-2024 Maxim Zhiburt <zhiburt@gmail.com>
@@ -2967,12 +2975,16 @@ Comment: see https://github.com/rust-analyzer/rowan
 
 Files:
  vendor/ra-ap-rustc_abi-*/*
+ vendor/ra-ap-rustc_ast_ir-*/*
  vendor/ra-ap-rustc_hashes-*/*
  vendor/ra-ap-rustc_index-*/*
  vendor/ra-ap-rustc_index_macros-*/*
  vendor/ra-ap-rustc_lexer-*/*
+ vendor/ra-ap-rustc_next_trait_solver-*/*
  vendor/ra-ap-rustc_parse_format-*/*
  vendor/ra-ap-rustc_pattern_analysis-*/*
+ vendor/ra-ap-rustc_type_ir-*/*
+ vendor/ra-ap-rustc_type_ir_macros-*/*
 Copyright: 2010-2025 The Rust Project Developers
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust
@@ -3021,11 +3033,6 @@ Copyright: 2015-2021 Brian Smith <brian@briansmith.org>
 License: ISC
 Comment: see https://github.com/rustls/webpki
 
-Files: vendor/rustls-webpki-0.*/third-party/chromium/*
-Copyright: 2015 The Chromium Authors
-License: BSD-3-Clause
-Comment: see https://github.com/rustls/webpki
-
 Files: vendor/rustversion-*/*
 Copyright: 2019-2021 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
@@ -3066,11 +3073,6 @@ Copyright: 2022 TJ DeVries
 License: Apache-2.0
 Comment: see https://github.com/sourcegraph/scip
 
-Files: vendor/seize-0.5.0/*
-Copyright: 2022-2025 Ibraheem Ahmed <ibraheem@ibraheem.ca>
-License: MIT
-Comment: see https://github.com/ibraheemdev/seize
-
 Files: vendor/self_cell-*/*
 Copyright: 2020-2021 Lukas Bergdoll <lukas.bergdoll@gmail.com>
 License: Apache-2.0
@@ -3095,10 +3097,11 @@ Comment:
  see https://github.com/serde-rs/json
 
 Files:
+ vendor/serde_core-*
  vendor/serde_derive-*/*
  vendor/serde_derive_internals-*/*
-Copyright: 2014-2024 Erick Tryzelaar <erick.tryzelaar@gmail.com>
-           2016-2024 David Tolnay <dtolnay@gmail.com>
+Copyright: 2014-2025 Erick Tryzelaar <erick.tryzelaar@gmail.com>
+           2014-2025 David Tolnay <dtolnay@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/serde-rs/serde
 
@@ -3587,6 +3590,11 @@ Copyright: 2017-2019 Sergio Benitez <sb@sergio.bz>
 License: MIT or Apache-2.0
 Comment: see https://github.com/SergioBenitez/version_check
 
+Files: vendor/vex-sdk-0.*/*
+Copyright: 2024-2025 Tropical
+License: MIT
+Comment: see https://github.com/vexide/vex-sdk/
+
 Files: vendor/want-*/*
 Copyright: 2018-2023 Sean McArthur <sean@seanmonstar.com>
 License: MIT
@@ -3679,6 +3687,11 @@ Copyright: 2019-2020 The Cranelift Project Developers
 License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
 Comment: see https://github.com/CraneStation/rust-wasi
 
+Files: vendor/wasip2-*/*
+Copyright: 2019-2026 The Cranelift Project Developers
+License: Apache-2.0 with LLVM exception or Apache-2.0 or MIT
+Comment: see https://github.com/bytecodealliance/wasi-rs
+
 Files: vendor/wasm-encoder-*/*
 Copyright: Nick Fitzgerald <fitzgen@gmail.com>
 License: Apache-2.0 with LLVM exception
@@ -3709,12 +3722,12 @@ Comment: see https://github.com/microsoft/windows-rs
  this contains pre-generated files which are also MIT or Apache-2.0 licensed,
  see vendor/windows-bindgen-*/default/readme.md
 
-Files: vendor/windows-link-0.1.3/*
+Files: vendor/windows-link-0.*/*
 Copyright: 2019-2025 Microsoft
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
 
-Files: vendor/windows-threading-0.1.0/*
+Files: vendor/windows-threading-0.*/*
 Copyright: 2019-2025 Microsoft
 License: MIT OR Apache-2.0
 Comment: see https://github.com/microsoft/windows-rs
