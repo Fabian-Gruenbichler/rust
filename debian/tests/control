@@ -8,7 +8,7 @@ Depends: cargo, librust-anyhow-dev
 
 Tests: create-and-build-wasm-wasip1-crate
 Restrictions: rw-build-tree, allow-stderr
-Depends: cargo, libstd-rust-dev-wasm32, rust-llvm librust-anyhow-dev
+Depends: cargo, libstd-rust-dev-wasm32, rust-llvm, librust-anyhow-dev
 
 Tests: create-and-build-wasm-wasip2-crate
 Restrictions: rw-build-tree, allow-stderr
