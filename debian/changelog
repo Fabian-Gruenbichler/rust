@@ -1,3 +1,10 @@
+rustc (1.92.0+dfsg1-1) unstable; urgency=medium
+
+  * autopkgtests: split download from build test
+  * d/rules: fix clean target (Closes: #1048141)
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sun, 08 Mar 2026 11:11:47 +0100
+
 rustc (1.92.0+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
