@@ -35,7 +35,6 @@ behaviour/d-rustdoc-disable-embedded-fonts.patch
 ubuntu/ubuntu-disable-ppc64el-asm-tests.patch
 ubuntu/ubuntu-ignore-arm-doctest.patch
 vendor/onig_sys-use-system-lib.patch
-vendor/libz-sys-allow-cross-building.patch
 build/ignore-broken-debuginfo-tests.patch
 vendor/blake3-skip-embedded-C-code-use-pure-implementation.patch
 build/bootstrap-don-t-attempt-to-download-rustc-in-tests.patch
