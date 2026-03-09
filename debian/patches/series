@@ -18,6 +18,8 @@ prune/d-0010-cargo-remove-vendored-c-crates.patch
 prune/d-0011-cargo-remove-nghttp2.patch
 prune/d-0020-remove-windows-dependencies.patch
 prune/d-0021-vendor-remove-windows-dependencies.patch
+prune/d-0022-prune-ring-dependencies.patch
+prune/d-0023-prune-wit-bindgen-blobs.patch
 vendor/d-0003-cc-psm-rebuild-wasm32.patch
 build/d-bootstrap-rustflags.patch
 build/d-bootstrap-install-symlinks.patch
@@ -45,4 +47,3 @@ build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 behaviour/x32-set-panic-strategy-to-aborting.patch
 upstream/Enable-file-locking-support-for-Hurd.patch
-prune/d-0022-prune-ring-dependencies.patch
