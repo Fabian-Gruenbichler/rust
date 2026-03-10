@@ -1114,7 +1114,6 @@ Files: C*.md
        git-commit-info
        library/*
        license-metadata.json
-       package-lock.json
        package.json
        src/README.md
        src/bootstrap/*
@@ -1133,6 +1132,7 @@ Files: C*.md
        x
        x.ps1
        x.py
+       yarn.lock
 Copyright: 2006-2009 Graydon Hoare
            2009-2012 Mozilla Foundation
            2012-2025 The Rust Project Developers (see https://thanks.rust-lang.org)
@@ -1195,11 +1195,6 @@ License: SIL-OPEN-FONT
 Files: src/librustdoc/html/static/fonts/SourceSerif4*
 Copyright: 2014-2021 Adobe Systems Incorporated
 License: SIL-OPEN-FONT
-
-Files: vendor/android_system_properties-*/*
-Copyright: 2022-2022 Nicolas Silva <nical@fastmail.com>
-License: MIT or Apache-2.0
-Comment: see https://github.com/nical/android_system_properties
 
 Files: vendor/anes-*/*
 Copyright: 2019-2023 Robert Vojta <rvojta@me.com>
@@ -1351,14 +1346,6 @@ Copyright: 2014-2020 Alex Crichton <alex@alexcrichton.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/alexcrichton/
 
-Files:
- vendor/chalk-derive-0.*/*
- vendor/chalk-ir-0.*/*
-Copyright: 2015-2025 Rust Compiler Team
-           2015-2025 Chalk developers
-License: MIT OR Apache-2.0
-Comment: see https://github.com/rust-lang/chalk
-
 Files: vendor/cobs-0.*/*
 Copyright: 2015-2025 Allen Welkie
            2015-2025 James Munns <james@onevariable.com>
@@ -1409,11 +1396,6 @@ Files: vendor/ammonia-*/*
 Copyright: 2015-2018 Michael Howell <michael@notriddle.com>
 License: MIT  or  Apache-2.0
 Comment: see https://github.com/notriddle/ammonia
-
-Files: vendor/android-tzdata-*/*
-Copyright: 2023-2023 RumovZ
-License: MIT OR Apache-2.0
-Comment: see https://github.com/RumovZ/android-tzdata
 
 Files: vendor/annotate-snippets-*/*
 Copyright: 2018-2020 Zibi Braniecki <gandalf@mozilla.com>
@@ -1534,6 +1516,11 @@ Copyright: 2019-2024 Jack O'Connor <oconnor663@gmail.com>
            2019-2024 Samuel Neves
 License: CC0-1.0 OR Apache-2.0 OR Apache-2.0 with LLVM exception
 Comment: see https://github.com/BLAKE3-team/BLAKE3
+
+Files: vendor/block2-*/*
+Copyright: 2014-2026 Mads Marquart <mads@marquart.dk>
+License: MIT
+Comment: see https://github.com/madsmtm/objc2
 
 Files: vendor/borsh-*/*
 Copyright: 2019-2024 Near Inc <hello@near.org>
@@ -1825,15 +1812,21 @@ Copyright: 2021 Roland Fredenhagen
 License: MIT OR Apache-2.0
 Comment: see https://github.com/ModProg/derive-where
 
+Files: vendor/dhat-*/*
+Copyright: 2020-2025 Nicholas Nethercote <n.nethercote@gmail.com>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/nnethercote/dhat-rs
+
 Files: vendor/diff-*/*
 Copyright: 2015-2017 Utkarsh Kukreti <utkarshkukreti@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/utkarshkukreti/diff.rs
 
-Files: vendor/dispatch-0.*/*
-Copyright: 2015-2020 Steven Sheldon
-License: MIT
-Comment: see http://github.com/SSheldon/rust-dispatch
+Files: vendor/dispatch2-0.*/*
+Copyright: 2014-2026 Mads Marquart <mads@marquart.dk>
+           2014-2026 Mary <mary@mary.zone>
+License: Zlib OR Apache-2.0 OR MIT
+Comment: see https://github.com/madsmtm/objc2
 
 Files:
  vendor/anyhow-*/*
@@ -1940,6 +1933,11 @@ Files: vendor/elsa-*/*
 Copyright: 2018-2023 Manish Goregaokar <manishsmail@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/manishearth/elsa
+
+Files: vendor/embedded-io-*/*
+Copyright: 2022-2023 The embedded-io authors (https://github.com/rust-embedded/wg#the-hal-team)
+License: MIT OR Apache-2.0
+Comment: see https://github.com/embassy-rs/embedded-io
 
 Files: vendor/ena-*/*
 Copyright: 2015-2020 Niko Matsakis <niko@alum.mit.edu>
@@ -2304,7 +2302,6 @@ License: MIT or Apache-2.0
 
 Files:
  vendor/iana-time-zone-*/*
- vendor/iana-time-zone-haiku-*/*
 Copyright: 2020-2024 Andrew Straw <strawman@astraw.com>
            2020-2024 René Kijewski <rene.kijewski@fu-berlin.de>
            2020-2024 Ryan Lopopolo <rjl@hyperbo.la>
@@ -2397,11 +2394,6 @@ Copyright: 2018-2026 David Tolnay <dtolnay@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/dtolnay/inventory
 
-Files: vendor/io-uring-0.*/*
-Copyright: 2019-2025 quininer <quininer@live.com>
-License: MIT OR Apache-2.0
-Comment: see https://github.com/tokio-rs/io-uring
-
 Files: vendor/ipnet-2.*/*
 Copyright: 2017-2025 Kris Price <kris@krisprice.nz>
 License: MIT OR Apache-2.0
@@ -2437,7 +2429,6 @@ Comment: see https://github.com/matklad/jod-thread
 Files:
  vendor/js-sys-*/*
  vendor/wasm-bindgen-*/*
- vendor/wasm-bindgen-backend-*/*
  vendor/wasm-bindgen-macro-support-*/*
  vendor/wasm-bindgen-macro-*/*
  vendor/wasm-bindgen-shared-*/*
@@ -2479,12 +2470,6 @@ Files: vendor/la-arena-*/*
 Copyright: 2024 rust-analyzer team
 License: MIT or Apache-2.0
 Comment: see https://github.com/rust-lang/rust-analyzer/tree/master/lib/la-arena
-
-Files: vendor/lazycell-*/*
-Copyright: 2016-2020 Alex Crichton <alex@alexcrichton.com>
-           2016-2020 Nikita Pekin <contact@nikitapek.in>
-License: MIT or Apache-2.0
-Comment: see https://github.com/indiv0/lazycell
 
 Files: vendor/lazy_static-*/*
 Copyright: 2014-2018 Marvin Löbel <loebel.marvin@gmail.com>
@@ -2617,6 +2602,12 @@ Copyright: 2019-2020 Wesley Wiser <wwiser@gmail.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/rust-lang/measureme
 
+Files: vendor/memfd-*/*
+Copyright: 2018-2025 Luca Bruno <lucab@lucabruno.net>
+           2018-2025 Simonas Kazlauskas <memfd@kazlauskas.me>
+License: MIT OR Apache-2.0
+Comment: see https://github.com/lucab/memfd-rs
+
 Files: vendor/memmap2-*/*
 Copyright: 2015-2021 Dan Burkert <dan@danburkert.com>
            2015-2021 Evgeniy Reizner <razrfalcon@gmail.com>
@@ -2650,6 +2641,11 @@ Copyright: 2014-2025 Carl Lerche <me@carllerche.com>
            2014-2025 Tokio Contributors <team@tokio.rs>
 License: MIT
 Comment: see https://github.com/tokio-rs/mio
+
+Files: vendor/mintex-*/*
+Copyright: 2022-2025 garypen <garypen@gmail.com>
+License: Apache-2.0
+Comment: see https://github.com/garypen/mintex
 
 Files: vendor/moto-rt-0.*/*
 Copyright: 2023-2026 The Motor OS Project Developers
@@ -2721,6 +2717,13 @@ Files: vendor/number_prefix-*/*
 Copyright: 2014-2020 Benjamin Sago <ogham@bsago.me>
 License: MIT
 Comment: see https://github.com/ogham/rust-number-prefix
+
+Files:
+ vendor/objc2-*/*
+ vendor/obj2c-encode-*/*
+Copyright: 2014-2026 Mads Marquart <mads@marquart.dk>
+License: MIT
+Comment: see https://github.com/madsmtm/objc2
 
 Files:
  vendor/object-*/*
@@ -2821,10 +2824,6 @@ Comment:
  see https://github.com/rust-lang/hashbrown
  see https://github.com/Amanieu/thread_local-rs
  see https://github.com/Amanieu/parking_lot
-
-Files: vendor/pad-*/*
-Copyright: 2018-2024 Ben S <ogham@bsago.me>
-License: MIT
 
 Files: vendor/papergrid-*/*
 Copyright: 2020-2024 Maxim Zhiburt <zhiburt@gmail.com>
@@ -3192,6 +3191,7 @@ Files:
  vendor/serde_core-*
  vendor/serde_derive-*/*
  vendor/serde_derive_internals-*/*
+ vendor/serde_test-*/*
 Copyright: 2014-2025 Erick Tryzelaar <erick.tryzelaar@gmail.com>
            2014-2025 David Tolnay <dtolnay@gmail.com>
 License: MIT or Apache-2.0
@@ -3253,6 +3253,11 @@ Files: vendor/shlex-*/*
 Copyright: 2015-2015 comex <comexk@gmail.com>
 License: MIT or Apache-2.0
 Comment: see https://github.com/comex/rust-shlex
+
+Files: vendor/simd-adler32-*/*
+Copyright: 2021-2025 Marvin Countryman <me@maar.vin>
+License: MIT
+Comment: see https://github.com/mcountryman/simd-adler32
 
 Files: vendor/similar-*/*
 Copyright: 2021-2024 Armin Ronacher <armin.ronacher@active-4.com>
@@ -3463,6 +3468,11 @@ Files: vendor/thorin-dwp-*/*
 Copyright: 2021-2022 David Wood <david.wood@huawei.com>
 License: MIT OR Apache-2.0
 Comment: see https://github.com/davidtwco/thorin
+
+Files: vendor/thousands-*/*
+Copyright: 2018-2019 Jesse A. Tov <jesse.tov@gmail.com>
+License: MIT or Apache-2.0
+Comment: see https://github.com/tov/thousands-rs
 
 Files: vendor/threadpool-*/*
 Copyright: 2015-2021 The Rust Project Developers
