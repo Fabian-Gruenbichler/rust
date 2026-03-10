@@ -1,8 +1,10 @@
-rustc (1.93.1+dfsg1-1~exp1) UNRELEASED; urgency=medium
+rustc (1.93.1+dfsg1-1~exp1) experimental; urgency=medium
 
   * New upstream release
+  * build-wit-bindgen: call twice for both versions
+  * d/rules: de-duplicate lists of workspaces (Closes: #1048141)
 
- -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Mon, 09 Mar 2026 13:29:38 +0100
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 10 Mar 2026 13:38:51 +0100
 
 rustc (1.92.0+dfsg1-1) unstable; urgency=medium
 
