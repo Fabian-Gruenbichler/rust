@@ -47,3 +47,5 @@ build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 behaviour/x32-set-panic-strategy-to-aborting.patch
 upstream/Enable-file-locking-support-for-Hurd.patch
+vendor/tar-CVE-2026-33056.patch
+vendor/tar-CVE-2026-33055.patch
