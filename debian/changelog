@@ -1,3 +1,9 @@
+rustc (1.91.1+dfsg1-1~bpo13+1) trixie-backports; urgency=medium
+
+  * Rebuild for trixie-backports.
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Sat, 04 Apr 2026 19:40:45 +0200
+
 rustc (1.91.1+dfsg1-1) unstable; urgency=medium
 
   * Upload to unstable
