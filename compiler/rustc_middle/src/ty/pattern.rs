@@ -30,7 +30,6 @@ impl<'tcx> Flags for Pattern<'tcx> {
                 }
                 flags
             }
-            ty::PatternKind::NotNull => rustc_type_ir::TypeFlags::empty(),
         }
     }
 
@@ -46,7 +45,6 @@ impl<'tcx> Flags for Pattern<'tcx> {
                 }
                 idx
             }
-            ty::PatternKind::NotNull => rustc_type_ir::INNERMOST,
         }
     }
 }
@@ -93,7 +91,6 @@ impl<'tcx> IrPrint<PatternKind<'tcx>> for TyCtxt<'tcx> {
 
                 write!(f, "..={end}")
             }
-            PatternKind::NotNull => write!(f, "!null"),
             PatternKind::Or(patterns) => {
                 write!(f, "(")?;
                 let mut first = true;

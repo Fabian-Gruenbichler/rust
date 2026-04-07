@@ -78,13 +78,6 @@ function loadFilterFromUrl(
         defaultFilter.backend.cranelift
       ),
     },
-    target: {
-      x86_64_unknown_linux_gnu: getBoolOrDefault(
-        urlParams,
-        "target-x86_64-unknown-linux-gnu",
-        defaultFilter.target.x86_64_unknown_linux_gnu
-      ),
-    },
     category: {
       primary: getBoolOrDefault(
         urlParams,
@@ -180,11 +173,6 @@ function storeFilterToUrl(
     "backend-clif",
     filter.backend.cranelift,
     defaultFilter.backend.cranelift
-  );
-  storeOrReset(
-    "target-x86_64-unknown-linux-gnu",
-    filter.target.x86_64_unknown_linux_gnu,
-    defaultFilter.target.x86_64_unknown_linux_gnu
   );
   storeOrReset(
     "primary",

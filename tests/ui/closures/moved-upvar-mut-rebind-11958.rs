@@ -7,8 +7,7 @@
 
 pub fn main() {
     let mut x = 1;
-    //~^ WARN unused variable: `x`
     let _thunk = Box::new(move|| { x = 2; });
-    //~^ WARN value captured by `x` is never read
-    //~| WARN value assigned to `x` is never read
+    //~^ WARN value assigned to `x` is never read
+    //~| WARN unused variable: `x`
 }

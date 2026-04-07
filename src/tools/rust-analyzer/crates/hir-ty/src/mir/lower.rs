@@ -3,9 +3,10 @@
 use std::{fmt::Write, iter, mem};
 
 use base_db::Crate;
+use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
-    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, GenericParamId, HasModule,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
+    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
+    Lookup, TraitId, TupleId, TypeOrConstParamId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
@@ -19,76 +20,72 @@ use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use rustc_apfloat::Float;
 use rustc_hash::FxHashMap;
-use rustc_type_ir::inherent::{Const as _, IntoKind, SliceLike, Ty as _};
 use span::{Edition, FileId};
 use syntax::TextRange;
 use triomphe::Arc;
 
 use crate::{
-    Adjust, Adjustment, AutoBorrow, CallableDefId, TraitEnvironment,
+    Adjust, Adjustment, AutoBorrow, CallableDefId, TraitEnvironment, TyBuilder, TyExt,
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure, InternedClosureId},
     display::{DisplayTarget, HirDisplay, hir_display_with_store},
+    error_lifetime,
     generics::generics,
-    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy},
+    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
+    mapping::ToChalk,
     mir::{
-        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, Either, Expr,
-        FieldId, GenericArgs, Idx, InferenceResult, Local, LocalId, MemoryMap, MirBody, MirSpan,
-        Mutability, Operand, Place, PlaceElem, PointerCast, ProjectionElem, ProjectionStore,
-        RawIdx, Rvalue, Statement, StatementKind, SwitchTargets, Terminator, TerminatorKind,
-        TupleFieldId, Ty, UnOp, VariantId, return_slot,
+        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, ConstScalar,
+        Either, Expr, FieldId, Idx, InferenceResult, Interner, Local, LocalId, MemoryMap, MirBody,
+        MirSpan, Mutability, Operand, Place, PlaceElem, PointerCast, ProjectionElem,
+        ProjectionStore, RawIdx, Rvalue, Statement, StatementKind, Substitution, SwitchTargets,
+        Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId, intern_const_scalar,
+        return_slot,
     },
-    next_solver::{
-        Const, DbInterner, ParamConst, Region, TyKind, TypingMode, UnevaluatedConst,
-        infer::{DbInternerInferExt, InferCtxt},
-        mapping::NextSolverToChalk,
-    },
+    static_lifetime,
     traits::FnTrait,
+    utils::ClosureSubst,
 };
 
 use super::OperandKind;
 
 mod as_place;
 mod pattern_matching;
-#[cfg(test)]
-mod tests;
 
 #[derive(Debug, Clone)]
-struct LoopBlocks<'db> {
-    begin: BasicBlockId<'db>,
+struct LoopBlocks {
+    begin: BasicBlockId,
     /// `None` for loops that are not terminating
-    end: Option<BasicBlockId<'db>>,
-    place: Place<'db>,
+    end: Option<BasicBlockId>,
+    place: Place,
     drop_scope_index: usize,
 }
 
 #[derive(Debug, Clone, Default)]
-struct DropScope<'db> {
+struct DropScope {
     /// locals, in order of definition (so we should run drop glues in reverse order)
-    locals: Vec<LocalId<'db>>,
+    locals: Vec<LocalId>,
 }
 
-struct MirLowerCtx<'a, 'db> {
-    result: MirBody<'db>,
+struct MirLowerCtx<'db> {
+    result: MirBody,
     owner: DefWithBodyId,
-    current_loop_blocks: Option<LoopBlocks<'db>>,
-    labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks<'db>>,
-    discr_temp: Option<Place<'db>>,
+    current_loop_blocks: Option<LoopBlocks>,
+    labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
+    discr_temp: Option<Place>,
     db: &'db dyn HirDatabase,
-    body: &'a Body,
-    infer: &'a InferenceResult<'db>,
+    body: &'db Body,
+    infer: &'db InferenceResult,
     resolver: Resolver<'db>,
-    drop_scopes: Vec<DropScope<'db>>,
-    env: Arc<TraitEnvironment<'db>>,
-    infcx: InferCtxt<'db>,
+    drop_scopes: Vec<DropScope>,
+    env: Arc<TraitEnvironment>,
 }
 
 // FIXME: Make this smaller, its stored in database queries
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum MirLowerError<'db> {
-    ConstEvalError(Box<str>, Box<ConstEvalError<'db>>),
+pub enum MirLowerError {
+    ConstEvalError(Box<str>, Box<ConstEvalError>),
     LayoutError(LayoutError),
     IncompleteExpr,
     IncompletePattern,
@@ -98,9 +95,9 @@ pub enum MirLowerError<'db> {
     RecordLiteralWithoutPath,
     UnresolvedMethod(String),
     UnresolvedField,
-    UnsizedTemporary(Ty<'db>),
+    UnsizedTemporary(Ty),
     MissingFunctionDefinition(DefWithBodyId, ExprId),
-    TypeMismatch(TypeMismatch<'db>),
+    TypeMismatch(TypeMismatch),
     HasErrors,
     /// This should never happen. Type mismatch should catch everything.
     TypeError(&'static str),
@@ -113,22 +110,22 @@ pub enum MirLowerError<'db> {
     LangItemNotFound(LangItem),
     MutatingRvalue,
     UnresolvedLabel,
-    UnresolvedUpvar(Place<'db>),
+    UnresolvedUpvar(Place),
     InaccessibleLocal,
 
     // monomorphization errors:
-    GenericArgNotProvided(GenericParamId, GenericArgs<'db>),
+    GenericArgNotProvided(TypeOrConstParamId, Substitution),
 }
 
 /// A token to ensuring that each drop scope is popped at most once, thanks to the compiler that checks moves.
 struct DropScopeToken;
 impl DropScopeToken {
-    fn pop_and_drop<'db>(
+    fn pop_and_drop(
         self,
-        ctx: &mut MirLowerCtx<'_, 'db>,
-        current: BasicBlockId<'db>,
+        ctx: &mut MirLowerCtx<'_>,
+        current: BasicBlockId,
         span: MirSpan,
-    ) -> BasicBlockId<'db> {
+    ) -> BasicBlockId {
         std::mem::forget(self);
         ctx.pop_drop_scope_internal(current, span)
     }
@@ -137,7 +134,7 @@ impl DropScopeToken {
     /// code. Either when the control flow is diverging (so drop code doesn't reached) or when drop is handled
     /// for us (for example a block that ended with a return statement. Return will drop everything, so the block shouldn't
     /// do anything)
-    fn pop_assume_dropped(self, ctx: &mut MirLowerCtx<'_, '_>) {
+    fn pop_assume_dropped(self, ctx: &mut MirLowerCtx<'_>) {
         std::mem::forget(self);
         ctx.pop_drop_scope_assume_dropped_internal();
     }
@@ -158,7 +155,7 @@ impl Drop for DropScopeToken {
 //     }
 // }
 
-impl MirLowerError<'_> {
+impl MirLowerError {
     pub fn pretty_print(
         &self,
         f: &mut String,
@@ -194,24 +191,15 @@ impl MirLowerError<'_> {
                 e.actual.display(db, display_target),
             )?,
             MirLowerError::GenericArgNotProvided(id, subst) => {
-                let param_name = match *id {
-                    GenericParamId::TypeParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
-                    }
-                    GenericParamId::ConstParamId(id) => {
-                        db.generic_params(id.parent())[id.local_id()].name().cloned()
-                    }
-                    GenericParamId::LifetimeParamId(id) => {
-                        Some(db.generic_params(id.parent)[id.local_id].name.clone())
-                    }
-                };
+                let parent = id.parent;
+                let param = &db.generic_params(parent)[id.local_id];
                 writeln!(
                     f,
                     "Generic arg not provided for {}",
-                    param_name.unwrap_or(Name::missing()).display(db, display_target.edition)
+                    param.name().unwrap_or(&Name::missing()).display(db, display_target.edition)
                 )?;
                 writeln!(f, "Provided args: [")?;
-                for g in subst.iter() {
+                for g in subst.iter(Interner) {
                     write!(f, "    {},", g.display(db, display_target))?;
                 }
                 writeln!(f, "]")?;
@@ -254,13 +242,13 @@ macro_rules! implementation_error {
     }};
 }
 
-impl From<LayoutError> for MirLowerError<'_> {
+impl From<LayoutError> for MirLowerError {
     fn from(value: LayoutError) -> Self {
         MirLowerError::LayoutError(value)
     }
 }
 
-impl MirLowerError<'_> {
+impl MirLowerError {
     fn unresolved_path(
         db: &dyn HirDatabase,
         p: &Path,
@@ -273,14 +261,14 @@ impl MirLowerError<'_> {
     }
 }
 
-type Result<'db, T> = std::result::Result<T, MirLowerError<'db>>;
+type Result<T> = std::result::Result<T, MirLowerError>;
 
-impl<'a, 'db> MirLowerCtx<'a, 'db> {
+impl<'ctx> MirLowerCtx<'ctx> {
     fn new(
-        db: &'db dyn HirDatabase,
+        db: &'ctx dyn HirDatabase,
         owner: DefWithBodyId,
-        body: &'a Body,
-        infer: &'a InferenceResult<'db>,
+        body: &'ctx Body,
+        infer: &'ctx InferenceResult,
     ) -> Self {
         let mut basic_blocks = Arena::new();
         let start_block = basic_blocks.alloc(BasicBlock {
@@ -289,7 +277,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             is_cleanup: false,
         });
         let locals = Arena::new();
-        let binding_locals: ArenaMap<BindingId, LocalId<'db>> = ArenaMap::new();
+        let binding_locals: ArenaMap<BindingId, LocalId> = ArenaMap::new();
         let mir = MirBody {
             projection_store: ProjectionStore::default(),
             basic_blocks,
@@ -302,8 +290,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         };
         let resolver = owner.resolver(db);
         let env = db.trait_environment_for_body(owner);
-        let interner = DbInterner::new_with(db, Some(env.krate), env.block);
-        let infcx = interner.infer_ctxt().build(TypingMode::non_body_analysis());
 
         MirLowerCtx {
             result: mir,
@@ -317,22 +303,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             discr_temp: None,
             drop_scopes: vec![DropScope::default()],
             env,
-            infcx,
         }
     }
 
-    #[inline]
-    fn interner(&self) -> DbInterner<'db> {
-        self.infcx.interner
-    }
-
-    fn temp(
-        &mut self,
-        ty: Ty<'db>,
-        current: BasicBlockId<'db>,
-        span: MirSpan,
-    ) -> Result<'db, LocalId<'db>> {
-        if matches!(ty.kind(), TyKind::Slice(_) | TyKind::Dynamic(..)) {
+    fn temp(&mut self, ty: Ty, current: BasicBlockId, span: MirSpan) -> Result<LocalId> {
+        if matches!(ty.kind(Interner), TyKind::Slice(_) | TyKind::Dyn(_)) {
             return Err(MirLowerError::UnsizedTemporary(ty));
         }
         let l = self.result.locals.alloc(Local { ty });
@@ -343,8 +318,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_expr_to_some_operand(
         &mut self,
         expr_id: ExprId,
-        current: BasicBlockId<'db>,
-    ) -> Result<'db, Option<(Operand<'db>, BasicBlockId<'db>)>> {
+        current: BasicBlockId,
+    ) -> Result<Option<(Operand, BasicBlockId)>> {
         if !self.has_adjustments(expr_id)
             && let Expr::Literal(l) = &self.body[expr_id]
         {
@@ -360,18 +335,15 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_expr_to_place_with_adjust(
         &mut self,
         expr_id: ExprId,
-        place: Place<'db>,
-        current: BasicBlockId<'db>,
-        adjustments: &[Adjustment<'db>],
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+        place: Place,
+        current: BasicBlockId,
+        adjustments: &[Adjustment],
+    ) -> Result<Option<BasicBlockId>> {
         match adjustments.split_last() {
             Some((last, rest)) => match &last.kind {
                 Adjust::NeverToAny => {
-                    let temp = self.temp(
-                        Ty::new(self.interner(), TyKind::Never),
-                        current,
-                        MirSpan::Unknown,
-                    )?;
+                    let temp =
+                        self.temp(TyKind::Never.intern(Interner), current, MirSpan::Unknown)?;
                     self.lower_expr_to_place_with_adjust(expr_id, temp.into(), current, rest)
                 }
                 Adjust::Deref(_) => {
@@ -394,7 +366,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     else {
                         return Ok(None);
                     };
-                    let bk = BorrowKind::from_rustc(*m);
+                    let bk = BorrowKind::from_chalk(*m);
                     self.push_assignment(current, place, Rvalue::Ref(bk, p), expr_id.into());
                     Ok(Some(current))
                 }
@@ -410,7 +382,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         Rvalue::Cast(
                             CastKind::PointerCoercion(*cast),
                             Operand { kind: OperandKind::Copy(p), span: None },
-                            last.target,
+                            last.target.clone(),
                         ),
                         expr_id.into(),
                     );
@@ -424,9 +396,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_expr_to_place(
         &mut self,
         expr_id: ExprId,
-        place: Place<'db>,
-        prev_block: BasicBlockId<'db>,
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+        place: Place,
+        prev_block: BasicBlockId,
+    ) -> Result<Option<BasicBlockId>> {
         if let Some(adjustments) = self.infer.expr_adjustments.get(&expr_id) {
             return self.lower_expr_to_place_with_adjust(expr_id, place, prev_block, adjustments);
         }
@@ -436,9 +408,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_expr_to_place_without_adjust(
         &mut self,
         expr_id: ExprId,
-        place: Place<'db>,
-        mut current: BasicBlockId<'db>,
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+        place: Place,
+        mut current: BasicBlockId,
+    ) -> Result<Option<BasicBlockId>> {
         match &self.body[expr_id] {
             Expr::OffsetOf(_) => {
                 not_supported!("builtin#offset_of")
@@ -461,7 +433,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     if let Some((assoc, subst)) = self.infer.assoc_resolutions_for_expr(expr_id) {
                         match assoc {
                             hir_def::AssocItemId::ConstId(c) => {
-                                self.lower_const(c.into(), current, place, subst, expr_id.into())?;
+                                self.lower_const(
+                                    c.into(),
+                                    current,
+                                    place,
+                                    subst,
+                                    expr_id.into(),
+                                    self.expr_ty_without_adjust(expr_id),
+                                )?;
                                 return Ok(Some(current));
                             }
                             hir_def::AssocItemId::FunctionId(_) => {
@@ -517,15 +496,16 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             const_id.into(),
                             current,
                             place,
-                            GenericArgs::new_from_iter(self.interner(), []),
+                            Substitution::empty(Interner),
                             expr_id.into(),
+                            self.expr_ty_without_adjust(expr_id),
                         )?;
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
                         let variant_fields = variant_id.fields(self.db);
                         if variant_fields.shape == FieldsShape::Unit {
-                            let ty = self.infer.type_of_expr[expr_id];
+                            let ty = self.infer.type_of_expr[expr_id].clone();
                             current = self.lower_enum_variant(
                                 variant_id,
                                 current,
@@ -543,21 +523,25 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             not_supported!("owner without generic def id");
                         };
                         let generics = generics(self.db, def);
-                        let index = generics
-                            .type_or_const_param_idx(p.into())
-                            .ok_or(MirLowerError::TypeError("fail to lower const generic param"))?
-                            as u32;
+                        let ty = self.expr_ty_without_adjust(expr_id);
                         self.push_assignment(
                             current,
                             place,
                             Rvalue::from(Operand {
-                                kind: OperandKind::Constant {
-                                    konst: Const::new_param(
-                                        self.interner(),
-                                        ParamConst { id: p, index },
-                                    ),
-                                    ty: self.db.const_param_ty_ns(p),
-                                },
+                                kind: OperandKind::Constant(
+                                    ConstData {
+                                        ty,
+                                        value: chalk_ir::ConstValue::BoundVar(BoundVar::new(
+                                            DebruijnIndex::INNERMOST,
+                                            generics.type_or_const_param_idx(p.into()).ok_or(
+                                                MirLowerError::TypeError(
+                                                    "fail to lower const generic param",
+                                                ),
+                                            )?,
+                                        )),
+                                    }
+                                    .intern(Interner),
+                                ),
                                 span: None,
                             }),
                             expr_id.into(),
@@ -609,7 +593,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     then_target,
                     place,
                     Box::new([1]),
-                    Ty::new_bool(self.interner()),
+                    TyBuilder::bool(),
                     MirSpan::Unknown,
                 )?;
                 if let Some(else_target) = else_target {
@@ -617,7 +601,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         else_target,
                         place,
                         Box::new([0]),
-                        Ty::new_bool(self.interner()),
+                        TyBuilder::bool(),
                         MirSpan::Unknown,
                     )?;
                 }
@@ -659,11 +643,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Call { callee, args, .. } => {
                 if let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id) {
-                    let ty = Ty::new_fn_def(
-                        self.interner(),
-                        CallableDefId::FunctionId(func_id).into(),
+                    let ty = chalk_ir::TyKind::FnDef(
+                        CallableDefId::FunctionId(func_id).to_chalk(self.db),
                         generic_args,
-                    );
+                    )
+                    .intern(Interner);
                     let func = Operand::from_bytes(Box::default(), ty);
                     return self.lower_call_and_args(
                         func,
@@ -675,9 +659,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     );
                 }
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
-                match callee_ty.kind() {
-                    TyKind::FnDef(..) => {
-                        let func = Operand::from_bytes(Box::default(), callee_ty);
+                match &callee_ty.kind(Interner) {
+                    chalk_ir::TyKind::FnDef(..) => {
+                        let func = Operand::from_bytes(Box::default(), callee_ty.clone());
                         self.lower_call_and_args(
                             func,
                             args.iter().copied(),
@@ -687,7 +671,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             expr_id.into(),
                         )
                     }
-                    TyKind::FnPtr(..) => {
+                    chalk_ir::TyKind::Function(_) => {
                         let Some((func, current)) =
                             self.lower_expr_to_some_operand(*callee, current)?
                         else {
@@ -707,7 +691,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             "method resolution not emitted for closure (Are Fn traits available?)"
                         );
                     }
-                    TyKind::Error(_) => {
+                    TyKind::Error => {
                         Err(MirLowerError::MissingFunctionDefinition(self.owner, expr_id))
                     }
                     _ => Err(MirLowerError::TypeError("function call on bad type")),
@@ -868,8 +852,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         ),
                         None => MirLowerError::RecordLiteralWithoutPath,
                     })?;
-                let subst = match self.expr_ty_without_adjust(expr_id).kind() {
-                    TyKind::Adt(_, s) => s,
+                let subst = match self.expr_ty_without_adjust(expr_id).kind(Interner) {
+                    TyKind::Adt(_, s) => s.clone(),
                     _ => not_supported!("Non ADT record literal"),
                 };
                 let variant_fields = variant_id.fields(self.db);
@@ -958,12 +942,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 let rvalue = if self.infer.coercion_casts.contains(expr) {
                     Rvalue::Use(it)
                 } else {
-                    let source_ty = self.infer[*expr];
-                    let target_ty = self.infer[expr_id];
+                    let source_ty = self.infer[*expr].clone();
+                    let target_ty = self.infer[expr_id].clone();
                     let cast_kind = if source_ty.as_reference().is_some() {
                         CastKind::PointerCoercion(PointerCast::ArrayToPointer)
                     } else {
-                        cast_kind(self.db, source_ty, target_ty)?
+                        let mut table = InferenceTable::new(self.db, self.env.clone());
+                        cast_kind(&mut table, &source_ty, &target_ty)?
                     };
 
                     Rvalue::Cast(cast_kind, it, target_ty)
@@ -1040,8 +1025,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     let lhs_ty = self.expr_ty_without_adjust(*lhs);
                     let rhs_ty = self.expr_ty_without_adjust(*rhs);
                     if matches!(op, BinaryOp::CmpOp(syntax::ast::CmpOp::Eq { .. }))
-                        && matches!(lhs_ty.kind(), TyKind::RawPtr(..))
-                        && matches!(rhs_ty.kind(), TyKind::RawPtr(..))
+                        && lhs_ty.as_raw_ptr().is_some()
+                        && rhs_ty.as_raw_ptr().is_some()
                     {
                         break 'b true;
                     }
@@ -1050,21 +1035,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         BinaryOp::ArithOp(ArithOp::Shl | ArithOp::Shr)
                             | BinaryOp::Assignment { op: Some(ArithOp::Shl | ArithOp::Shr) }
                     );
-                    matches!(
-                        lhs_ty.kind(),
-                        TyKind::Bool
-                            | TyKind::Char
-                            | TyKind::Int(_)
-                            | TyKind::Uint(_)
-                            | TyKind::Float(_)
-                    ) && matches!(
-                        rhs_ty.kind(),
-                        TyKind::Bool
-                            | TyKind::Char
-                            | TyKind::Int(_)
-                            | TyKind::Uint(_)
-                            | TyKind::Float(_)
-                    ) && (lhs_ty == rhs_ty || builtin_inequal_impls)
+                    lhs_ty.is_scalar()
+                        && rhs_ty.is_scalar()
+                        && (lhs_ty == rhs_ty || builtin_inequal_impls)
                 };
                 if !is_builtin
                     && let Some((func_id, generic_args)) = self.infer.method_resolution(expr_id)
@@ -1202,7 +1175,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     current,
                     place,
                     Rvalue::Aggregate(
-                        AggregateKind::Adt(st.into(), subst),
+                        AggregateKind::Adt(st.into(), subst.clone()),
                         st.fields(self.db)
                             .fields()
                             .iter()
@@ -1210,15 +1183,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                 let o = match it.1.name.as_str() {
                                     "start" => lp.take(),
                                     "end" => rp.take(),
-                                    "exhausted" => Some(Operand::from_bytes(
-                                        Box::new([0]),
-                                        Ty::new_bool(self.interner()),
-                                    )),
+                                    "exhausted" => {
+                                        Some(Operand::from_bytes(Box::new([0]), TyBuilder::bool()))
+                                    }
                                     _ => None,
                                 };
                                 o.ok_or(MirLowerError::UnresolvedField)
                             })
-                            .collect::<Result<'_, _>>()?,
+                            .collect::<Result<_>>()?,
                     ),
                     expr_id.into(),
                 );
@@ -1226,11 +1198,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Closure { .. } => {
                 let ty = self.expr_ty_without_adjust(expr_id);
-                let TyKind::Closure(id, _) = ty.kind() else {
+                let TyKind::Closure(id, _) = ty.kind(Interner) else {
                     not_supported!("closure with non closure type");
                 };
-                self.result.closures.push(id.0);
-                let (captures, _) = self.infer.closure_info(id.0);
+                self.result.closures.push(*id);
+                let (captures, _) = self.infer.closure_info(id);
                 let mut operands = vec![];
                 for capture in captures.iter() {
                     let p = Place {
@@ -1264,11 +1236,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     };
                     match &capture.kind {
                         CaptureKind::ByRef(bk) => {
-                            let tmp_ty = capture.ty.instantiate_identity();
+                            let placeholder_subst = self.placeholder_subst();
+                            let tmp_ty =
+                                capture.ty.clone().substitute(Interner, &placeholder_subst);
                             // FIXME: Handle more than one span.
                             let capture_spans = capture.spans();
-                            let tmp: Place<'db> =
-                                self.temp(tmp_ty, current, capture_spans[0])?.into();
+                            let tmp: Place = self.temp(tmp_ty, current, capture_spans[0])?.into();
                             self.push_assignment(
                                 current,
                                 tmp,
@@ -1300,7 +1273,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         current = c;
                         Ok(Some(o))
                     })
-                    .collect::<Result<'_, Option<_>>>()?
+                    .collect::<Result<Option<_>>>()?
                 else {
                     return Ok(None);
                 };
@@ -1313,8 +1286,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Array(l) => match l {
                 Array::ElementList { elements, .. } => {
-                    let elem_ty = match self.expr_ty_without_adjust(expr_id).kind() {
-                        TyKind::Array(ty, _) => ty,
+                    let elem_ty = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
+                        TyKind::Array(ty, _) => ty.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
                                 "Array expression with non array type",
@@ -1331,7 +1304,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                             current = c;
                             Ok(Some(o))
                         })
-                        .collect::<Result<'_, Option<_>>>()?
+                        .collect::<Result<Option<_>>>()?
                     else {
                         return Ok(None);
                     };
@@ -1345,8 +1318,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     else {
                         return Ok(None);
                     };
-                    let len = match self.expr_ty_without_adjust(expr_id).kind() {
-                        TyKind::Array(_, len) => len,
+                    let len = match &self.expr_ty_without_adjust(expr_id).kind(Interner) {
+                        TyKind::Array(_, len) => len.clone(),
                         _ => {
                             return Err(MirLowerError::TypeError(
                                 "Array repeat expression with non array type",
@@ -1368,13 +1341,16 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         }
     }
 
-    fn push_field_projection(
-        &mut self,
-        place: &mut Place<'db>,
-        expr_id: ExprId,
-    ) -> Result<'db, ()> {
+    fn placeholder_subst(&mut self) -> Substitution {
+        match self.owner.as_generic_def_id(self.db) {
+            Some(it) => TyBuilder::placeholder_subst(self.db, it),
+            None => Substitution::empty(Interner),
+        }
+    }
+
+    fn push_field_projection(&mut self, place: &mut Place, expr_id: ExprId) -> Result<()> {
         if let Expr::Field { expr, name } = &self.body[expr_id] {
-            if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind() {
+            if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind(Interner) {
                 let index =
                     name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
                         as u32;
@@ -1397,11 +1373,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(())
     }
 
-    fn lower_literal_or_const_to_operand(
-        &mut self,
-        ty: Ty<'db>,
-        loc: &ExprId,
-    ) -> Result<'db, Operand<'db>> {
+    fn lower_literal_or_const_to_operand(&mut self, ty: Ty, loc: &ExprId) -> Result<Operand> {
         match &self.body[*loc] {
             Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
             Expr::Path(c) => {
@@ -1422,10 +1394,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 match pr {
                     ResolveValueResult::ValueNs(v, _) => {
                         if let ValueNs::ConstId(c) = v {
-                            self.lower_const_to_operand(
-                                GenericArgs::new_from_iter(self.interner(), []),
-                                c.into(),
-                            )
+                            self.lower_const_to_operand(Substitution::empty(Interner), c.into(), ty)
                         } else {
                             not_supported!("bad path in range pattern");
                         }
@@ -1441,8 +1410,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         }
     }
 
-    fn lower_literal_to_operand(&mut self, ty: Ty<'db>, l: &Literal) -> Result<'db, Operand<'db>> {
-        let size = || self.db.layout_of_ty(ty, self.env.clone()).map(|it| it.size.bytes_usize());
+    fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
+        let size =
+            || self.db.layout_of_ty(ty.clone(), self.env.clone()).map(|it| it.size.bytes_usize());
         const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
@@ -1488,59 +1458,50 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(Operand::from_concrete_const(bytes, MemoryMap::default(), ty))
     }
 
-    fn new_basic_block(&mut self) -> BasicBlockId<'db> {
+    fn new_basic_block(&mut self) -> BasicBlockId {
         self.result.basic_blocks.alloc(BasicBlock::default())
     }
 
     fn lower_const(
         &mut self,
         const_id: GeneralConstId,
-        prev_block: BasicBlockId<'db>,
-        place: Place<'db>,
-        subst: GenericArgs<'db>,
+        prev_block: BasicBlockId,
+        place: Place,
+        subst: Substitution,
         span: MirSpan,
-    ) -> Result<'db, ()> {
-        let c = self.lower_const_to_operand(subst, const_id)?;
+        ty: Ty,
+    ) -> Result<()> {
+        let c = self.lower_const_to_operand(subst, const_id, ty)?;
         self.push_assignment(prev_block, place, c.into(), span);
         Ok(())
     }
 
     fn lower_const_to_operand(
         &mut self,
-        subst: GenericArgs<'db>,
+        subst: Substitution,
         const_id: GeneralConstId,
-    ) -> Result<'db, Operand<'db>> {
-        let konst = if subst.len() != 0 {
+        ty: Ty,
+    ) -> Result<Operand> {
+        let c = if subst.len(Interner) != 0 {
             // We can't evaluate constant with substitution now, as generics are not monomorphized in lowering.
-            Const::new_unevaluated(
-                self.interner(),
-                UnevaluatedConst { def: const_id.into(), args: subst },
-            )
+            intern_const_scalar(ConstScalar::UnevaluatedConst(const_id, subst), ty)
         } else {
             let name = const_id.name(self.db);
             self.db
                 .const_eval(const_id, subst, None)
                 .map_err(|e| MirLowerError::ConstEvalError(name.into(), Box::new(e)))?
         };
-        let ty = self
-            .db
-            .value_ty(match const_id {
-                GeneralConstId::ConstId(id) => id.into(),
-                GeneralConstId::StaticId(id) => id.into(),
-            })
-            .unwrap()
-            .instantiate(self.interner(), subst);
-        Ok(Operand { kind: OperandKind::Constant { konst, ty }, span: None })
+        Ok(Operand { kind: OperandKind::Constant(c), span: None })
     }
 
     fn write_bytes_to_place(
         &mut self,
-        prev_block: BasicBlockId<'db>,
-        place: Place<'db>,
+        prev_block: BasicBlockId,
+        place: Place,
         cv: Box<[u8]>,
-        ty: Ty<'db>,
+        ty: Ty,
         span: MirSpan,
-    ) -> Result<'db, ()> {
+    ) -> Result<()> {
         self.push_assignment(prev_block, place, Operand::from_bytes(cv, ty).into(), span);
         Ok(())
     }
@@ -1548,14 +1509,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_enum_variant(
         &mut self,
         variant_id: EnumVariantId,
-        prev_block: BasicBlockId<'db>,
-        place: Place<'db>,
-        ty: Ty<'db>,
-        fields: Box<[Operand<'db>]>,
+        prev_block: BasicBlockId,
+        place: Place,
+        ty: Ty,
+        fields: Box<[Operand]>,
         span: MirSpan,
-    ) -> Result<'db, BasicBlockId<'db>> {
-        let subst = match ty.kind() {
-            TyKind::Adt(_, subst) => subst,
+    ) -> Result<BasicBlockId> {
+        let subst = match ty.kind(Interner) {
+            TyKind::Adt(_, subst) => subst.clone(),
             _ => implementation_error!("Non ADT enum"),
         };
         self.push_assignment(
@@ -1569,13 +1530,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_call_and_args(
         &mut self,
-        func: Operand<'db>,
+        func: Operand,
         args: impl Iterator<Item = ExprId>,
-        place: Place<'db>,
-        mut current: BasicBlockId<'db>,
+        place: Place,
+        mut current: BasicBlockId,
         is_uninhabited: bool,
         span: MirSpan,
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+    ) -> Result<Option<BasicBlockId>> {
         let Some(args) = args
             .map(|arg| {
                 if let Some((temp, c)) = self.lower_expr_to_some_operand(arg, current)? {
@@ -1585,7 +1546,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                     Ok(None)
                 }
             })
-            .collect::<Result<'_, Option<Vec<_>>>>()?
+            .collect::<Result<Option<Vec<_>>>>()?
         else {
             return Ok(None);
         };
@@ -1594,13 +1555,13 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_call(
         &mut self,
-        func: Operand<'db>,
-        args: Box<[Operand<'db>]>,
-        place: Place<'db>,
-        current: BasicBlockId<'db>,
+        func: Operand,
+        args: Box<[Operand]>,
+        place: Place,
+        current: BasicBlockId,
         is_uninhabited: bool,
         span: MirSpan,
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+    ) -> Result<Option<BasicBlockId>> {
         let b = if is_uninhabited { None } else { Some(self.new_basic_block()) };
         self.set_terminator(
             current,
@@ -1617,63 +1578,56 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(b)
     }
 
-    fn is_unterminated(&mut self, source: BasicBlockId<'db>) -> bool {
+    fn is_unterminated(&mut self, source: BasicBlockId) -> bool {
         self.result.basic_blocks[source].terminator.is_none()
     }
 
-    fn set_terminator(
-        &mut self,
-        source: BasicBlockId<'db>,
-        terminator: TerminatorKind<'db>,
-        span: MirSpan,
-    ) {
+    fn set_terminator(&mut self, source: BasicBlockId, terminator: TerminatorKind, span: MirSpan) {
         self.result.basic_blocks[source].terminator = Some(Terminator { span, kind: terminator });
     }
 
-    fn set_goto(&mut self, source: BasicBlockId<'db>, target: BasicBlockId<'db>, span: MirSpan) {
+    fn set_goto(&mut self, source: BasicBlockId, target: BasicBlockId, span: MirSpan) {
         self.set_terminator(source, TerminatorKind::Goto { target }, span);
     }
 
-    fn expr_ty_without_adjust(&self, e: ExprId) -> Ty<'db> {
-        self.infer[e]
+    fn expr_ty_without_adjust(&self, e: ExprId) -> Ty {
+        self.infer[e].clone()
     }
 
-    fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty<'db> {
+    fn expr_ty_after_adjustments(&self, e: ExprId) -> Ty {
         let mut ty = None;
         if let Some(it) = self.infer.expr_adjustments.get(&e)
             && let Some(it) = it.last()
         {
-            ty = Some(it.target);
+            ty = Some(it.target.clone());
         }
         ty.unwrap_or_else(|| self.expr_ty_without_adjust(e))
     }
 
-    fn push_statement(&mut self, block: BasicBlockId<'db>, statement: Statement<'db>) {
+    fn push_statement(&mut self, block: BasicBlockId, statement: Statement) {
         self.result.basic_blocks[block].statements.push(statement);
     }
 
-    fn push_fake_read(&mut self, block: BasicBlockId<'db>, p: Place<'db>, span: MirSpan) {
+    fn push_fake_read(&mut self, block: BasicBlockId, p: Place, span: MirSpan) {
         self.push_statement(block, StatementKind::FakeRead(p).with_span(span));
     }
 
     fn push_assignment(
         &mut self,
-        block: BasicBlockId<'db>,
-        place: Place<'db>,
-        rvalue: Rvalue<'db>,
+        block: BasicBlockId,
+        place: Place,
+        rvalue: Rvalue,
         span: MirSpan,
     ) {
         self.push_statement(block, StatementKind::Assign(place, rvalue).with_span(span));
     }
 
-    fn discr_temp_place(&mut self, current: BasicBlockId<'db>) -> Place<'db> {
+    fn discr_temp_place(&mut self, current: BasicBlockId) -> Place {
         match &self.discr_temp {
             Some(it) => *it,
             None => {
-                // FIXME: rustc's ty is dependent on the adt type, maybe we need to do that as well
-                let discr_ty = Ty::new_int(self.interner(), rustc_type_ir::IntTy::I128);
-                let tmp: Place<'db> = self
-                    .temp(discr_ty, current, MirSpan::Unknown)
+                let tmp: Place = self
+                    .temp(TyBuilder::discr_ty(), current, MirSpan::Unknown)
                     .expect("discr_ty is never unsized")
                     .into();
                 self.discr_temp = Some(tmp);
@@ -1684,12 +1638,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_loop(
         &mut self,
-        prev_block: BasicBlockId<'db>,
-        place: Place<'db>,
+        prev_block: BasicBlockId,
+        place: Place,
         label: Option<LabelId>,
         span: MirSpan,
-        f: impl FnOnce(&mut MirLowerCtx<'_, 'db>, BasicBlockId<'db>) -> Result<'db, ()>,
-    ) -> Result<'db, Option<BasicBlockId<'db>>> {
+        f: impl FnOnce(&mut MirLowerCtx<'_>, BasicBlockId) -> Result<()>,
+    ) -> Result<Option<BasicBlockId>> {
         let begin = self.new_basic_block();
         let prev = self.current_loop_blocks.replace(LoopBlocks {
             begin,
@@ -1724,10 +1678,10 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn merge_blocks(
         &mut self,
-        b1: Option<BasicBlockId<'db>>,
-        b2: Option<BasicBlockId<'db>>,
+        b1: Option<BasicBlockId>,
+        b2: Option<BasicBlockId>,
         span: MirSpan,
-    ) -> Option<BasicBlockId<'db>> {
+    ) -> Option<BasicBlockId> {
         match (b1, b2) {
             (None, None) => None,
             (None, Some(b)) | (Some(b), None) => Some(b),
@@ -1740,7 +1694,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         }
     }
 
-    fn current_loop_end(&mut self) -> Result<'db, BasicBlockId<'db>> {
+    fn current_loop_end(&mut self) -> Result<BasicBlockId> {
         let r = match self
             .current_loop_blocks
             .as_mut()
@@ -1767,7 +1721,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn is_uninhabited(&self, expr_id: ExprId) -> bool {
         is_ty_uninhabited_from(
             self.db,
-            &self.infer[expr_id].to_chalk(self.interner()),
+            &self.infer[expr_id],
             self.owner.module(self.db),
             self.env.clone(),
         )
@@ -1775,23 +1729,23 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     /// This function push `StorageLive` statement for the binding, and applies changes to add `StorageDead` and
     /// `Drop` in the appropriated places.
-    fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId<'db>) -> Result<'db, ()> {
+    fn push_storage_live(&mut self, b: BindingId, current: BasicBlockId) -> Result<()> {
         let l = self.binding_local(b)?;
         self.push_storage_live_for_local(l, current, MirSpan::BindingId(b))
     }
 
     fn push_storage_live_for_local(
         &mut self,
-        l: LocalId<'db>,
-        current: BasicBlockId<'db>,
+        l: LocalId,
+        current: BasicBlockId,
         span: MirSpan,
-    ) -> Result<'db, ()> {
+    ) -> Result<()> {
         self.drop_scopes.last_mut().unwrap().locals.push(l);
         self.push_statement(current, StatementKind::StorageLive(l).with_span(span));
         Ok(())
     }
 
-    fn resolve_lang_item(&self, item: LangItem) -> Result<'db, LangItemTarget> {
+    fn resolve_lang_item(&self, item: LangItem) -> Result<LangItemTarget> {
         let crate_id = self.owner.module(self.db).krate();
         lang_item(self.db, crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
     }
@@ -1799,11 +1753,11 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn lower_block_to_place(
         &mut self,
         statements: &[hir_def::hir::Statement],
-        mut current: BasicBlockId<'db>,
+        mut current: BasicBlockId,
         tail: Option<ExprId>,
-        place: Place<'db>,
+        place: Place,
         span: MirSpan,
-    ) -> Result<'db, Option<Idx<BasicBlock<'db>>>> {
+    ) -> Result<Option<Idx<BasicBlock>>> {
         let scope = self.push_drop_scope();
         for statement in statements.iter() {
             match statement {
@@ -1876,10 +1830,10 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn lower_params_and_bindings(
         &mut self,
-        params: impl Iterator<Item = (PatId, Ty<'db>)> + Clone,
-        self_binding: Option<(BindingId, Ty<'db>)>,
+        params: impl Iterator<Item = (PatId, Ty)> + Clone,
+        self_binding: Option<(BindingId, Ty)>,
         pick_binding: impl Fn(BindingId) -> bool,
-    ) -> Result<'db, BasicBlockId<'db>> {
+    ) -> Result<BasicBlockId> {
         let base_param_count = self.result.param_locals.len();
         let self_binding = match self_binding {
             Some((self_binding, ty)) => {
@@ -1912,7 +1866,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             if !self.result.binding_locals.contains_idx(id) {
                 self.result
                     .binding_locals
-                    .insert(id, self.result.locals.alloc(Local { ty: self.infer[id] }));
+                    .insert(id, self.result.locals.alloc(Local { ty: self.infer[id].clone() }));
             }
         }
         let mut current = self.result.start_block;
@@ -1947,7 +1901,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         Ok(current)
     }
 
-    fn binding_local(&self, b: BindingId) -> Result<'db, LocalId<'db>> {
+    fn binding_local(&self, b: BindingId) -> Result<LocalId> {
         match self.result.binding_locals.get(b) {
             Some(it) => Ok(*it),
             None => {
@@ -1959,7 +1913,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         }
     }
 
-    fn const_eval_discriminant(&self, variant: EnumVariantId) -> Result<'db, i128> {
+    fn const_eval_discriminant(&self, variant: EnumVariantId) -> Result<i128> {
         let r = self.db.const_eval_discriminant(variant);
         match r {
             Ok(r) => Ok(r),
@@ -1996,9 +1950,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     fn drop_until_scope(
         &mut self,
         scope_index: usize,
-        mut current: BasicBlockId<'db>,
+        mut current: BasicBlockId,
         span: MirSpan,
-    ) -> BasicBlockId<'db> {
+    ) -> BasicBlockId {
         for scope in self.drop_scopes[scope_index..].to_vec().iter().rev() {
             self.emit_drop_and_storage_dead_for_scope(scope, &mut current, span);
         }
@@ -2018,9 +1972,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     /// Don't call directly
     fn pop_drop_scope_internal(
         &mut self,
-        mut current: BasicBlockId<'db>,
+        mut current: BasicBlockId,
         span: MirSpan,
-    ) -> BasicBlockId<'db> {
+    ) -> BasicBlockId {
         let scope = self.drop_scopes.pop().unwrap();
         self.emit_drop_and_storage_dead_for_scope(&scope, &mut current, span);
         current
@@ -2028,9 +1982,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn pop_drop_scope_assert_finished(
         &mut self,
-        mut current: BasicBlockId<'db>,
+        mut current: BasicBlockId,
         span: MirSpan,
-    ) -> Result<'db, BasicBlockId<'db>> {
+    ) -> Result<BasicBlockId> {
         current = self.pop_drop_scope_internal(current, span);
         if !self.drop_scopes.is_empty() {
             implementation_error!("Mismatched count between drop scope push and pops");
@@ -2040,12 +1994,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
     fn emit_drop_and_storage_dead_for_scope(
         &mut self,
-        scope: &DropScope<'db>,
-        current: &mut Idx<BasicBlock<'db>>,
+        scope: &DropScope,
+        current: &mut Idx<BasicBlock>,
         span: MirSpan,
     ) {
         for &l in scope.locals.iter().rev() {
-            if !self.infcx.type_is_copy_modulo_regions(self.env.env, self.result.locals[l].ty) {
+            if !self.result.locals[l].ty.clone().is_copy(self.db, self.owner) {
                 let prev = std::mem::replace(current, self.new_basic_block());
                 self.set_terminator(
                     prev,
@@ -2058,13 +2012,9 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
     }
 }
 
-fn cast_kind<'db>(
-    db: &'db dyn HirDatabase,
-    source_ty: Ty<'db>,
-    target_ty: Ty<'db>,
-) -> Result<'db, CastKind> {
-    let from = CastTy::from_ty(db, source_ty);
-    let cast = CastTy::from_ty(db, target_ty);
+fn cast_kind(table: &mut InferenceTable<'_>, source_ty: &Ty, target_ty: &Ty) -> Result<CastKind> {
+    let from = CastTy::from_ty(table, source_ty);
+    let cast = CastTy::from_ty(table, target_ty);
     Ok(match (from, cast) {
         (Some(CastTy::Ptr(..) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
             CastKind::PointerExposeAddress
@@ -2080,49 +2030,41 @@ fn cast_kind<'db>(
     })
 }
 
-pub fn mir_body_for_closure_query<'db>(
-    db: &'db dyn HirDatabase,
+pub fn mir_body_for_closure_query(
+    db: &dyn HirDatabase,
     closure: InternedClosureId,
-) -> Result<'db, Arc<MirBody<'db>>> {
+) -> Result<Arc<MirBody>> {
     let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
     let body = db.body(owner);
     let infer = db.infer(owner);
     let Expr::Closure { args, body: root, .. } = &body[expr] else {
         implementation_error!("closure expression is not closure");
     };
-    let crate::next_solver::TyKind::Closure(_, substs) = infer[expr].kind() else {
+    let TyKind::Closure(_, substs) = &infer[expr].kind(Interner) else {
         implementation_error!("closure expression is not closure");
     };
-    let (captures, kind) = infer.closure_info(closure);
+    let (captures, kind) = infer.closure_info(&closure.into());
     let mut ctx = MirLowerCtx::new(db, owner, &body, &infer);
     // 0 is return local
-    ctx.result.locals.alloc(Local { ty: infer[*root] });
+    ctx.result.locals.alloc(Local { ty: infer[*root].clone() });
     let closure_local = ctx.result.locals.alloc(Local {
         ty: match kind {
-            FnTrait::FnOnce | FnTrait::AsyncFnOnce => infer[expr],
-            FnTrait::FnMut | FnTrait::AsyncFnMut => Ty::new_ref(
-                ctx.interner(),
-                Region::error(ctx.interner()),
-                infer[expr],
-                Mutability::Mut,
-            ),
-            FnTrait::Fn | FnTrait::AsyncFn => Ty::new_ref(
-                ctx.interner(),
-                Region::error(ctx.interner()),
-                infer[expr],
-                Mutability::Not,
-            ),
+            FnTrait::FnOnce | FnTrait::AsyncFnOnce => infer[expr].clone(),
+            FnTrait::FnMut | FnTrait::AsyncFnMut => {
+                TyKind::Ref(Mutability::Mut, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
+            FnTrait::Fn | FnTrait::AsyncFn => {
+                TyKind::Ref(Mutability::Not, error_lifetime(), infer[expr].clone()).intern(Interner)
+            }
         },
     });
     ctx.result.param_locals.push(closure_local);
-    let Some(sig) =
-        substs.split_closure_args_untupled().closure_sig_as_fn_ptr_ty.callable_sig(ctx.interner())
-    else {
+    let Some(sig) = ClosureSubst(substs).sig_ty().callable_sig(db) else {
         implementation_error!("closure has not callable sig");
     };
     let resolver_guard = ctx.resolver.update_to_inner_scope(db, owner, expr);
     let current = ctx.lower_params_and_bindings(
-        args.iter().zip(sig.skip_binder().inputs().iter()).map(|(it, y)| (*it, y)),
+        args.iter().zip(sig.params().iter()).map(|(it, y)| (*it, y.clone())),
         None,
         |_| true,
     )?;
@@ -2131,8 +2073,7 @@ pub fn mir_body_for_closure_query<'db>(
         let current = ctx.pop_drop_scope_assert_finished(current, root.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());
     }
-    let mut upvar_map: FxHashMap<LocalId<'db>, Vec<(&CapturedItem<'_>, usize)>> =
-        FxHashMap::default();
+    let mut upvar_map: FxHashMap<LocalId, Vec<(&CapturedItem, usize)>> = FxHashMap::default();
     for (i, capture) in captures.iter().enumerate() {
         let local = ctx.binding_local(capture.place.local)?;
         upvar_map.entry(local).or_default().push((capture, i));
@@ -2194,10 +2135,7 @@ pub fn mir_body_for_closure_query<'db>(
     Ok(Arc::new(ctx.result))
 }
 
-pub fn mir_body_query<'db>(
-    db: &'db dyn HirDatabase,
-    def: DefWithBodyId,
-) -> Result<'db, Arc<MirBody<'db>>> {
+pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
     let krate = def.krate(db);
     let edition = krate.data(db).edition;
     let detail = match def {
@@ -2230,22 +2168,22 @@ pub fn mir_body_query<'db>(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn mir_body_cycle_result<'db>(
-    _db: &'db dyn HirDatabase,
+pub(crate) fn mir_body_cycle_result(
+    _db: &dyn HirDatabase,
     _def: DefWithBodyId,
-) -> Result<'db, Arc<MirBody<'db>>> {
+) -> Result<Arc<MirBody>> {
     Err(MirLowerError::Loop)
 }
 
-pub fn lower_to_mir<'db>(
-    db: &'db dyn HirDatabase,
+pub fn lower_to_mir(
+    db: &dyn HirDatabase,
     owner: DefWithBodyId,
     body: &Body,
-    infer: &InferenceResult<'db>,
+    infer: &InferenceResult,
     // FIXME: root_expr should always be the body.body_expr, but since `X` in `[(); X]` doesn't have its own specific body yet, we
     // need to take this input explicitly.
     root_expr: ExprId,
-) -> Result<'db, MirBody<'db>> {
+) -> Result<MirBody> {
     if infer.type_mismatches().next().is_some() || infer.is_erroneous() {
         return Err(MirLowerError::HasErrors);
     }
@@ -2262,12 +2200,13 @@ pub fn lower_to_mir<'db>(
         if body.body_expr == root_expr {
             // otherwise it's an inline const, and has no parameter
             if let DefWithBodyId::FunctionId(fid) = owner {
+                let substs = TyBuilder::placeholder_subst(db, fid);
                 let callable_sig =
-                    db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
-                let mut params = callable_sig.inputs().iter();
-                let self_param = body.self_param.and_then(|id| Some((id, params.next()?)));
+                    db.callable_item_signature(fid.into()).substitute(Interner, &substs);
+                let mut params = callable_sig.params().iter();
+                let self_param = body.self_param.and_then(|id| Some((id, params.next()?.clone())));
                 break 'b ctx.lower_params_and_bindings(
-                    body.params.iter().zip(params).map(|(it, y)| (*it, y)),
+                    body.params.iter().zip(params).map(|(it, y)| (*it, y.clone())),
                     self_param,
                     binding_picker,
                 )?;

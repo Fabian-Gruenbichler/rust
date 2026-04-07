@@ -4,8 +4,8 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase,
-    sym,
+    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
+    Symbol, db::HirDatabase, sym,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -158,15 +158,15 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
             _ => None,
         };
-        add_opt(runnable.or_else(|| module_def_doctest(&sema, def)), Some(def));
+        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
         if let Definition::SelfType(impl_) = def {
             impl_.items(db).into_iter().for_each(|assoc| {
                 let runnable = match assoc {
                     hir::AssocItem::Function(it) => {
-                        runnable_fn(&sema, it).or_else(|| module_def_doctest(&sema, it.into()))
+                        runnable_fn(&sema, it).or_else(|| module_def_doctest(sema.db, it.into()))
                     }
-                    hir::AssocItem::Const(it) => module_def_doctest(&sema, it.into()),
-                    hir::AssocItem::TypeAlias(it) => module_def_doctest(&sema, it.into()),
+                    hir::AssocItem::Const(it) => module_def_doctest(sema.db, it.into()),
+                    hir::AssocItem::TypeAlias(it) => module_def_doctest(sema.db, it.into()),
                 };
                 add_opt(runnable, Some(assoc.into()))
             });
@@ -352,7 +352,8 @@ pub(crate) fn runnable_fn(
     .call_site();
 
     let file_range = fn_source.syntax().original_file_range_with_macro_call_input(sema.db);
-    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
 
     let cfg = def.attrs(sema.db).cfg();
     Some(Runnable { use_name_in_title: false, nav, kind, cfg, update_test })
@@ -387,7 +388,7 @@ pub(crate) fn runnable_mod(
         file_id: module_source.file_id.original_file(sema.db),
         range: module_syntax.text_range(),
     };
-    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, &module_syntax, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -409,17 +410,15 @@ pub(crate) fn runnable_impl(
         return None;
     }
     let cfg = attrs.cfg();
-    let nav = def.try_to_nav(sema)?.call_site();
+    let nav = def.try_to_nav(sema.db)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
     let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
-    let params = hir::attach_db(sema.db, || {
-        if ty_args.peek().is_some() {
-            format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
-        } else {
-            String::new()
-        }
-    });
+    let params = if ty_args.peek().is_some() {
+        format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
+    } else {
+        String::new()
+    };
     let mut test_id = format!("{}{params}", adt_name.display(sema.db, edition));
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
@@ -427,7 +426,8 @@ pub(crate) fn runnable_impl(
     let impl_source = sema.source(*def)?;
     let impl_syntax = impl_source.syntax();
     let file_range = impl_syntax.original_file_range_with_macro_call_input(sema.db);
-    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -473,7 +473,7 @@ fn runnable_mod_outline_definition(
         file_id: mod_source.file_id.original_file(sema.db),
         range: mod_syntax.text_range(),
     };
-    let update_test = UpdateTest::find_snapshot_macro(sema, file_range);
+    let update_test = UpdateTest::find_snapshot_macro(sema, &mod_syntax, file_range);
 
     Some(Runnable {
         use_name_in_title: false,
@@ -484,8 +484,7 @@ fn runnable_mod_outline_definition(
     })
 }
 
-fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Option<Runnable> {
-    let db = sema.db;
+fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     let attrs = match def {
         Definition::Module(it) => it.attrs(db),
         Definition::Function(it) => it.attrs(db),
@@ -494,6 +493,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
         Definition::Const(it) => it.attrs(db),
         Definition::Static(it) => it.attrs(db),
         Definition::Trait(it) => it.attrs(db),
+        Definition::TraitAlias(it) => it.attrs(db),
         Definition::TypeAlias(it) => it.attrs(db),
         Definition::Macro(it) => it.attrs(db),
         Definition::SelfType(it) => it.attrs(db),
@@ -522,9 +522,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
             let mut ty_args = ty.generic_parameters(db, display_target).peekable();
             format_to!(path, "{}", name.display(db, edition));
             if ty_args.peek().is_some() {
-                hir::attach_db(db, || {
-                    format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
-                });
+                format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
             }
             format_to!(path, "::{}", def_name.display(db, edition));
             path.retain(|c| c != ' ');
@@ -539,7 +537,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
 
     let mut nav = match def {
         Definition::Module(def) => NavigationTarget::from_module_to_decl(db, def),
-        def => def.try_to_nav(sema)?,
+        def => def.try_to_nav(db)?,
     }
     .call_site();
     nav.focus_range = None;
@@ -639,7 +637,7 @@ pub struct UpdateTest {
     pub snapbox: bool,
 }
 
-static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<[Symbol; 2]>>> = OnceLock::new();
+static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<ModPath>>> = OnceLock::new();
 
 impl UpdateTest {
     const EXPECT_CRATE: &str = "expect_test";
@@ -663,17 +661,22 @@ impl UpdateTest {
     const SNAPBOX_CRATE: &str = "snapbox";
     const SNAPBOX_MACROS: &[&str] = &["assert_data_eq", "file", "str"];
 
-    fn find_snapshot_macro(sema: &Semantics<'_, RootDatabase>, file_range: hir::FileRange) -> Self {
+    fn find_snapshot_macro(
+        sema: &Semantics<'_, RootDatabase>,
+        scope: &SyntaxNode,
+        file_range: hir::FileRange,
+    ) -> Self {
         fn init<'a>(
             krate_name: &'a str,
             paths: &[&str],
-            map: &mut FxHashMap<&'a str, Vec<[Symbol; 2]>>,
+            map: &mut FxHashMap<&'a str, Vec<ModPath>>,
         ) {
             let mut res = Vec::with_capacity(paths.len());
-            let krate = Symbol::intern(krate_name);
+            let krate = Name::new_symbol_root(Symbol::intern(krate_name));
             for path in paths {
-                let segments = [krate.clone(), Symbol::intern(path)];
-                res.push(segments);
+                let segments = [krate.clone(), Name::new_symbol_root(Symbol::intern(path))];
+                let mod_path = ModPath::from_segments(PathKind::Abs, segments);
+                res.push(mod_path);
             }
             map.insert(krate_name, res);
         }
@@ -687,9 +690,11 @@ impl UpdateTest {
         });
 
         let search_scope = SearchScope::file_range(file_range);
-        let find_macro = |paths: &[[Symbol; 2]]| {
+        let find_macro = |paths: &[ModPath]| {
             for path in paths {
-                let items = hir::resolve_absolute_path(sema.db, path.iter().cloned());
+                let Some(items) = sema.resolve_mod_path(scope, path) else {
+                    continue;
+                };
                 for item in items {
                     if let hir::ItemInNs::Macros(makro) = item
                         && Definition::Macro(makro)

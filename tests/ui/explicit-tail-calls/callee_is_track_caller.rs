@@ -1,6 +1,5 @@
 //@ run-pass
 //@ ignore-pass
-//@ ignore-backends: gcc
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 

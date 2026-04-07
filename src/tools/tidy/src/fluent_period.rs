@@ -4,7 +4,6 @@ use std::path::Path;
 
 use fluent_syntax::ast::{Entry, PatternElement};
 
-use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 fn filter_fluent(path: &Path) -> bool {
@@ -21,7 +20,7 @@ const ALLOWLIST: &[&str] = &[
     "incremental_corrupt_file",
 ];
 
-fn check_period(filename: &str, contents: &str, check: &mut RunningCheck) {
+fn check_period(filename: &str, contents: &str, bad: &mut bool) {
     if filename.contains("codegen") {
         // FIXME: Too many codegen messages have periods right now...
         return;
@@ -41,7 +40,7 @@ fn check_period(filename: &str, contents: &str, check: &mut RunningCheck) {
                 if value.ends_with(".") && !value.ends_with("...") {
                     let ll = find_line(contents, value);
                     let name = m.id.name;
-                    check.error(format!("{filename}:{ll}: message `{name}` ends in a period"));
+                    tidy_error!(bad, "{filename}:{ll}: message `{name}` ends in a period");
                 }
             }
 
@@ -57,7 +56,7 @@ fn check_period(filename: &str, contents: &str, check: &mut RunningCheck) {
                 {
                     let ll = find_line(contents, value);
                     let name = attr.id.name;
-                    check.error(format!("{filename}:{ll}: attr `{name}` ends in a period"));
+                    tidy_error!(bad, "{filename}:{ll}: attr `{name}` ends in a period");
                 }
             }
         }
@@ -75,14 +74,12 @@ fn find_line(haystack: &str, needle: &str) -> usize {
     1
 }
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("fluent_period").path(path));
-
+pub fn check(path: &Path, bad: &mut bool) {
     walk(
         path,
         |path, is_dir| filter_dirs(path) || (!is_dir && filter_fluent(path)),
         &mut |ent, contents| {
-            check_period(ent.path().to_str().unwrap(), contents, &mut check);
+            check_period(ent.path().to_str().unwrap(), contents, bad);
         },
     );
 }

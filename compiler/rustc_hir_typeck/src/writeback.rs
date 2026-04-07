@@ -220,7 +220,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // to use builtin indexing because the index type is known to be
     // usize-ish
     fn fix_index_builtin_expr(&mut self, e: &hir::Expr<'_>) {
-        if let hir::ExprKind::Index(base, index, _) = e.kind {
+        if let hir::ExprKind::Index(ref base, ref index, _) = e.kind {
             // All valid indexing looks like this; might encounter non-valid indexes at this point.
             let base_ty = self.typeck_results.expr_ty_adjusted(base);
             if let ty::Ref(_, base_ty_inner, _) = *base_ty.kind() {
@@ -550,12 +550,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_opaque_types_next(&mut self) {
         let mut fcx_typeck_results = self.fcx.typeck_results.borrow_mut();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
-        for hidden_ty in fcx_typeck_results.hidden_types.values() {
+        for hidden_ty in fcx_typeck_results.concrete_opaque_types.values() {
             assert!(!hidden_ty.has_infer());
         }
 
-        assert_eq!(self.typeck_results.hidden_types.len(), 0);
-        self.typeck_results.hidden_types = mem::take(&mut fcx_typeck_results.hidden_types);
+        assert_eq!(self.typeck_results.concrete_opaque_types.len(), 0);
+        self.typeck_results.concrete_opaque_types =
+            mem::take(&mut fcx_typeck_results.concrete_opaque_types);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -582,12 +583,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             if let Err(err) = opaque_type_has_defining_use_args(
-                self.fcx,
+                &self.fcx,
                 opaque_type_key,
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
             ) {
-                self.typeck_results.hidden_types.insert(
+                self.typeck_results.concrete_opaque_types.insert(
                     opaque_type_key.def_id,
                     ty::OpaqueHiddenType::new_error(tcx, err.report(self.fcx)),
                 );
@@ -599,11 +600,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 DefiningScopeKind::HirTypeck,
             );
 
-            if let Some(prev) =
-                self.typeck_results.hidden_types.insert(opaque_type_key.def_id, hidden_type)
+            if let Some(prev) = self
+                .typeck_results
+                .concrete_opaque_types
+                .insert(opaque_type_key.def_id, hidden_type)
             {
-                let entry =
-                    &mut self.typeck_results.hidden_types.get_mut(&opaque_type_key.def_id).unwrap();
+                let entry = &mut self
+                    .typeck_results
+                    .concrete_opaque_types
+                    .get_mut(&opaque_type_key.def_id)
+                    .unwrap();
                 if prev.ty != hidden_type.ty {
                     if let Some(guar) = self.typeck_results.tainted_by_errors {
                         entry.ty = Ty::new_error(tcx, guar);
@@ -622,7 +628,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
         let recursive_opaques: Vec<_> = self
             .typeck_results
-            .hidden_types
+            .concrete_opaque_types
             .iter()
             .filter(|&(&def_id, hidden_ty)| {
                 hidden_ty
@@ -630,7 +636,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     .visit_with(&mut HasRecursiveOpaque {
                         def_id,
                         seen: Default::default(),
-                        opaques: &self.typeck_results.hidden_types,
+                        opaques: &self.typeck_results.concrete_opaque_types,
                         tcx,
                     })
                     .is_break()
@@ -645,7 +651,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 .with_code(E0720)
                 .emit();
             self.typeck_results
-                .hidden_types
+                .concrete_opaque_types
                 .insert(def_id, OpaqueHiddenType { span, ty: Ty::new_error(tcx, guar) });
         }
     }
@@ -786,7 +792,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn visit_potentially_region_dependent_goals(&mut self) {
         let obligations = self.fcx.take_hir_typeck_potentially_region_dependent_goals();
-        if self.fcx.tainted_by_errors().is_none() {
+        if let None = self.fcx.tainted_by_errors() {
             for obligation in obligations {
                 let (predicate, mut cause) =
                     self.fcx.resolve_vars_if_possible((obligation.predicate, obligation.cause));
@@ -997,10 +1003,8 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r.kind() {
-            ty::ReBound(..) => r,
-            _ => self.fcx.tcx.lifetimes.re_erased,
-        }
+        debug_assert!(!r.is_bound(), "Should not be resolving bound region.");
+        self.fcx.tcx.lifetimes.re_erased
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

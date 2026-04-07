@@ -53,14 +53,7 @@ error: layout_of((i8) is (i8::MIN..=-1 | 1..)) = Layout {
                    valid_range: 1..=255,
                },
            ),
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
+           fields: Primitive,
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -98,14 +91,7 @@ error: layout_of((i8) is (i8::MIN..=-2 | 0..)) = Layout {
                    valid_range: 0..=254,
                },
            ),
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
+           fields: Primitive,
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),

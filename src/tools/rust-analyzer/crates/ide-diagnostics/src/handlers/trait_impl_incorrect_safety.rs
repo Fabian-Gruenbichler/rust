@@ -127,13 +127,4 @@ struct S;
 "#,
         );
     }
-
-    #[test]
-    fn unsafe_unresolved_trait() {
-        check_diagnostics(
-            r#"
-unsafe impl TestTrait for u32 {}
-        "#,
-        );
-    }
 }

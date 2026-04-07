@@ -1,8 +1,7 @@
 use super::ERR_EXPECT;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
-use clippy_utils::ty::has_debug_impl;
+use clippy_utils::ty::{has_debug_impl, is_type_diagnostic_item};
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -17,7 +16,7 @@ pub(super) fn check(
     err_span: Span,
     msrv: Msrv,
 ) {
-    if cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result)
+    if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result)
         // Grabs the `Result<T, E>` type
         && let result_type = cx.typeck_results().expr_ty(recv)
         // Tests if the T type in a `Result<T, E>` is not None
@@ -41,7 +40,7 @@ pub(super) fn check(
 /// Given a `Result<T, E>` type, return its data (`T`).
 fn get_data_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(_, args) if ty.is_diag_item(cx, sym::Result) => args.types().next(),
+        ty::Adt(_, args) if is_type_diagnostic_item(cx, ty, sym::Result) => args.types().next(),
         _ => None,
     }
 }

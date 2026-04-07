@@ -314,10 +314,13 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         target_os = "vxworks" => {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
+            unsafe extern "C" {
+                fn vxCpuEnabledGet() -> libc::cpuset_t;
+            }
 
             // SAFETY: `vxCpuEnabledGet` always fetches a mask with at least one bit set
             unsafe{
-                let set = libc::vxCpuEnabledGet();
+                let set = vxCpuEnabledGet();
                 Ok(NonZero::new_unchecked(set.count_ones() as usize))
             }
         }

@@ -56,21 +56,18 @@ fn check_dyn_compatibility<'a>(
             continue;
         };
         let mut osvs = FxHashSet::default();
-        let db = &db;
-        crate::attach_db(db, || {
-            _ = dyn_compatibility_with_callback(db, trait_id, &mut |osv| {
-                osvs.insert(match osv {
-                    DynCompatibilityViolation::SizedSelf => SizedSelf,
-                    DynCompatibilityViolation::SelfReferential => SelfReferential,
-                    DynCompatibilityViolation::Method(_, mvc) => Method(mvc),
-                    DynCompatibilityViolation::AssocConst(_) => AssocConst,
-                    DynCompatibilityViolation::GAT(_) => GAT,
-                    DynCompatibilityViolation::HasNonCompatibleSuperTrait(_) => {
-                        HasNonCompatibleSuperTrait
-                    }
-                });
-                ControlFlow::Continue(())
+        _ = dyn_compatibility_with_callback(&db, trait_id, &mut |osv| {
+            osvs.insert(match osv {
+                DynCompatibilityViolation::SizedSelf => SizedSelf,
+                DynCompatibilityViolation::SelfReferential => SelfReferential,
+                DynCompatibilityViolation::Method(_, mvc) => Method(mvc),
+                DynCompatibilityViolation::AssocConst(_) => AssocConst,
+                DynCompatibilityViolation::GAT(_) => GAT,
+                DynCompatibilityViolation::HasNonCompatibleSuperTrait(_) => {
+                    HasNonCompatibleSuperTrait
+                }
             });
+            ControlFlow::Continue(())
         });
         assert_eq!(osvs, expected, "dyn-compatibility violations for `{name}` do not match;");
     }
@@ -253,8 +250,7 @@ trait Bar<T> {
 trait Baz : Bar<Self> {
 }
 "#,
-        // FIXME: We should also report `SizedSelf` here
-        [("Bar", vec![]), ("Baz", vec![SelfReferential])],
+        [("Bar", vec![]), ("Baz", vec![SizedSelf, SelfReferential])],
     );
 }
 

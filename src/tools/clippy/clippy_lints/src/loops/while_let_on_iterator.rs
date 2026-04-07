@@ -2,10 +2,9 @@ use std::ops::ControlFlow;
 
 use super::WHILE_LET_ON_ITERATOR;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::is_res_used;
-use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable};
+use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable, is_res_lang_ctor, is_trait_method};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -20,11 +19,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::WhileLet { if_then, let_pat, let_expr, label, .. }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
         && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
-        && cx.qpath_res(pat_path, let_pat.hir_id).ctor_parent(cx).is_lang_item(cx, LangItem::OptionSome)
+        && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)
         // check for call to `Iterator::next`
         && let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind
         && method_name.ident.name == sym::next
-        && cx.ty_based_def(let_expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
+        && is_trait_method(cx, let_expr, sym::Iterator)
         && let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr)
         // get the loop containing the match expression
         && !uses_iter(cx, &iter_expr_struct, if_then)

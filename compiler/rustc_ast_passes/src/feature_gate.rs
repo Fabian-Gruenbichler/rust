@@ -183,7 +183,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_doc!(
                     "experimental" {
                         cfg => doc_cfg
-                        auto_cfg => doc_cfg
+                        cfg_hide => doc_cfg_hide
                         masked => doc_masked
                         notable_trait => doc_notable_trait
                     }
@@ -622,7 +622,11 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
 }
 
 fn check_incompatible_features(sess: &Session, features: &Features) {
-    let enabled_features = features.enabled_features_iter_stable_order();
+    let enabled_lang_features =
+        features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_lib_features =
+        features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+    let enabled_features = enabled_lang_features.chain(enabled_lib_features);
 
     for (f1, f2) in rustc_feature::INCOMPATIBLE_FEATURES
         .iter()

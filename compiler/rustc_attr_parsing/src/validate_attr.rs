@@ -207,9 +207,10 @@ pub fn check_attribute_safety(
             }
         }
 
-        // - Normal builtin attribute
-        // - Writing `#[unsafe(..)]` is not permitted on normal builtin attributes
-        (Some(AttributeSafety::Normal), Safety::Unsafe(unsafe_span)) => {
+        // - Normal builtin attribute, or any non-builtin attribute
+        // - All non-builtin attributes are currently considered safe; writing `#[unsafe(..)]` is
+        //   not permitted on non-builtin attributes or normal builtin attributes
+        (Some(AttributeSafety::Normal) | None, Safety::Unsafe(unsafe_span)) => {
             psess.dcx().emit_err(errors::InvalidAttrUnsafe {
                 span: unsafe_span,
                 name: attr_item.path.clone(),
@@ -223,8 +224,9 @@ pub fn check_attribute_safety(
         }
 
         // - Non-builtin attribute
-        (None, Safety::Unsafe(_) | Safety::Default) => {
-            // OK (not checked here)
+        // - No explicit `#[unsafe(..)]` written.
+        (None, Safety::Default) => {
+            // OK
         }
 
         (

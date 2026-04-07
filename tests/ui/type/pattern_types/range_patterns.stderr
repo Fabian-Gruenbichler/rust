@@ -57,14 +57,7 @@ error: layout_of((u32) is 1..) = Layout {
                    valid_range: 1..=4294967295,
                },
            ),
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
+           fields: Primitive,
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -397,14 +390,7 @@ error: layout_of((i8) is -10..=10) = Layout {
                    valid_range: (..=10) | (246..),
                },
            ),
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
+           fields: Primitive,
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
@@ -442,14 +428,7 @@ error: layout_of((i8) is i8::MIN..=0) = Layout {
                    valid_range: (..=0) | (128..),
                },
            ),
-           fields: Arbitrary {
-               offsets: [
-                   Size(0 bytes),
-               ],
-               memory_index: [
-                   0,
-               ],
-           },
+           fields: Primitive,
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),

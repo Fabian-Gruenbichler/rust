@@ -4,6 +4,14 @@ error[E0282]: type annotations needed
 LL |     async { create_complex_future().await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 
-error: aborting due to 1 previous error
+error[E0282]: type annotations needed
+  --> $DIR/ice-issue-146191.rs:8:5
+   |
+LL |     async { create_complex_future().await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0282`.

@@ -94,7 +94,6 @@ pub(crate) fn generate_fn_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>)
 
                 // Insert new alias
                 let ty_alias = make::ty_alias(
-                    None,
                     &alias_name,
                     generic_params,
                     None,

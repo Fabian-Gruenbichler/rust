@@ -146,13 +146,12 @@ impl Deprecation {
 }
 
 /// There are three valid forms of the attribute:
-/// `#[used]`, which is equivalent to `#[used(linker)]` on targets that support it, but `#[used(compiler)]` if not.
+/// `#[used]`, which is semantically equivalent to `#[used(linker)]` except that the latter is currently unstable.
 /// `#[used(compiler)]`
 /// `#[used(linker)]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic, PrintAttribute)]
 pub enum UsedBy {
-    Default,
     Compiler,
     Linker,
 }
@@ -309,10 +308,7 @@ pub enum NativeLibKind {
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     /// On Linux, it refers to a generated shared library stub.
-    RawDylib {
-        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
-        as_needed: Option<bool>,
-    },
+    RawDylib,
     /// A macOS-specific kind of dynamic libraries.
     Framework {
         /// Whether the framework will be linked only if it satisfies some undefined symbols
@@ -335,10 +331,11 @@ impl NativeLibKind {
             NativeLibKind::Static { bundle, whole_archive } => {
                 bundle.is_some() || whole_archive.is_some()
             }
-            NativeLibKind::Dylib { as_needed }
-            | NativeLibKind::Framework { as_needed }
-            | NativeLibKind::RawDylib { as_needed } => as_needed.is_some(),
-            NativeLibKind::Unspecified
+            NativeLibKind::Dylib { as_needed } | NativeLibKind::Framework { as_needed } => {
+                as_needed.is_some()
+            }
+            NativeLibKind::RawDylib
+            | NativeLibKind::Unspecified
             | NativeLibKind::LinkArg
             | NativeLibKind::WasmImportModule => false,
         }
@@ -351,9 +348,7 @@ impl NativeLibKind {
     pub fn is_dllimport(&self) -> bool {
         matches!(
             self,
-            NativeLibKind::Dylib { .. }
-                | NativeLibKind::RawDylib { .. }
-                | NativeLibKind::Unspecified
+            NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified
         )
     }
 }
@@ -366,20 +361,6 @@ pub struct LinkEntry {
     pub cfg: Option<CfgEntry>,
     pub verbatim: Option<bool>,
     pub import_name_type: Option<(PeImportNameType, Span)>,
-}
-
-#[derive(HashStable_Generic, PrintAttribute)]
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, Encodable, Decodable)]
-pub enum DebuggerVisualizerType {
-    Natvis,
-    GdbPrettyPrinter,
-}
-
-#[derive(Debug, Encodable, Decodable, Clone, HashStable_Generic, PrintAttribute)]
-pub struct DebugVisualizer {
-    pub span: Span,
-    pub visualizer_type: DebuggerVisualizerType,
-    pub path: Symbol,
 }
 
 /// Represents parsed *built-in* inert attributes.
@@ -463,6 +444,9 @@ pub enum AttributeKind {
         span: Span,
     },
 
+    /// Represents `#[rustc_coherence_is_core]`.
+    CoherenceIsCore,
+
     /// Represents `#[rustc_coinductive]`.
     Coinductive(Span),
 
@@ -499,15 +483,12 @@ pub enum AttributeKind {
     Coverage(Span, CoverageAttrKind),
 
     /// Represents `#[crate_name = ...]`
-    CrateName { name: Symbol, name_span: Span, attr_span: Span },
+    CrateName { name: Symbol, name_span: Span, attr_span: Span, style: AttrStyle },
 
     /// Represents `#[custom_mir]`.
     CustomMir(Option<(MirDialect, Span)>, Option<(MirPhase, Span)>, Span),
 
-    /// Represents `#[debugger_visualizer]`.
-    DebuggerVisualizer(ThinVec<DebugVisualizer>),
-
-    /// Represents `#[rustc_deny_explicit_impl]`.
+    ///Represents `#[rustc_deny_explicit_impl]`.
     DenyExplicitImpl(Span),
 
     /// Represents [`#[deprecated]`](https://doc.rust-lang.org/stable/reference/attributes/diagnostics.html#the-deprecated-attribute).
@@ -516,7 +497,7 @@ pub enum AttributeKind {
     /// Represents `#[rustc_do_not_implement_via_object]`.
     DoNotImplementViaObject(Span),
 
-    /// Represents [`#[doc = "..."]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
+    /// Represents [`#[doc]`](https://doc.rust-lang.org/stable/rustdoc/write-documentation/the-doc-attribute.html).
     DocComment { style: AttrStyle, kind: CommentKind, span: Span, comment: Symbol },
 
     /// Represents `#[rustc_dummy]`.
@@ -573,9 +554,6 @@ pub enum AttributeKind {
     /// Represents `#[macro_escape]`.
     MacroEscape(Span),
 
-    /// Represents [`#[macro_export]`](https://doc.rust-lang.org/reference/macros-by-example.html#r-macro.decl.scope.path).
-    MacroExport { span: Span, local_inner_macros: bool },
-
     /// Represents `#[rustc_macro_transparency]`.
     MacroTransparency(Transparency),
 
@@ -616,12 +594,6 @@ pub enum AttributeKind {
     /// Represents `#[non_exhaustive]`
     NonExhaustive(Span),
 
-    /// Represents `#[rustc_objc_class]`
-    ObjcClass { classname: Symbol, span: Span },
-
-    /// Represents `#[rustc_objc_selector]`
-    ObjcSelector { methname: Symbol, span: Span },
-
     /// Represents `#[optimize(size|speed)]`
     Optimize(OptimizeAttr, Span),
 
@@ -661,23 +633,14 @@ pub enum AttributeKind {
     /// Represents `#[rustc_builtin_macro]`.
     RustcBuiltinMacro { builtin_name: Option<Symbol>, helper_attrs: ThinVec<Symbol>, span: Span },
 
-    /// Represents `#[rustc_coherence_is_core]`
-    RustcCoherenceIsCore(Span),
-
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
 
     /// Represents `#[rustc_layout_scalar_valid_range_start]`.
     RustcLayoutScalarValidRangeStart(Box<u128>, Span),
 
-    /// Represents `#[rustc_main]`.
-    RustcMain,
-
     /// Represents `#[rustc_object_lifetime_default]`.
     RustcObjectLifetimeDefault,
-
-    /// Represents `#[rustc_simd_monomorphize_lane_limit = "N"]`.
-    RustcSimdMonomorphizeLaneLimit(Limit),
 
     /// Represents `#[sanitize]`
     ///

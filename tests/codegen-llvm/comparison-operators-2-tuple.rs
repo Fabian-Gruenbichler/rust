@@ -1,4 +1,5 @@
 //@ compile-flags: -C opt-level=1 -Z merge-functions=disabled
+//@ min-llvm-version: 20
 
 #![crate_type = "lib"]
 

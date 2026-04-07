@@ -18,7 +18,6 @@ use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f128", issue = "116909")]
-#[rustc_diagnostic_item = "f128_consts_mod"]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -34,12 +33,12 @@ pub mod consts {
 
     /// The golden ratio (φ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const PHI: f128 = 1.61803398874989484820458683436563811772030917980576286213545_f128;
 
     /// The Euler-Mascheroni constant (γ)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const EGAMMA: f128 = 0.577215664901532860606512090082402431042159335939923598805767_f128;
 
     /// π/2
@@ -68,14 +67,14 @@ pub mod consts {
 
     /// 1/sqrt(π)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_PI: f128 =
         0.564189583547756286948079451560772585844050629328998856844086_f128;
 
     /// 1/sqrt(2π)
     #[doc(alias = "FRAC_1_SQRT_TAU")]
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_2PI: f128 =
         0.398942280401432677939946059934381868475858631164934657665926_f128;
 
@@ -99,12 +98,12 @@ pub mod consts {
 
     /// sqrt(3)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const SQRT_3: f128 = 1.73205080756887729352744634150587236694280525381038062805581_f128;
 
     /// 1/sqrt(3)
     #[unstable(feature = "f128", issue = "116909")]
-    // Also, #[unstable(feature = "more_float_constants", issue = "146939")]
+    // Also, #[unstable(feature = "more_float_constants", issue = "103883")]
     pub const FRAC_1_SQRT_3: f128 =
         0.577350269189625764509148780501957455647601751270126876018602_f128;
 
@@ -1197,8 +1196,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
-    #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-    pub const fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
+    pub fn total_cmp(&self, other: &Self) -> crate::cmp::Ordering {
         let mut left = self.to_bits() as i128;
         let mut right = other.to_bits() as i128;
 
@@ -1368,7 +1366,8 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn copysign(self, sign: f128) -> f128 {
-        intrinsics::copysignf128(self, sign)
+        // SAFETY: this is actually a safe intrinsic
+        unsafe { intrinsics::copysignf128(self, sign) }
     }
 
     /// Float addition that allows optimizations based on algebraic rules.
@@ -1460,7 +1459,8 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn floor(self) -> f128 {
-        intrinsics::floorf128(self)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::floorf128(self) }
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -1488,7 +1488,8 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn ceil(self) -> f128 {
-        intrinsics::ceilf128(self)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::ceilf128(self) }
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -1522,7 +1523,8 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn round(self) -> f128 {
-        intrinsics::roundf128(self)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::roundf128(self) }
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -1585,7 +1587,8 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn trunc(self) -> f128 {
-        intrinsics::truncf128(self)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::truncf128(self) }
     }
 
     /// Returns the fractional part of `self`.
@@ -1660,9 +1663,9 @@ impl f128 {
     #[doc(alias = "fmaf128", alias = "fusedMultiplyAdd")]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
-    pub const fn mul_add(self, a: f128, b: f128) -> f128 {
-        intrinsics::fmaf128(self, a, b)
+    pub fn mul_add(self, a: f128, b: f128) -> f128 {
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::fmaf128(self, a, b) }
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -1777,7 +1780,8 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn powi(self, n: i32) -> f128 {
-        intrinsics::powif128(self, n)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::powif128(self, n) }
     }
 
     /// Returns the square root of a number.
@@ -1812,6 +1816,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sqrt(self) -> f128 {
-        intrinsics::sqrtf128(self)
+        // SAFETY: intrinsic with no preconditions
+        unsafe { intrinsics::sqrtf128(self) }
     }
 }

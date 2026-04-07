@@ -96,7 +96,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +148,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref('?1, Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -177,23 +177,21 @@ fn test(i: i32) {
 
 #[test]
 fn coerce_merge_one_by_one1() {
+    cov_mark::check!(coerce_merge_fail_fallback);
+
     check(
         r"
 fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
-           //^ adjustments: Deref(None), Borrow(RawPtr(Mut))
-        _ => t as *const i32,
-    };
-    x;
- // ^ type: *const i32
-    let x = match 1 {
-        1 => t as *mut i32,
+           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
     };
+    x;
+  //^ type: *const i32
 
 }
         ",
@@ -268,7 +266,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{region error}, Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{error}, Not))
 }
 "#,
     );
@@ -278,19 +276,17 @@ fn test() {
 fn coerce_autoderef_implication_1() {
     check_no_mismatches(
         r"
-//- minicore: deref, phantom_data
-use core::marker::PhantomData;
-
-struct Foo<T>(PhantomData<T>);
+//- minicore: deref
+struct Foo<T>;
 impl core::ops::Deref for Foo<u32> { type Target = (); }
 
 fn takes_ref_foo<T>(x: &Foo<T>) {}
 fn test() {
-    let foo = Foo(PhantomData);
+    let foo = Foo;
       //^^^ type: Foo<{unknown}>
     takes_ref_foo(&foo);
 
-    let foo = Foo(PhantomData);
+    let foo = Foo;
       //^^^ type: Foo<u32>
     let _: &() = &foo;
 }",
@@ -301,18 +297,16 @@ fn test() {
 fn coerce_autoderef_implication_2() {
     check(
         r"
-//- minicore: deref, phantom_data
-use core::marker::PhantomData;
-
-struct Foo<T>(PhantomData<T>);
+//- minicore: deref
+struct Foo<T>;
 impl core::ops::Deref for Foo<u32> { type Target = (); }
 
 fn takes_ref_foo<T>(x: &Foo<T>) {}
 fn test() {
-    let foo = Foo(PhantomData);
+    let foo = Foo;
       //^^^ type: Foo<{unknown}>
-    let _: &u32 = &Foo(PhantomData);
-                //^^^^^^^^^^^^^^^^^ expected &'? u32, got &'? Foo<{unknown}>
+    let _: &u32 = &Foo;
+                //^^^^ expected &'? u32, got &'? Foo<{unknown}>
 }",
     );
 }
@@ -415,6 +409,8 @@ fn test() {
 
 #[test]
 fn coerce_fn_items_in_match_arms() {
+    cov_mark::check!(coerce_fn_reification);
+
     check_no_mismatches(
         r"
 fn foo1(x: u32) -> isize { 1 }
@@ -488,8 +484,6 @@ fn test() {
     );
 }
 
-// FIXME(next-solver): We could learn more from the `&S` -> `&dyn Foo<i8, _>` coercion if we followed the rustc model
-// where unsized is successful if all unsizing trait goals are certain (and non-unsizing goals are delayed).
 #[test]
 fn coerce_unsize_trait_object_simple() {
     check_types(
@@ -509,8 +503,8 @@ fn test() {
                                 //^ S<i8, i16>
     let obj: &dyn Bar<_, i8, i16> = &S;
                                    //^ S<i8, i16>
-    //let obj: &dyn Foo<i8, _> = &S;
-                              // S<{unknown}, {unknown}>
+    let obj: &dyn Foo<i8, _> = &S;
+                              //^ S<i8, {unknown}>
 }"#,
     );
 }
@@ -549,9 +543,9 @@ struct Bar<T>(Foo<T>);
 
 fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
-                         //^^^^^^^^^^^^^^^^^^^^^ type: &'? Foo<[usize; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^ expected &'? Foo<[usize]>, got &'? Foo<[i32; 3]>
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ type: &'? Bar<[usize; 3]>
+                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &'? Bar<[usize]>, got &'? Bar<[i32; 3]>
 }
 "#,
     );
@@ -567,7 +561,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &'? (dyn Foo + 'static), got &'? impl Foo + ?Sized
+                    //^ expected &'? (dyn Foo + '?), got &'? impl Foo + ?Sized
 }
         "#,
     );
@@ -687,9 +681,9 @@ fn coerce_unsize_expected_type_2() {
     check_no_mismatches(
         r#"
 //- minicore: coerce_unsized
-struct InFile<T>(T);
+struct InFile<T>;
 impl<T> InFile<T> {
-    fn with_value<U>(self, value: U) -> InFile<U> { InFile(loop {}) }
+    fn with_value<U>(self, value: U) -> InFile<U> { InFile }
 }
 struct RecordField;
 trait AstNode {}
@@ -698,7 +692,7 @@ impl AstNode for RecordField {}
 fn takes_dyn(it: InFile<&dyn AstNode>) {}
 
 fn test() {
-    let x: InFile<()> = InFile(());
+    let x: InFile<()> = InFile;
     let n = &RecordField;
     takes_dyn(x.with_value(n));
 }
@@ -833,11 +827,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + 'static)>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 }
         "#,
     );
@@ -854,8 +848,8 @@ impl core::cmp::PartialEq for Struct {
 }
 fn test() {
     Struct == Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
-           // ^^^^^^ adjustments: Borrow(Ref('{region error}, Not))
+ // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
+           // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
 }",
     );
 }
@@ -871,7 +865,7 @@ impl core::ops::AddAssign for Struct {
 }
 fn test() {
     Struct += Struct;
- // ^^^^^^ adjustments: Borrow(Ref('{region error}, Mut))
+ // ^^^^^^ adjustments: Borrow(Ref('{error}, Mut))
            // ^^^^^^ adjustments:
 }",
     );
@@ -885,7 +879,7 @@ fn adjust_index() {
 fn test() {
     let x = [1, 2, 3];
     x[2] = 6;
- // ^ adjustments: Borrow(Ref('?0, Mut))
+ // ^ adjustments: Borrow(Ref('?8, Mut))
 }
     ",
     );
@@ -905,16 +899,16 @@ impl core::ops::Index<usize> for StructMut {
 
     fn index(&self, index: usize) -> &Self::Output { &() }
 }
-impl core::ops::IndexMut<usize> for StructMut {
+impl core::ops::IndexMut for StructMut {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output { &mut () }
 }
 fn test() {
     Struct[0];
- // ^^^^^^ adjustments: Borrow(Ref('?0, Not))
+ // ^^^^^^ adjustments: Borrow(Ref('?2, Not))
     StructMut[0];
- // ^^^^^^^^^ adjustments: Borrow(Ref('?1, Not))
+ // ^^^^^^^^^ adjustments: Borrow(Ref('?5, Not))
     &mut StructMut[0];
-      // ^^^^^^^^^ adjustments: Borrow(Ref('?2, Mut))
+      // ^^^^^^^^^ adjustments: Borrow(Ref('?8, Mut))
 }",
     );
 }

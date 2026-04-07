@@ -5,15 +5,7 @@ use crate::mem::MaybeUninit;
 use crate::str;
 
 fn known_command() -> Command {
-    if cfg!(windows) {
-        Command::new("help")
-    } else if cfg!(all(target_vendor = "apple", not(target_os = "macos"))) {
-        // iOS/tvOS/watchOS/visionOS have a very limited set of commandline
-        // binaries available.
-        Command::new("log")
-    } else {
-        Command::new("echo")
-    }
+    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
 }
 
 #[cfg(target_os = "android")]
@@ -27,10 +19,7 @@ fn shell_cmd() -> Command {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn smoke() {
     let p = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 0"]).spawn()
@@ -52,10 +41,7 @@ fn smoke_failure() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn exit_reported_right() {
     let p = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn()
@@ -70,10 +56,7 @@ fn exit_reported_right() {
 
 #[test]
 #[cfg(unix)]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn signal_reported_right() {
     use crate::os::unix::process::ExitStatusExt;
 
@@ -97,10 +80,7 @@ pub fn run_output(mut cmd: Command) -> String {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn stdout_works() {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
@@ -114,11 +94,7 @@ fn stdout_works() {
 }
 
 #[test]
-#[cfg_attr(windows, ignore)]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
 fn set_current_dir_works() {
     // On many Unix platforms this will use the posix_spawn path.
     let mut cmd = shell_cmd();
@@ -140,11 +116,7 @@ fn set_current_dir_works() {
 }
 
 #[test]
-#[cfg_attr(windows, ignore)]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
 fn stdin_works() {
     let mut p = shell_cmd()
         .arg("-c")
@@ -162,10 +134,7 @@ fn stdin_works() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn child_stdout_read_buf() {
     let mut cmd = if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
@@ -196,10 +165,7 @@ fn child_stdout_read_buf() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_status() {
     let mut status = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
@@ -225,10 +191,7 @@ fn test_process_output_fail_to_start() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_output() {
     let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
@@ -243,10 +206,7 @@ fn test_process_output_output() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_error() {
     let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
@@ -261,10 +221,7 @@ fn test_process_output_error() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_once() {
     let mut prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
@@ -275,10 +232,7 @@ fn test_finish_once() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_twice() {
     let mut prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
@@ -290,10 +244,7 @@ fn test_finish_twice() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_wait_with_output_once() {
     let prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
@@ -328,10 +279,7 @@ pub fn env_cmd() -> Command {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn test_override_env() {
     use crate::env;
 
@@ -354,10 +302,7 @@ fn test_override_env() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn test_add_to_env() {
     let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
     let output = String::from_utf8_lossy(&result.stdout).to_string();
@@ -369,10 +314,7 @@ fn test_add_to_env() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no shell available"
-)]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn test_capture_env_at_spawn() {
     use crate::env;
 
@@ -436,10 +378,7 @@ fn test_interior_nul_in_current_dir_is_error() {
 
 // Regression tests for #30862.
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no `env` cmd available"
-)]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn test_interior_nul_in_env_key_is_error() {
     match env_cmd().env("has-some-\0\0s-inside", "value").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
@@ -448,10 +387,7 @@ fn test_interior_nul_in_env_key_is_error() {
 }
 
 #[test]
-#[cfg_attr(
-    any(target_os = "vxworks", all(target_vendor = "apple", not(target_os = "macos"))),
-    ignore = "no `env` cmd available"
-)]
+#[cfg_attr(target_os = "vxworks", ignore)]
 fn test_interior_nul_in_env_value_is_error() {
     match env_cmd().env("key", "has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),

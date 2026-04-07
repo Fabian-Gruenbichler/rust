@@ -169,7 +169,6 @@ impl StaticIndex<'_> {
                     closure_return_type_hints: crate::ClosureReturnTypeHints::WithBlock,
                     lifetime_elision_hints: crate::LifetimeElisionHints::Never,
                     adjustment_hints: crate::AdjustmentHints::Never,
-                    adjustment_hints_disable_reborrows: true,
                     adjustment_hints_mode: AdjustmentHintsMode::Prefix,
                     adjustment_hints_hide_outside_unsafe: false,
                     implicit_drop_hints: false,
@@ -242,7 +241,7 @@ impl StaticIndex<'_> {
                         edition,
                         display_target,
                     )),
-                    definition: def.try_to_nav(&sema).map(UpmappingResult::call_site).map(|it| {
+                    definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
                     }),
                     references: vec![],
@@ -259,7 +258,7 @@ impl StaticIndex<'_> {
             let token = self.tokens.get_mut(id).unwrap();
             token.references.push(ReferenceData {
                 range: FileRange { range, file_id },
-                is_definition: match def.try_to_nav(&sema).map(UpmappingResult::call_site) {
+                is_definition: match def.try_to_nav(self.db).map(UpmappingResult::call_site) {
                     Some(it) => it.file_id == file_id && it.focus_or_full_range() == range,
                     None => false,
                 },
@@ -276,7 +275,7 @@ impl StaticIndex<'_> {
         for token in tokens {
             let range = token.text_range();
             let node = token.parent().unwrap();
-            match hir::attach_db(self.db, || get_definitions(&sema, token.clone())) {
+            match get_definitions(&sema, token.clone()) {
                 Some(it) => {
                     for i in it {
                         add_token(i, range, &node);
@@ -293,40 +292,37 @@ impl StaticIndex<'_> {
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
         let db = &analysis.db;
-        hir::attach_db(db, || {
-            let work = all_modules(db).into_iter().filter(|module| {
-                let file_id = module.definition_source_file_id(db).original_file(db);
-                let source_root =
-                    db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
-                let source_root = db.source_root(source_root).source_root(db);
-                let is_vendored = match vendored_libs_config {
-                    VendoredLibrariesConfig::Included { workspace_root } => source_root
-                        .path_for_file(&file_id.file_id(&analysis.db))
-                        .is_some_and(|module_path| module_path.starts_with(workspace_root)),
-                    VendoredLibrariesConfig::Excluded => false,
-                };
-
-                !source_root.is_library || is_vendored
-            });
-            let mut this = StaticIndex {
-                files: vec![],
-                tokens: Default::default(),
-                analysis,
-                db,
-                def_map: Default::default(),
+        let work = all_modules(db).into_iter().filter(|module| {
+            let file_id = module.definition_source_file_id(db).original_file(db);
+            let source_root = db.file_source_root(file_id.file_id(&analysis.db)).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
+            let is_vendored = match vendored_libs_config {
+                VendoredLibrariesConfig::Included { workspace_root } => source_root
+                    .path_for_file(&file_id.file_id(&analysis.db))
+                    .is_some_and(|module_path| module_path.starts_with(workspace_root)),
+                VendoredLibrariesConfig::Excluded => false,
             };
-            let mut visited_files = FxHashSet::default();
-            for module in work {
-                let file_id = module.definition_source_file_id(db).original_file(db);
-                if visited_files.contains(&file_id) {
-                    continue;
-                }
-                this.add_file(file_id.file_id(&analysis.db));
-                // mark the file
-                visited_files.insert(file_id);
+
+            !source_root.is_library || is_vendored
+        });
+        let mut this = StaticIndex {
+            files: vec![],
+            tokens: Default::default(),
+            analysis,
+            db,
+            def_map: Default::default(),
+        };
+        let mut visited_files = FxHashSet::default();
+        for module in work {
+            let file_id = module.definition_source_file_id(db).original_file(db);
+            if visited_files.contains(&file_id) {
+                continue;
             }
-            this
-        })
+            this.add_file(file_id.file_id(&analysis.db));
+            // mark the file
+            visited_files.insert(file_id);
+        }
+        this
     }
 }
 

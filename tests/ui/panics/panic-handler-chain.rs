@@ -1,7 +1,6 @@
 //@ run-pass
 //@ needs-unwind
 //@ needs-threads
-//@ ignore-backends: gcc
 #![allow(stable_features)]
 
 #![feature(std_panic)]

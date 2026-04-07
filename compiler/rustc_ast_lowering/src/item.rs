@@ -36,18 +36,20 @@ pub(super) struct ItemLowerer<'a, 'hir> {
 /// clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
-    after_where_clause: &ast::WhereClause,
+    mut where_clauses: TyAliasWhereClauses,
     prefer_first: bool,
 ) {
-    generics.where_clause.predicates.extend_from_slice(&after_where_clause.predicates);
-
-    let mut before = (generics.where_clause.has_where_token, generics.where_clause.span);
-    let mut after = (after_where_clause.has_where_token, after_where_clause.span);
     if !prefer_first {
-        (before, after) = (after, before);
+        (where_clauses.before, where_clauses.after) = (where_clauses.after, where_clauses.before);
     }
-    (generics.where_clause.has_where_token, generics.where_clause.span) =
-        if before.0 || !after.0 { before } else { after };
+    let where_clause =
+        if where_clauses.before.has_where_token || !where_clauses.after.has_where_token {
+            where_clauses.before
+        } else {
+            where_clauses.after
+        };
+    generics.where_clause.has_where_token = where_clause.has_where_token;
+    generics.where_clause.span = where_clause.span;
 }
 
 impl<'a, 'hir> ItemLowerer<'a, 'hir> {
@@ -269,7 +271,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
                 hir::ItemKind::GlobalAsm { asm, fake_body }
             }
-            ItemKind::TyAlias(box TyAlias { ident, generics, after_where_clause, ty, .. }) => {
+            ItemKind::TyAlias(box TyAlias { ident, generics, where_clauses, ty, .. }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -280,7 +282,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // opaque type Foo1: Trait
                 let ident = self.lower_ident(*ident);
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, after_where_clause, true);
+                add_ty_alias_where_clause(&mut generics, *where_clauses, true);
                 let (generics, ty) = self.lower_generics(
                     &generics,
                     id,
@@ -424,7 +426,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     |this| {
                         this.lower_param_bounds(
                             bounds,
-                            RelaxedBoundPolicy::Forbidden(RelaxedBoundForbiddenReason::TraitAlias),
+                            RelaxedBoundPolicy::Allowed,
                             ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
                         )
                     },
@@ -899,15 +901,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }
             AssocItemKind::Type(box TyAlias {
-                ident,
-                generics,
-                after_where_clause,
-                bounds,
-                ty,
-                ..
+                ident, generics, where_clauses, bounds, ty, ..
             }) => {
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, after_where_clause, false);
+                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
                 let (generics, kind) = self.lower_generics(
                     &generics,
                     i.id,
@@ -1073,11 +1070,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (*ident, (generics, hir::ImplItemKind::Fn(sig, body_id)))
             }
-            AssocItemKind::Type(box TyAlias {
-                ident, generics, after_where_clause, ty, ..
-            }) => {
+            AssocItemKind::Type(box TyAlias { ident, generics, where_clauses, ty, .. }) => {
                 let mut generics = generics.clone();
-                add_ty_alias_where_clause(&mut generics, after_where_clause, false);
+                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
                 (
                     *ident,
                     self.lower_generics(
@@ -1219,9 +1214,76 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
 
-            // Optionally lower the fn contract
+            // Optionally lower the fn contract, which turns:
+            //
+            // { body }
+            //
+            // into:
+            //
+            // { contract_requires(PRECOND); let __postcond = |ret_val| POSTCOND; postcond({ body }) }
             if let Some(contract) = contract {
-                (params, this.lower_contract(body, contract))
+                let precond = if let Some(req) = &contract.requires {
+                    // Lower the precondition check intrinsic.
+                    let lowered_req = this.lower_expr_mut(&req);
+                    let req_span = this.mark_span_with_reason(
+                        DesugaringKind::Contract,
+                        lowered_req.span,
+                        None,
+                    );
+                    let precond = this.expr_call_lang_item_fn_mut(
+                        req_span,
+                        hir::LangItem::ContractCheckRequires,
+                        &*arena_vec![this; lowered_req],
+                    );
+                    Some(this.stmt_expr(req.span, precond))
+                } else {
+                    None
+                };
+                let (postcond, body) = if let Some(ens) = &contract.ensures {
+                    let ens_span = this.lower_span(ens.span);
+                    let ens_span =
+                        this.mark_span_with_reason(DesugaringKind::Contract, ens_span, None);
+                    // Set up the postcondition `let` statement.
+                    let check_ident: Ident =
+                        Ident::from_str_and_span("__ensures_checker", ens_span);
+                    let (checker_pat, check_hir_id) = this.pat_ident_binding_mode_mut(
+                        ens_span,
+                        check_ident,
+                        hir::BindingMode::NONE,
+                    );
+                    let lowered_ens = this.lower_expr_mut(&ens);
+                    let postcond_checker = this.expr_call_lang_item_fn(
+                        ens_span,
+                        hir::LangItem::ContractBuildCheckEnsures,
+                        &*arena_vec![this; lowered_ens],
+                    );
+                    let postcond = this.stmt_let_pat(
+                        None,
+                        ens_span,
+                        Some(postcond_checker),
+                        this.arena.alloc(checker_pat),
+                        hir::LocalSource::Contract,
+                    );
+
+                    // Install contract_ensures so we will intercept `return` statements,
+                    // then lower the body.
+                    this.contract_ensures = Some((ens_span, check_ident, check_hir_id));
+                    let body = this.arena.alloc(body(this));
+
+                    // Finally, inject an ensures check on the implicit return of the body.
+                    let body = this.inject_ensures_check(body, ens_span, check_ident, check_hir_id);
+                    (Some(postcond), body)
+                } else {
+                    let body = &*this.arena.alloc(body(this));
+                    (None, body)
+                };
+                // Flatten the body into precond, then postcond, then wrapped body.
+                let wrapped_body = this.block_all(
+                    body.span,
+                    this.arena.alloc_from_iter([precond, postcond].into_iter().flatten()),
+                    Some(body),
+                );
+                (params, this.expr_block(wrapped_body))
             } else {
                 (params, body(this))
             }

@@ -70,11 +70,9 @@ package tests:
 
 Tidy is a custom tool used for validating source code style and formatting
 conventions, such as rejecting long lines. There is more information in the
-[section on coding conventions](../conventions.md#formatting) or the [Tidy Readme].
+[section on coding conventions](../conventions.md#formatting).
 
 > Examples: `./x test tidy`
-
-[Tidy Readme]: https://github.com/rust-lang/rust/blob/master/src/tools/tidy/Readme.md
 
 
 ### Formatting

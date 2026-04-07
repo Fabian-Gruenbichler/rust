@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::SeekFrom;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -32,7 +32,6 @@ use crate::util::errors::ManifestError;
 use crate::util::restricted_names;
 use crate::util::toml::prepare_for_publish;
 use crate::{drop_println, ops};
-use annotate_snippets::Level;
 use anyhow::{Context as _, bail};
 use cargo_util::paths;
 use cargo_util_schemas::index::{IndexPackage, RegistryDependency};
@@ -178,8 +177,10 @@ fn create_package(
         .context("failed to prepare local package for uploading")?;
 
     dst.seek(SeekFrom::Start(0))?;
+    let src_path = dst.path();
     let dst_path = dst.parent().join(&filename);
-    dst.rename(&dst_path)?;
+    fs::rename(&src_path, &dst_path)
+        .context("failed to move temporary tarball into final location")?;
 
     let dst_metadata = dst
         .file()
@@ -837,12 +838,11 @@ fn check_metadata(pkg: &Package, gctx: &GlobalContext) -> CargoResult<()> {
         }
         things.push_str(missing.last().unwrap());
 
-        gctx.shell().print_report(&[
-            Level::WARNING.secondary_title(format!("manifest has no {things}"))
-                .element(Level::NOTE.message("see https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info"))
-         ],
-             false
-        )?
+        gctx.shell().warn(&format!(
+            "manifest has no {things}.\n\
+             See https://doc.rust-lang.org/cargo/reference/manifest.html#package-metadata for more info.",
+            things = things
+        ))?
     }
 
     Ok(())

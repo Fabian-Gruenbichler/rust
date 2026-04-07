@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{indent_of, snippet};
-use clippy_utils::{expr_or_init, get_attr, peel_hir_expr_unary, sym};
+use clippy_utils::{expr_or_init, get_attr, path_to_local, peel_hir_expr_unary, sym};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -277,7 +276,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 && let hir::PatKind::Binding(_, hir_id, ident, _) = local.pat.kind
                 && !self.ap.apas.contains_key(&hir_id)
                 && {
-                    if let Some(local_hir_id) = expr.res_local_id() {
+                    if let Some(local_hir_id) = path_to_local(expr) {
                         local_hir_id == hir_id
                     } else {
                         true
@@ -302,7 +301,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                 modify_apa_params(&mut apa);
                 let _ = self.ap.apas.insert(hir_id, apa);
             } else {
-                let Some(hir_id) = expr.res_local_id() else {
+                let Some(hir_id) = path_to_local(expr) else {
                     return;
                 };
                 let Some(apa) = self.ap.apas.get_mut(&hir_id) else {
@@ -320,7 +319,7 @@ impl<'tcx> Visitor<'tcx> for StmtsChecker<'_, '_, '_, '_, 'tcx> {
                         }
                     },
                     hir::StmtKind::Semi(semi_expr) => {
-                        if has_drop(self.cx, semi_expr, apa.first_bind_ident) {
+                        if has_drop(semi_expr, apa.first_bind_ident, self.cx) {
                             apa.has_expensive_expr_after_last_attr = false;
                             apa.last_stmt_span = DUMMY_SP;
                             return;
@@ -417,11 +416,11 @@ fn dummy_stmt_expr<'any>(expr: &'any hir::Expr<'any>) -> hir::Stmt<'any> {
     }
 }
 
-fn has_drop(cx: &LateContext<'_>, expr: &hir::Expr<'_>, first_bind_ident: Option<Ident>) -> bool {
+fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: Option<Ident>, lcx: &LateContext<'_>) -> bool {
     if let hir::ExprKind::Call(fun, [first_arg]) = expr.kind
         && let hir::ExprKind::Path(hir::QPath::Resolved(_, fun_path)) = &fun.kind
         && let Res::Def(DefKind::Fn, did) = fun_path.res
-        && cx.tcx.is_diagnostic_item(sym::mem_drop, did)
+        && lcx.tcx.is_diagnostic_item(sym::mem_drop, did)
     {
         let has_ident = |local_expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind

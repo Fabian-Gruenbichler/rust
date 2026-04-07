@@ -327,11 +327,12 @@ impl LocalManifest {
     }
 
     /// Lookup a dependency.
-    pub fn get_dependencies<'s>(
+    pub fn get_dependency_versions<'s>(
         &'s self,
+        dep_key: &'s str,
         ws: &'s Workspace<'_>,
         unstable_features: &'s Features,
-    ) -> impl Iterator<Item = (String, DepTable, CargoResult<Dependency>)> + 's {
+    ) -> impl Iterator<Item = (DepTable, CargoResult<Dependency>)> + 's {
         let crate_root = self.path.parent().expect("manifest path is absolute");
         self.get_sections()
             .into_iter()
@@ -340,7 +341,13 @@ impl LocalManifest {
                 Some(
                     table
                         .into_iter()
-                        .map(|(key, item)| (table_path.clone(), key, item))
+                        .filter_map(|(key, item)| {
+                            if key.as_str() == dep_key {
+                                Some((table_path.clone(), key, item))
+                            } else {
+                                None
+                            }
+                        })
                         .collect::<Vec<_>>(),
                 )
             })
@@ -354,7 +361,7 @@ impl LocalManifest {
                     &dep_key,
                     &dep_item,
                 );
-                (dep_key, table_path, dep)
+                (table_path, dep)
             })
     }
 

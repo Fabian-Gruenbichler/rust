@@ -12,11 +12,11 @@ use hir_def::expr_store::path::Path;
 use hir_def::{hir::ExprOrPatId, resolver::Resolver};
 use la_arena::{Idx, RawIdx};
 
+use crate::lower::LifetimeElisionKind;
 use crate::{
-    InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringDiagnostic,
+    InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringContext, TyLoweringDiagnostic,
     db::HirDatabase,
-    lower_nextsolver::path::{PathDiagnosticCallback, PathLoweringContext},
-    lower_nextsolver::{LifetimeElisionKind, TyLoweringContext},
+    lower::path::{PathDiagnosticCallback, PathLoweringContext},
 };
 
 // Unfortunately, this struct needs to use interior mutability (but we encapsulate it)
@@ -24,10 +24,10 @@ use crate::{
 // to our resolver and so we cannot have mutable reference, but we really want to have
 // ability to dispatch diagnostics during this work otherwise the code becomes a complete mess.
 #[derive(Debug, Default, Clone)]
-pub(super) struct Diagnostics<'db>(RefCell<Vec<InferenceDiagnostic<'db>>>);
+pub(super) struct Diagnostics(RefCell<Vec<InferenceDiagnostic>>);
 
-impl<'db> Diagnostics<'db> {
-    pub(super) fn push(&self, diagnostic: InferenceDiagnostic<'db>) {
+impl Diagnostics {
+    pub(super) fn push(&self, diagnostic: InferenceDiagnostic) {
         self.0.borrow_mut().push(diagnostic);
     }
 
@@ -41,32 +41,32 @@ impl<'db> Diagnostics<'db> {
         );
     }
 
-    pub(super) fn finish(self) -> Vec<InferenceDiagnostic<'db>> {
+    pub(super) fn finish(self) -> Vec<InferenceDiagnostic> {
         self.0.into_inner()
     }
 }
 
-pub(crate) struct PathDiagnosticCallbackData<'a, 'db> {
+pub(crate) struct PathDiagnosticCallbackData<'a> {
     node: ExprOrPatId,
-    diagnostics: &'a Diagnostics<'db>,
+    diagnostics: &'a Diagnostics,
 }
 
-pub(super) struct InferenceTyLoweringContext<'db, 'a> {
-    ctx: TyLoweringContext<'db, 'a>,
-    diagnostics: &'a Diagnostics<'db>,
+pub(super) struct InferenceTyLoweringContext<'a> {
+    ctx: TyLoweringContext<'a>,
+    diagnostics: &'a Diagnostics,
     source: InferenceTyDiagnosticSource,
 }
 
-impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
+impl<'a> InferenceTyLoweringContext<'a> {
     #[inline]
     pub(super) fn new(
-        db: &'db dyn HirDatabase,
-        resolver: &'a Resolver<'db>,
+        db: &'a dyn HirDatabase,
+        resolver: &'a Resolver<'_>,
         store: &'a ExpressionStore,
-        diagnostics: &'a Diagnostics<'db>,
+        diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
         generic_def: GenericDefId,
-        lifetime_elision: LifetimeElisionKind<'db>,
+        lifetime_elision: LifetimeElisionKind,
     ) -> Self {
         Self {
             ctx: TyLoweringContext::new(db, resolver, store, generic_def, lifetime_elision),
@@ -80,7 +80,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         &'b mut self,
         path: &'b Path,
         node: ExprOrPatId,
-    ) -> PathLoweringContext<'b, 'a, 'db> {
+    ) -> PathLoweringContext<'b, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData { diagnostics: self.diagnostics, node }),
             callback: |data, _, diag| {
@@ -96,7 +96,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     pub(super) fn at_path_forget_diagnostics<'b>(
         &'b mut self,
         path: &'b Path,
-    ) -> PathLoweringContext<'b, 'a, 'db> {
+    ) -> PathLoweringContext<'b, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData {
                 diagnostics: self.diagnostics,
@@ -113,8 +113,8 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Deref for InferenceTyLoweringContext<'db, 'a> {
-    type Target = TyLoweringContext<'db, 'a>;
+impl<'a> Deref for InferenceTyLoweringContext<'a> {
+    type Target = TyLoweringContext<'a>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -122,14 +122,14 @@ impl<'db, 'a> Deref for InferenceTyLoweringContext<'db, 'a> {
     }
 }
 
-impl DerefMut for InferenceTyLoweringContext<'_, '_> {
+impl DerefMut for InferenceTyLoweringContext<'_> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ctx
     }
 }
 
-impl Drop for InferenceTyLoweringContext<'_, '_> {
+impl Drop for InferenceTyLoweringContext<'_> {
     #[inline]
     fn drop(&mut self) {
         self.diagnostics

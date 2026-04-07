@@ -179,7 +179,9 @@ impl fmt::Debug for CStr {
 impl Default for &CStr {
     #[inline]
     fn default() -> Self {
-        c""
+        const SLICE: &[c_char] = &[0];
+        // SAFETY: `SLICE` is indeed pointing to a valid nul-terminated string.
+        unsafe { CStr::from_ptr(SLICE.as_ptr()) }
     }
 }
 

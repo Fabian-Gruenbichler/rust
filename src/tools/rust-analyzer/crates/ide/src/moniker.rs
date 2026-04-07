@@ -209,6 +209,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
         Definition::Const(..) => Constant,
         Definition::Static(..) => StaticVariable,
         Definition::Trait(..) => Trait,
+        Definition::TraitAlias(..) => Trait,
         Definition::TypeAlias(it) => {
             if it.as_assoc_item(db).is_some() {
                 AssociatedType

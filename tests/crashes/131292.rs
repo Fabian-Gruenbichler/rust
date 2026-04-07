@@ -1,5 +1,5 @@
 //@ known-bug: #131292
-//@ needs-asm-support
+//@ only-x86_64
 use std::arch::asm;
 
 unsafe fn f6() {

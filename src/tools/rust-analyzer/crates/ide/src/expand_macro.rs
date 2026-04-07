@@ -1,5 +1,5 @@
 use hir::db::ExpandDatabase;
-use hir::{ExpandResult, InFile, Semantics};
+use hir::{ExpandResult, InFile, InRealFile, Semantics};
 use ide_db::{
     FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
     syntax_helpers::prettify_macro_expansion,
@@ -87,55 +87,52 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         return derive;
     }
 
-    let syntax_token = sema.descend_into_macros_exact(tok);
-    'tokens: for syntax_token in syntax_token {
-        let mut anc = syntax_token.parent_ancestors();
-        let mut span_map = SpanMap::empty();
-        let mut error = String::new();
-        let (name, expanded, kind) = loop {
-            let Some(node) = anc.next() else {
-                continue 'tokens;
-            };
+    let mut anc = sema
+        .descend_token_into_include_expansion(InRealFile::new(file_id, tok))
+        .value
+        .parent_ancestors();
+    let mut span_map = SpanMap::empty();
+    let mut error = String::new();
+    let (name, expanded, kind) = loop {
+        let node = anc.next()?;
 
-            if let Some(item) = ast::Item::cast(node.clone())
-                && let Some(def) = sema.resolve_attr_macro_call(&item)
-            {
-                break (
-                    def.name(db).display(db, file_id.edition(db)).to_string(),
-                    expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
-                    SyntaxKind::MACRO_ITEMS,
-                );
-            }
-            if let Some(mac) = ast::MacroCall::cast(node) {
-                let mut name = mac.path()?.segment()?.name_ref()?.to_string();
-                name.push('!');
-                let syntax_kind =
-                    mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
-                break (
-                    name,
-                    expand_macro_recur(
-                        &sema,
-                        &ast::Item::MacroCall(mac),
-                        &mut error,
-                        &mut span_map,
-                        TextSize::new(0),
-                    )?,
-                    syntax_kind,
-                );
-            }
-        };
-
-        // FIXME:
-        // macro expansion may lose all white space information
-        // But we hope someday we can use ra_fmt for that
-        let mut expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
-
-        if !error.is_empty() {
-            expansion.insert_str(0, &format!("Expansion had errors:{error}\n\n"));
+        if let Some(item) = ast::Item::cast(node.clone())
+            && let Some(def) = sema.resolve_attr_macro_call(&item)
+        {
+            break (
+                def.name(db).display(db, file_id.edition(db)).to_string(),
+                expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
+                SyntaxKind::MACRO_ITEMS,
+            );
         }
-        return Some(ExpandedMacro { name, expansion });
+        if let Some(mac) = ast::MacroCall::cast(node) {
+            let mut name = mac.path()?.segment()?.name_ref()?.to_string();
+            name.push('!');
+            let syntax_kind =
+                mac.syntax().parent().map(|it| it.kind()).unwrap_or(SyntaxKind::MACRO_ITEMS);
+            break (
+                name,
+                expand_macro_recur(
+                    &sema,
+                    &ast::Item::MacroCall(mac),
+                    &mut error,
+                    &mut span_map,
+                    TextSize::new(0),
+                )?,
+                syntax_kind,
+            );
+        }
+    };
+
+    // FIXME:
+    // macro expansion may lose all white space information
+    // But we hope someday we can use ra_fmt for that
+    let mut expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
+
+    if !error.is_empty() {
+        expansion.insert_str(0, &format!("Expansion had errors:{error}\n\n"));
     }
-    None
+    Some(ExpandedMacro { name, expansion })
 }
 
 fn expand_macro_recur(
@@ -755,8 +752,8 @@ fn test() {
 }
     "#,
             expect![[r#"
-                concat!
-                "<>""#]],
+                my_concat!
+                "<>hi""#]],
         );
     }
 

@@ -43,7 +43,6 @@ pub static CRATES: &[&str] = &[
     "rustc-hash",
     "self_cell",
     "serde",
-    "serde_core",
     "serde_derive_internals",
     "sha2",
     "smallvec",

@@ -705,7 +705,6 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 check(start);
                 check(end);
             }
-            ty::PatternKind::NotNull => {}
             ty::PatternKind::Or(patterns) => {
                 for pat in patterns {
                     self.add_wf_preds_for_pat_ty(base_ty, pat)
@@ -916,7 +915,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // We recurse into the binder below.
             }
 
-            ty::Dynamic(data, r) => {
+            ty::Dynamic(data, r, _) => {
                 // WfObject
                 //
                 // Here, we defer WF checking due to higher-ranked

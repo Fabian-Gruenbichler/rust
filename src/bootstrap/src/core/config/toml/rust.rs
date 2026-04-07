@@ -45,9 +45,7 @@ define_config! {
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
-        bootstrap_override_lld: Option<BootstrapOverrideLld> = "bootstrap-override-lld",
-        // FIXME: Remove this option in Spring 2026
-        bootstrap_override_lld_legacy: Option<BootstrapOverrideLld> = "use-lld",
+        lld_mode: Option<LldMode> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
@@ -68,37 +66,25 @@ define_config! {
         validate_mir_opts: Option<u32> = "validate-mir-opts",
         std_features: Option<BTreeSet<String>> = "std-features",
         break_on_ice: Option<bool> = "break-on-ice",
-        parallel_frontend_threads: Option<u32> = "parallel-frontend-threads",
     }
 }
 
-/// Determines if we should override the linker used for linking Rust code built
-/// during the bootstrapping process to be LLD.
-///
-/// The primary use-case for this is to make local (re)builds of Rust code faster
-/// when using bootstrap.
-///
-/// This does not affect the *behavior* of the built/distributed compiler when invoked
-/// outside of bootstrap.
-/// It might affect its performance/binary size though, as that can depend on the
-/// linker that links rustc.
-///
-/// There are two ways of overriding the linker to be LLD:
-/// - Self-contained LLD: use `rust-lld` from the compiler's sysroot
+/// LLD in bootstrap works like this:
+/// - Self-contained lld: use `rust-lld` from the compiler's sysroot
 /// - External: use an external `lld` binary
 ///
 /// It is configured depending on the target:
 /// 1) Everything except MSVC
-/// - Self-contained: `-Clinker-features=+lld -Clink-self-contained=+linker`
-/// - External: `-Clinker-features=+lld`
+/// - Self-contained: `-Clinker-flavor=gnu-lld-cc -Clink-self-contained=+linker`
+/// - External: `-Clinker-flavor=gnu-lld-cc`
 /// 2) MSVC
 /// - Self-contained: `-Clinker=<path to rust-lld>`
 /// - External: `-Clinker=lld`
 #[derive(Copy, Clone, Default, Debug, PartialEq)]
-pub enum BootstrapOverrideLld {
-    /// Do not override the linker LLD
+pub enum LldMode {
+    /// Do not use LLD
     #[default]
-    None,
+    Unused,
     /// Use `rust-lld` from the compiler's sysroot
     SelfContained,
     /// Use an externally provided `lld` binary.
@@ -107,16 +93,16 @@ pub enum BootstrapOverrideLld {
     External,
 }
 
-impl BootstrapOverrideLld {
+impl LldMode {
     pub fn is_used(&self) -> bool {
         match self {
-            BootstrapOverrideLld::SelfContained | BootstrapOverrideLld::External => true,
-            BootstrapOverrideLld::None => false,
+            LldMode::SelfContained | LldMode::External => true,
+            LldMode::Unused => false,
         }
     }
 }
 
-impl<'de> Deserialize<'de> for BootstrapOverrideLld {
+impl<'de> Deserialize<'de> for LldMode {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -124,7 +110,7 @@ impl<'de> Deserialize<'de> for BootstrapOverrideLld {
         struct LldModeVisitor;
 
         impl serde::de::Visitor<'_> for LldModeVisitor {
-            type Value = BootstrapOverrideLld;
+            type Value = LldMode;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("one of true, 'self-contained' or 'external'")
@@ -134,7 +120,7 @@ impl<'de> Deserialize<'de> for BootstrapOverrideLld {
             where
                 E: serde::de::Error,
             {
-                Ok(if v { BootstrapOverrideLld::External } else { BootstrapOverrideLld::None })
+                Ok(if v { LldMode::External } else { LldMode::Unused })
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -142,8 +128,8 @@ impl<'de> Deserialize<'de> for BootstrapOverrideLld {
                 E: serde::de::Error,
             {
                 match v {
-                    "external" => Ok(BootstrapOverrideLld::External),
-                    "self-contained" => Ok(BootstrapOverrideLld::SelfContained),
+                    "external" => Ok(LldMode::External),
+                    "self-contained" => Ok(LldMode::SelfContained),
                     _ => Err(E::custom(format!("unknown mode {v}"))),
                 }
             }
@@ -321,8 +307,10 @@ pub fn check_incompatible_options_for_ci_rustc(
         debuginfo_level_rustc,
         llvm_tools,
         llvm_bitcode_linker,
+        lto,
         stack_protector,
         strip,
+        lld_mode,
         jemalloc,
         rpath,
         channel,
@@ -353,7 +341,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         save_toolstates: _,
         codegen_backends: _,
         lld: _,
-        lto: _,
         deny_warnings: _,
         backtrace_on_ice: _,
         verify_llvm_ir: _,
@@ -370,9 +357,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         validate_mir_opts: _,
         frame_pointers: _,
         break_on_ice: _,
-        parallel_frontend_threads: _,
-        bootstrap_override_lld: _,
-        bootstrap_override_lld_legacy: _,
     } = ci_rust_config;
 
     // There are two kinds of checks for CI rustc incompatible options:
@@ -388,11 +372,13 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.debuginfo_level_rustc, debuginfo_level_rustc, "rust");
     err!(current_rust_config.rpath, rpath, "rust");
     err!(current_rust_config.strip, strip, "rust");
+    err!(current_rust_config.lld_mode, lld_mode, "rust");
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
     err!(current_rust_config.jemalloc, jemalloc, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
+    err!(current_rust_config.lto, lto, "rust");
     err!(current_rust_config.std_features, std_features, "rust");
 
     warn!(current_rust_config.channel, channel, "rust");
@@ -436,4 +422,29 @@ pub(crate) fn parse_codegen_backends(
         exit!(1);
     }
     found_backends
+}
+
+#[cfg(not(test))]
+pub fn default_lld_opt_in_targets() -> Vec<String> {
+    vec!["x86_64-unknown-linux-gnu".to_string()]
+}
+
+#[cfg(test)]
+thread_local! {
+    static TEST_LLD_OPT_IN_TARGETS: std::cell::RefCell<Option<Vec<String>>> = std::cell::RefCell::new(None);
+}
+
+#[cfg(test)]
+pub fn default_lld_opt_in_targets() -> Vec<String> {
+    TEST_LLD_OPT_IN_TARGETS.with(|cell| cell.borrow().clone()).unwrap_or_default()
+}
+
+#[cfg(test)]
+pub fn with_lld_opt_in_targets<R>(targets: Vec<String>, f: impl FnOnce() -> R) -> R {
+    TEST_LLD_OPT_IN_TARGETS.with(|cell| {
+        let prev = cell.replace(Some(targets));
+        let result = f();
+        cell.replace(prev);
+        result
+    })
 }

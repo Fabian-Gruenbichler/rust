@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use private::Sealed;
 use rustc_ast::{AttrStyle, CRATE_NODE_ID, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level};
-use rustc_feature::AttributeTemplate;
+use rustc_feature::{AttributeTemplate, AttributeType};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::{AttributeLint, AttributeLintKind};
 use rustc_hir::{AttrPath, CRATE_HIR_ID, HirId};
@@ -20,15 +20,14 @@ use crate::attributes::allow_unstable::{
 use crate::attributes::body::CoroutineParser;
 use crate::attributes::codegen_attrs::{
     ColdParser, CoverageParser, ExportNameParser, ForceTargetFeatureParser, NakedParser,
-    NoMangleParser, ObjcClassParser, ObjcSelectorParser, OptimizeParser, SanitizeParser,
-    TargetFeatureParser, TrackCallerParser, UsedParser,
+    NoMangleParser, OptimizeParser, SanitizeParser, TargetFeatureParser, TrackCallerParser,
+    UsedParser,
 };
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::crate_level::{
     CrateNameParser, MoveSizeLimitParser, NoCoreParser, NoStdParser, PatternComplexityLimitParser,
-    RecursionLimitParser, RustcCoherenceIsCoreParser, TypeLengthLimitParser,
+    RecursionLimitParser, TypeLengthLimitParser,
 };
-use crate::attributes::debugger::DebuggerViualizerParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::dummy::DummyParser;
 use crate::attributes::inline::{InlineParser, RustcForceInlineParser};
@@ -41,7 +40,7 @@ use crate::attributes::lint_helpers::{
 };
 use crate::attributes::loop_match::{ConstContinueParser, LoopMatchParser};
 use crate::attributes::macro_attrs::{
-    AllowInternalUnsafeParser, MacroEscapeParser, MacroExportParser, MacroUseParser,
+    AllowInternalUnsafeParser, MacroEscapeParser, MacroUseParser,
 };
 use crate::attributes::must_use::MustUseParser;
 use crate::attributes::no_implicit_prelude::NoImplicitPreludeParser;
@@ -53,8 +52,8 @@ use crate::attributes::proc_macro_attrs::{
 use crate::attributes::prototype::CustomMirParser;
 use crate::attributes::repr::{AlignParser, AlignStaticParser, ReprParser};
 use crate::attributes::rustc_internal::{
-    RustcLayoutScalarValidRangeEndParser, RustcLayoutScalarValidRangeStartParser, RustcMainParser,
-    RustcObjectLifetimeDefaultParser, RustcSimdMonomorphizeLaneLimitParser,
+    RustcLayoutScalarValidRangeEnd, RustcLayoutScalarValidRangeStart,
+    RustcObjectLifetimeDefaultParser,
 };
 use crate::attributes::semantics::MayDangleParser;
 use crate::attributes::stability::{
@@ -62,10 +61,10 @@ use crate::attributes::stability::{
 };
 use crate::attributes::test_attrs::{IgnoreParser, ShouldPanicParser};
 use crate::attributes::traits::{
-    AllowIncoherentImplParser, CoinductiveParser, ConstTraitParser, DenyExplicitImplParser,
-    DoNotImplementViaObjectParser, FundamentalParser, MarkerParser, ParenSugarParser,
-    PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser, TypeConstParser,
-    UnsafeSpecializationMarkerParser,
+    AllowIncoherentImplParser, CoherenceIsCoreParser, CoinductiveParser, ConstTraitParser,
+    DenyExplicitImplParser, DoNotImplementViaObjectParser, FundamentalParser, MarkerParser,
+    ParenSugarParser, PointeeParser, SkipDuringMethodDispatchParser, SpecializationTraitParser,
+    TypeConstParser, UnsafeSpecializationMarkerParser,
 };
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
@@ -84,6 +83,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
+    pub(super) attribute_type: AttributeType,
 }
 
 type AcceptFn<S> =
@@ -133,6 +133,7 @@ macro_rules! attribute_parsers {
                                 })
                             }),
                             allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
+                            attribute_type: <$names as crate::attributes::AttributeParser<$stage>>::TYPE,
                         });
                     }
 
@@ -164,7 +165,6 @@ attribute_parsers!(
         // tidy-alphabetical-start
         Combine<AllowConstFnUnstableParser>,
         Combine<AllowInternalUnstableParser>,
-        Combine<DebuggerViualizerParser>,
         Combine<ForceTargetFeatureParser>,
         Combine<LinkParser>,
         Combine<ReprParser>,
@@ -185,11 +185,8 @@ attribute_parsers!(
         Single<LinkOrdinalParser>,
         Single<LinkSectionParser>,
         Single<LinkageParser>,
-        Single<MacroExportParser>,
         Single<MoveSizeLimitParser>,
         Single<MustUseParser>,
-        Single<ObjcClassParser>,
-        Single<ObjcSelectorParser>,
         Single<OptimizeParser>,
         Single<PathAttributeParser>,
         Single<PatternComplexityLimitParser>,
@@ -197,10 +194,9 @@ attribute_parsers!(
         Single<RecursionLimitParser>,
         Single<RustcBuiltinMacroParser>,
         Single<RustcForceInlineParser>,
-        Single<RustcLayoutScalarValidRangeEndParser>,
-        Single<RustcLayoutScalarValidRangeStartParser>,
+        Single<RustcLayoutScalarValidRangeEnd>,
+        Single<RustcLayoutScalarValidRangeStart>,
         Single<RustcObjectLifetimeDefaultParser>,
-        Single<RustcSimdMonomorphizeLaneLimitParser>,
         Single<SanitizeParser>,
         Single<ShouldPanicParser>,
         Single<SkipDuringMethodDispatchParser>,
@@ -210,6 +206,7 @@ attribute_parsers!(
         Single<WithoutArgs<AllowInternalUnsafeParser>>,
         Single<WithoutArgs<AsPtrParser>>,
         Single<WithoutArgs<AutomaticallyDerivedParser>>,
+        Single<WithoutArgs<CoherenceIsCoreParser>>,
         Single<WithoutArgs<CoinductiveParser>>,
         Single<WithoutArgs<ColdParser>>,
         Single<WithoutArgs<ConstContinueParser>>,
@@ -237,8 +234,6 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<PubTransparentParser>>,
-        Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
-        Single<WithoutArgs<RustcMainParser>>,
         Single<WithoutArgs<SpecializationTraitParser>>,
         Single<WithoutArgs<StdInternalSymbolParser>>,
         Single<WithoutArgs<TrackCallerParser>>,
@@ -598,12 +593,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        let attr_path = self.attr_path.clone();
-        let valid_without_list = self.template.word;
-        self.emit_lint(
-            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
-            span,
-        );
+        self.emit_lint(AttributeLintKind::EmptyAttribute { first_span: span }, span);
     }
 }
 

@@ -1,7 +1,1 @@
-[ERROR] unclosed frontmatter; expected `----`
-  --> script:15:3
-   |
- 1 | ----cargo
-...
-15 | }
-   |  ^
+[ERROR] no closing `----` found for frontmatter

@@ -77,14 +77,3 @@ fn msrv_juust_right() {
     use std::u32::MAX;
     //~^ ERROR: importing a legacy numeric constant
 }
-
-macro_rules! foo {
-    ($a: ty) => {
-        let _ = <$a>::max_value();
-        let _ = (<$a>::max_value)();
-    };
-}
-
-fn issue15805() {
-    foo!(u8);
-}

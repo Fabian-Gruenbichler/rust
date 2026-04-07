@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
+    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, path_def_id,
+    peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -187,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             },
             ExprKind::Index(target, _idx, _) => {
                 let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
-                if e_ty.is_str() || e_ty.is_lang_item(cx, LangItem::String) {
+                if e_ty.is_str() || is_type_lang_item(cx, e_ty, LangItem::String) {
                     span_lint(
                         cx,
                         STRING_SLICE,
@@ -202,10 +203,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
-        .expr_ty(e)
-        .peel_refs()
-        .is_lang_item(cx, LangItem::String)
+    is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
 }
 
 fn is_add(cx: &LateContext<'_>, src: &Expr<'_>, target: &Expr<'_>) -> bool {
@@ -255,7 +253,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         if let ExprKind::Call(fun, [bytes_arg]) = e.kind
             // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
             && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
-                fun.res(cx).opt_diag_name(cx)
+                path_def_id(cx, fun).and_then(|id| cx.tcx.get_diagnostic_name(id))
 
             // Find string::as_bytes
             && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind

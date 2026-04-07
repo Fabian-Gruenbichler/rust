@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
 use tracing::debug;
@@ -20,7 +20,9 @@ use tracing::debug;
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
-use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
+use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool};
+use crate::type_::Type;
+use crate::value::Value;
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -104,10 +106,6 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
 
     pub(crate) fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
         bytes_in_context(self.llcx(), bytes)
-    }
-
-    pub(crate) fn null_terminate_const_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        null_terminate_bytes_in_context(self.llcx(), bytes)
     }
 
     pub(crate) fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
@@ -281,8 +279,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                         // This avoids generating a zero-sized constant value and actually needing a
                         // real address at runtime.
                         if alloc.inner().len() == 0 {
-                            let val = alloc.inner().align.bytes().wrapping_add(offset.bytes());
-                            let llval = self.const_usize(self.tcx.truncate_to_target_usize(val));
+                            assert_eq!(offset.bytes(), 0);
+                            let llval = self.const_usize(alloc.inner().align.bytes());
                             return if matches!(layout.primitive(), Pointer(_)) {
                                 unsafe { llvm::LLVMConstIntToPtr(llval, llty) }
                             } else {
@@ -380,16 +378,6 @@ pub(crate) fn bytes_in_context<'ll>(llcx: &'ll llvm::Context, bytes: &[u8]) -> &
     unsafe {
         let ptr = bytes.as_ptr() as *const c_char;
         llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), TRUE)
-    }
-}
-
-pub(crate) fn null_terminate_bytes_in_context<'ll>(
-    llcx: &'ll llvm::Context,
-    bytes: &[u8],
-) -> &'ll Value {
-    unsafe {
-        let ptr = bytes.as_ptr() as *const c_char;
-        llvm::LLVMConstStringInContext2(llcx, ptr, bytes.len(), FALSE)
     }
 }
 

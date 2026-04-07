@@ -7,4 +7,3 @@
 // versions currently used by default.
 // FIXME(#133919): Once Rust upgrades to LLVM 20, remove this.
 //@ normalize-stdout: "(?m)^ *lime1\n" -> ""
-//@ ignore-backends: gcc

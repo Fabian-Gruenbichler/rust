@@ -37,10 +37,6 @@ target-is-arm: &target-is-arm
 target-not-arm: &target-not-arm
   FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm"']]}]]
 
-# #[cfg(not(target_arch = "arm64ec"))]
-target-not-arm64ec: &target-not-arm64ec
-  FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm64ec"']]}]]
-
 not-arm: &not-arm
   FnCall: [not, ['target_arch = "arm"']]
 
@@ -282,7 +278,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fabd]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -401,7 +396,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmeq]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -463,7 +457,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fabs]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -481,7 +474,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fabs]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - ['h_f16', 'f16']
@@ -563,7 +555,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmgt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -582,7 +573,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmgt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
@@ -661,7 +651,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmge]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -679,7 +668,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmle]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
@@ -861,7 +849,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [facgt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -908,7 +895,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [facge]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -949,7 +935,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [facgt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -985,7 +970,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [facge]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -1020,7 +1004,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [scvtf]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [int16x4_t, float16x4_t]
@@ -1055,7 +1038,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ucvtf]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [uint16x4_t, float16x4_t]
@@ -1127,7 +1109,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1159,7 +1140,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1191,7 +1171,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1250,7 +1229,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1504,7 +1482,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1524,7 +1501,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, f16, 'float16x4', '_n_']
@@ -1543,7 +1519,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['1']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1765,7 +1740,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -1784,7 +1758,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const N: i32']
     safety: safe
     types:
@@ -2234,7 +2207,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fneg]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, 'f16']
@@ -2290,10 +2262,13 @@ intrinsics:
       - [uint64x1_t, u64, i64]
       - [uint64x2_t, u64, i64]
     compose:
-      - FnCall:
-        - simd_saturating_sub
-        - - a
-          - b
+      - LLVMLink:
+          name: "uqsub.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.uqsub.v{neon_type[0].lane}{type[2]}"
+              arch: aarch64,arm64ec
+            - link: "llvm.usub.sat.v{neon_type[0].lane}{type[2]}"
+              arch: arm
 
   - name: "vqsub{neon_type[0].no}"
     doc: Saturating subtract
@@ -2316,10 +2291,13 @@ intrinsics:
       - [int64x1_t, s64, i64]
       - [int64x2_t, s64, i64]
     compose:
-      - FnCall:
-        - simd_saturating_sub
-        - - a
-          - b
+      - LLVMLink:
+          name: "sqsub.{neon_type[0]}"
+          links:
+            - link: "llvm.aarch64.neon.sqsub.v{neon_type[0].lane}{type[2]}"
+              arch: aarch64,arm64ec
+            - link: "llvm.ssub.sat.v{neon_type[0].lane}{type[2]}"
+              arch: arm
 
   - name: "vhadd{neon_type.no}"
     doc: Halving add
@@ -2486,7 +2464,9 @@ intrinsics:
           name: "llvm.frinn.{neon_type}"
           links:
             - link: "llvm.roundeven.{neon_type}"
-              arch: aarch64,arm64ec,arm
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.vrintn.{neon_type}"
+              arch: arm
 
   - name: "vrndn{neon_type.no}"
     doc: "Floating-point round to integral, to nearest with ties to even"
@@ -2498,7 +2478,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frintn]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -2508,7 +2487,9 @@ intrinsics:
           name: "llvm.frinn.{neon_type}"
           links:
             - link: "llvm.roundeven.{neon_type}"
-              arch: aarch64,arm64ec,arm
+              arch: aarch64,arm64ec
+            - link: "llvm.arm.neon.vrintn.{neon_type}"
+              arch: arm
 
   - name: "vqadd{neon_type.no}"
     doc: Saturating add
@@ -2531,10 +2512,13 @@ intrinsics:
       - uint64x1_t
       - uint64x2_t
     compose:
-      - FnCall:
-        - simd_saturating_add
-        - - a
-          - b
+      - LLVMLink:
+          name: "uqadd.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.uqadd.{neon_type}"
+              arch: aarch64,arm64ec
+            - link: "llvm.uadd.sat.{neon_type}"
+              arch: arm
 
   - name: "vqadd{neon_type.no}"
     doc: Saturating add
@@ -2557,10 +2541,13 @@ intrinsics:
       - int64x1_t
       - int64x2_t
     compose:
-      - FnCall:
-        - simd_saturating_add
-        - - a
-          - b
+      - LLVMLink:
+          name: "sqadd.{neon_type}"
+          links:
+            - link: "llvm.aarch64.neon.sqadd.{neon_type}"
+              arch: aarch64,arm64ec
+            - link: "llvm.sadd.sat.{neon_type}"
+              arch: arm
 
   - name: "vld1{neon_type[1].no}"
     doc: "Load multiple single-element structures to one, two, three, or four registers"
@@ -2756,7 +2743,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -2787,7 +2773,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -2808,7 +2793,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld1r]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3401,7 +3385,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3430,7 +3413,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3458,7 +3440,6 @@ intrinsics:
       - *neon-fp16
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld2]]}]]
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3488,7 +3469,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld2r]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3518,7 +3498,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -3561,7 +3540,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -3602,7 +3580,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld3]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3631,7 +3608,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3659,7 +3635,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld3]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3689,7 +3664,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld3r]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -3719,7 +3693,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -3764,7 +3737,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -4746,7 +4718,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     types:
       - ['*mut f16', float16x4_t, '2']
       - ['*mut f16', float16x8_t, '3']
@@ -4984,7 +4955,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [vst1]
     types:
       - [f16, float16x4x4_t, float16x4_t]
@@ -5128,7 +5098,6 @@ intrinsics:
       - *target-not-arm
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [st2]
     safety:
       unsafe: [neon]
@@ -5219,7 +5188,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st2, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -5311,7 +5279,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [vst2]
     safety:
       unsafe: [neon]
@@ -5378,7 +5345,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -5589,7 +5555,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [vst3]
     safety:
       unsafe: [neon]
@@ -5658,7 +5623,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -5719,7 +5683,6 @@ intrinsics:
       - *target-not-arm
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [st3]
     safety:
       unsafe: [neon]
@@ -5784,7 +5747,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st3, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -5998,7 +5960,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [vst4]
     safety:
       unsafe: [neon]
@@ -6068,7 +6029,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -6131,7 +6091,6 @@ intrinsics:
       - *target-not-arm
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [st4]
     safety:
       unsafe: [neon]
@@ -6198,7 +6157,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st4, 'LANE = 0']]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety:
       unsafe: [neon]
@@ -6359,7 +6317,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [f16, float16x4_t]
@@ -6409,7 +6366,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ["const LANE: i32"]
     safety: safe
     types:
@@ -6613,7 +6569,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmla]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -6723,7 +6678,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fsub]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - ['f16', float16x4_t]
@@ -6742,7 +6696,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fadd]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -6763,7 +6716,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fadd]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - ['h_f16', 'f16']
@@ -7242,7 +7194,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmax]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -7285,7 +7236,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmaxnm]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -7304,7 +7254,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fminnm]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -7391,7 +7340,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmin]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -7456,7 +7404,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [faddp]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -8300,7 +8247,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrsqrts]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frsqrts]]}]]
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -8349,7 +8295,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frecpe]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -8398,7 +8343,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frecps]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -8480,7 +8424,6 @@ intrinsics:
       - [poly16x8_t, p128]
       - [int8x16_t, p128]
       - [uint8x16_t, p128]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8718,7 +8661,6 @@ intrinsics:
       - [poly8x16_t, float32x4_t]
       - [poly16x8_t, float32x4_t]
       - [p128, float32x4_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8733,7 +8675,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       # non-q
@@ -8782,7 +8723,6 @@ intrinsics:
       - [float16x8_t, uint16x8_t]
       - [float16x8_t, uint32x4_t]
       - [float16x8_t, uint64x2_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8797,7 +8737,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [poly64x1_t, float16x4_t]
@@ -8807,7 +8746,6 @@ intrinsics:
       - [poly128_t, float16x8_t]
       - [float16x8_t, poly128_t]
       - [float16x8_t, poly64x2_t]
-    big_endian_inverse: false
     compose:
       - FnCall: [transmute, [a]]
 
@@ -8821,7 +8759,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [rev64]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, "[3, 2, 1, 0]"]
@@ -9137,7 +9074,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - ["u64", float16x4_t]
@@ -9211,7 +9147,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ['2']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -9643,7 +9578,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [trn2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, float16x4x2_t, '[0, 4, 2, 6]', '[1, 5, 3, 7]']
@@ -9799,7 +9733,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [zip2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, float16x4x2_t, '[0, 4, 1, 5]', '[2, 6, 3, 7]']
@@ -9870,7 +9803,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [uzp2]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, float16x4x2_t, '[0, 2, 4, 6]', '[1, 3, 5, 7]']
@@ -10118,7 +10050,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -10146,7 +10077,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -10173,7 +10103,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [vst1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -10250,7 +10179,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -10305,7 +10233,6 @@ intrinsics:
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [st1]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -10449,7 +10376,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmge]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -10468,7 +10394,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmge]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
@@ -10708,7 +10633,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzu]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -10728,7 +10652,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtn]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float32x4_t, float16x4_t]
@@ -10745,7 +10668,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtl]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, float32x4_t]
@@ -11107,7 +11029,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmul]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, "f16"]
@@ -11220,7 +11141,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmgt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t]
@@ -11239,7 +11159,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcmlt]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, uint16x4_t, f16x4, 'f16x4::new(0.0, 0.0, 0.0, 0.0)']
@@ -11352,7 +11271,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fmls]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -11468,7 +11386,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vrsqrte]]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [frsqrte]]}]]
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - float16x4_t
@@ -11582,7 +11499,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [fcvtzs]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, int16x4_t]
@@ -11832,7 +11748,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [nop]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -11919,7 +11834,6 @@ intrinsics:
       - FnCall: [target_feature, ['enable = "{type[3]}"']]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['{type[2]}']]}]]
     types:
       - ['*const f16', float16x4_t, '"vld1.16"', 'neon,v7', 'crate::mem::align_of::<f16>() as i32', '_v4f16']
@@ -12203,7 +12117,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld4]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -12232,7 +12145,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -12260,7 +12172,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, [vld4]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -12290,7 +12201,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [ld4r]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety:
       unsafe: [neon]
     types:
@@ -12320,7 +12230,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -12367,7 +12276,6 @@ intrinsics:
       - FnCall: [rustc_legacy_const_generics, ["2"]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs:
       - "const LANE: i32"
     safety:
@@ -13766,7 +13674,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst1.{type[4]}"']]}]]
     types:
       - ['_v4f16', '* const i8', float16x4_t, i32, '16']
@@ -13831,7 +13738,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
       - FnCall: [cfg_attr, [*test-is-arm, {FnCall: [assert_instr, ['"vst1.{type[2]}"']]}]]
     types:
       - ['*mut f16', float16x4_t, '16', 'transmute(a)', 'crate::mem::align_of::<f16>() as i32', '_v4f16']
@@ -14012,7 +13918,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [nop]
     safety: safe
     types:
@@ -14028,7 +13933,6 @@ intrinsics:
       - *neon-v7
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     assert_instr: [nop]
     safety: safe
     types:
@@ -14048,7 +13952,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [nop, 'LANE = 0']]}]]
       - FnCall: [rustc_legacy_const_generics, ["1"]]
       - *neon-unstable-f16
-      - *target-not-arm64ec
     static_defs: ['const LANE: i32']
     safety: safe
     types:
@@ -14068,7 +13971,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, [dup]]}]]
       - *neon-fp16
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - [float16x4_t, f16]
@@ -14683,7 +14585,6 @@ intrinsics:
       - FnCall: [cfg_attr, [*test-is-arm, { FnCall: [assert_instr, ['vbsl']]}]]
       - FnCall: [cfg_attr, [*neon-target-aarch64-arm64ec, {FnCall: [assert_instr, ['bsl']]}]]
       - *neon-unstable-f16
-      - *target-not-arm64ec
     safety: safe
     types:
       - ['vbslq_f16', 'uint16x8_t', 'float16x8_t', 'int16x8_t::splat(-1)']

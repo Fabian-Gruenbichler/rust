@@ -2,11 +2,13 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const};
+use clippy_utils::{
+    expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, is_path_lang_item,
+    path_to_local,
+};
 use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
@@ -297,8 +299,8 @@ fn check_possible_range_contains(
     }
 }
 
-struct RangeBounds<'a> {
-    val: Constant,
+struct RangeBounds<'a, 'tcx> {
+    val: Constant<'tcx>,
     expr: &'a Expr<'a>,
     id: HirId,
     name_span: Span,
@@ -310,7 +312,7 @@ struct RangeBounds<'a> {
 // Takes a binary expression such as x <= 2 as input
 // Breaks apart into various pieces, such as the value of the number,
 // hir id of the variable, and direction/inclusiveness of the operator
-fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a>> {
+fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> Option<RangeBounds<'a, 'tcx>> {
     if let ExprKind::Binary(ref op, l, r) = ex.kind {
         let (inclusive, ordering) = match op.node {
             BinOpKind::Gt => (false, Ordering::Greater),
@@ -319,7 +321,7 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
             BinOpKind::Le => (true, Ordering::Less),
             _ => return None,
         };
-        if let Some(id) = l.res_local_id() {
+        if let Some(id) = path_to_local(l) {
             if let Some(c) = ConstEvalCtxt::new(cx).eval(r) {
                 return Some(RangeBounds {
                     val: c,
@@ -331,7 +333,7 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
                     inc: inclusive,
                 });
             }
-        } else if let Some(id) = r.res_local_id()
+        } else if let Some(id) = path_to_local(r)
             && let Some(c) = ConstEvalCtxt::new(cx).eval(l)
         {
             return Some(RangeBounds {
@@ -368,7 +370,7 @@ fn can_switch_ranges<'tcx>(
     // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
     if let ExprKind::Call(func, [arg]) = parent_expr.kind
         && arg.hir_id == use_ctxt.child_id
-        && func.opt_lang_path() == Some(LangItem::IntoIterIntoIter)
+        && is_path_lang_item(cx, func, LangItem::IntoIterIntoIter)
     {
         return true;
     }

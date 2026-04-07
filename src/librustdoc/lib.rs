@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(round_char_boundary))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/",
     html_playground_url = "https://play.rust-lang.org/"
@@ -9,15 +10,15 @@
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
-#![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(iter_advance_by)]
 #![feature(iter_intersperse)]
-#![feature(iter_order_by)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![warn(rustc::internal)]
 // tidy-alphabetical-end
+
+extern crate thin_vec;
 
 // N.B. these need `extern crate` even in 2018 edition
 // because they're loaded implicitly from the sysroot.
@@ -27,6 +28,7 @@
 //
 // Dependencies listed in Cargo.toml do not need `extern crate`.
 
+extern crate pulldown_cmark;
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
@@ -833,10 +835,8 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
         config::InputMode::NoInputMergeFinalize => {
             return wrap_return(
                 dcx,
-                rustc_span::create_session_globals_then(options.edition, &[], None, || {
-                    run_merge_finalize(render_options)
-                        .map_err(|e| format!("could not write merged cross-crate info: {e}"))
-                }),
+                run_merge_finalize(render_options)
+                    .map_err(|e| format!("could not write merged cross-crate info: {e}")),
             );
         }
     };

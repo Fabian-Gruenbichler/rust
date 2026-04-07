@@ -1,5 +1,5 @@
 r[items.associated]
-# Associated items
+# Associated Items
 
 r[items.associated.syntax]
 ```grammar,items
@@ -223,7 +223,7 @@ Attributes on method parameters follow the same rules and restrictions as
 [regular function parameters].
 
 r[items.associated.type]
-## Associated types
+## Associated Types
 
 r[items.associated.type.intro]
 *Associated types* are [type aliases] associated with another type.
@@ -347,7 +347,7 @@ fn main() {
 }
 ```
 
-### Associated types container example
+### Associated Types Container Example
 
 Consider the following example of a `Container` trait. Notice that the type is
 available for use in the method signatures:
@@ -461,7 +461,7 @@ trait StaticReturn {
 ```
 
 r[items.associated.const]
-## Associated constants
+## Associated Constants
 
 r[items.associated.const.intro]
 *Associated constants* are [constants] associated with a type.
@@ -512,7 +512,7 @@ fn main() {
 }
 ```
 
-### Associated constants examples
+### Associated Constants Examples
 
 A basic example:
 

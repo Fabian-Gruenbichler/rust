@@ -4,15 +4,13 @@ use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::usage::local_used_after_expr;
+use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
-    eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment,
-    sym,
+    eq_expr_value, higher, is_else_clause, is_in_const_context, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
+    pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
+    span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -206,7 +204,7 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
         IfBlockType::IfIs(caller, caller_ty, call_sym, if_then) => {
             // If the block could be identified as `if x.is_none()/is_err()`,
             // we then only need to check the if_then return to see if it is none/err.
-            caller_ty.is_diag_item(cx, smbl)
+            is_type_diagnostic_item(cx, caller_ty, smbl)
                 && expr_return_none_or_err(smbl, cx, if_then, caller, None)
                 && match smbl {
                     sym::Option => call_sym == sym::is_none,
@@ -215,20 +213,20 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                 }
         },
         IfBlockType::IfLet(res, let_expr_ty, let_pat_sym, let_expr, if_then, if_else) => {
-            let_expr_ty.is_diag_item(cx, smbl)
+            is_type_diagnostic_item(cx, let_expr_ty, smbl)
                 && match smbl {
                     sym::Option => {
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
-                        res.ctor_parent(cx).is_lang_item(cx, OptionSome)
+                        is_res_lang_ctor(cx, res, OptionSome)
                             && if_else.is_some()
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, None)
                     },
                     sym::Result => {
-                        (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
+                        (is_res_lang_ctor(cx, res, ResultOk)
                             && if_else.is_some()
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
-                            || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
+                            || is_res_lang_ctor(cx, res, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
                     },
@@ -248,11 +246,8 @@ fn expr_return_none_or_err(
     match peel_blocks_with_stmt(expr).kind {
         ExprKind::Ret(Some(ret_expr)) => expr_return_none_or_err(smbl, cx, ret_expr, cond_expr, err_sym),
         ExprKind::Path(ref qpath) => match smbl {
-            sym::Option => cx
-                .qpath_res(qpath, expr.hir_id)
-                .ctor_parent(cx)
-                .is_lang_item(cx, OptionNone),
-            sym::Result => expr.res_local_id().is_some() && expr.res_local_id() == cond_expr.res_local_id(),
+            sym::Option => is_res_lang_ctor(cx, cx.qpath_res(qpath, expr.hir_id), OptionNone),
+            sym::Result => path_to_local(expr).is_some() && path_to_local(expr) == path_to_local(cond_expr),
             _ => false,
         },
         ExprKind::Call(call_expr, [arg]) => {
@@ -346,10 +341,7 @@ fn extract_ctor_call<'a, 'tcx>(
     pat: &'a Pat<'tcx>,
 ) -> Option<&'a Pat<'tcx>> {
     if let PatKind::TupleStruct(variant_path, [val_binding], _) = &pat.kind
-        && cx
-            .qpath_res(variant_path, pat.hir_id)
-            .ctor_parent(cx)
-            .is_lang_item(cx, expected_ctor)
+        && is_res_lang_ctor(cx, cx.qpath_res(variant_path, pat.hir_id), expected_ctor)
     {
         Some(val_binding)
     } else {
@@ -378,7 +370,7 @@ fn check_arm_is_some_or_ok<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &Ar
         // Extract out `val`
         && let Some(binding) = extract_binding_pat(val_binding)
         // Check body is just `=> val`
-        && peel_blocks(arm.body).res_local_id() == Some(binding)
+        && path_to_local_id(peel_blocks(arm.body), binding)
     {
         true
     } else {
@@ -400,9 +392,9 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 // check `=> return Err(...)`
                 && let ExprKind::Ret(Some(wrapped_ret_expr)) = arm_body.kind
                 && let ExprKind::Call(ok_ctor, [ret_expr]) = wrapped_ret_expr.kind
-                && ok_ctor.res(cx).ctor_parent(cx).is_lang_item(cx, ResultErr)
-                // check if `...` is `val` from binding or `val.into()`
-                && is_local_or_local_into(cx, ret_expr, ok_val)
+                && is_res_lang_ctor(cx, path_res(cx, ok_ctor), ResultErr)
+                // check `...` is `val` from binding
+                && path_to_local_id(ret_expr, ok_val)
             {
                 true
             } else {
@@ -411,10 +403,10 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
         },
         TryMode::Option => {
             // Check the pat is `None`
-            if arm.pat.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+            if is_res_lang_ctor(cx, path_res(cx, arm.pat), OptionNone)
                 // Check `=> return None`
                 && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
-                && ret_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+                && is_res_lang_ctor(cx, path_res(cx, ret_expr), OptionNone)
                 && !ret_expr.span.from_expansion()
             {
                 true
@@ -422,19 +414,6 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
                 false
             }
         },
-    }
-}
-
-/// Check if `expr` is `val` or `val.into()`
-fn is_local_or_local_into(cx: &LateContext<'_>, expr: &Expr<'_>, val: HirId) -> bool {
-    let is_into_call = fn_def_id_with_node_args(cx, expr)
-        .and_then(|(fn_def_id, _)| cx.tcx.trait_of_assoc(fn_def_id))
-        .is_some_and(|trait_def_id| cx.tcx.is_diagnostic_item(sym::Into, trait_def_id));
-    match expr.kind {
-        ExprKind::MethodCall(_, recv, [], _) | ExprKind::Call(_, [recv]) => {
-            is_into_call && recv.res_local_id() == Some(val)
-        },
-        _ => expr.res_local_id() == Some(val),
     }
 }
 
@@ -486,20 +465,13 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
             if_then,
             if_else,
         )
-        && ((is_early_return(sym::Option, cx, &if_block) && peel_blocks(if_then).res_local_id() == Some(bind_id))
+        && ((is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
             || is_early_return(sym::Result, cx, &if_block))
         && if_else
             .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
             .filter(|e| *e)
             .is_none()
     {
-        if !is_copy(cx, caller_ty)
-            && let Some(hir_id) = let_expr.res_local_id()
-            && local_used_after_expr(cx, hir_id, expr)
-        {
-            return;
-        }
-
         let mut applicability = Applicability::MachineApplicable;
         let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
         let requires_semi = matches!(cx.tcx.parent_hir_node(expr.hir_id), Node::Stmt(_));
@@ -530,11 +502,11 @@ impl QuestionMark {
     }
 }
 
-fn is_try_block(bl: &Block<'_>) -> bool {
+fn is_try_block(cx: &LateContext<'_>, bl: &Block<'_>) -> bool {
     if let Some(expr) = bl.expr
         && let ExprKind::Call(callee, [_]) = expr.kind
     {
-        callee.opt_lang_path() == Some(LangItem::TryTraitFromOutput)
+        is_path_lang_item(cx, callee, LangItem::TryTraitFromOutput)
     } else {
         false
     }
@@ -590,8 +562,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         }
     }
 
-    fn check_block(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()
@@ -607,8 +579,8 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
         self.try_block_depth_stack.pop();
     }
 
-    fn check_block_post(&mut self, _: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if is_try_block(block) {
+    fn check_block_post(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
+        if is_try_block(cx, block) {
             *self
                 .try_block_depth_stack
                 .last_mut()

@@ -22,8 +22,7 @@ pub mod os;
 pub mod pipe;
 pub mod time;
 cfg_select! {
-    // We don't care about printing nice error messages for panic=immediate-abort
-    all(not(target_vendor = "uwp"), not(panic = "immediate-abort")) => {
+    not(target_vendor = "uwp") => {
         pub mod stack_overflow;
     }
     _ => {
@@ -31,7 +30,6 @@ cfg_select! {
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
-pub mod winsock;
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 pub trait IoResult<T> {
@@ -58,7 +56,7 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    winsock::cleanup();
+    crate::sys::net::cleanup();
 }
 
 #[inline]

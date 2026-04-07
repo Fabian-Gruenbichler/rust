@@ -9,7 +9,6 @@ mod assert {
     where
         Dst: TransmuteFrom<Src>,
         //~^ ERROR: use of unstable library feature `transmutability`
-        //~^^ ERROR: use of unstable library feature `transmutability`
     {
     }
 }

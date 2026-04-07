@@ -3,7 +3,6 @@ use libc::{c_int, pid_t};
 use super::common::*;
 use crate::io;
 use crate::num::NonZero;
-use crate::process::StdioPipes;
 use crate::sys::pal::unsupported::*;
 
 ////////////////////////////////////////////////////////////////////////////////

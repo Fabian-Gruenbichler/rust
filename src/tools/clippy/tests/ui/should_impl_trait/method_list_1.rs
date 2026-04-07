@@ -1,6 +1,3 @@
-//@revisions: edition2015 edition2021
-//@[edition2015] edition:2015
-//@[edition2021] edition:2021
 #![allow(
     clippy::missing_errors_doc,
     clippy::needless_pass_by_value,

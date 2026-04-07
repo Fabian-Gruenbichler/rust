@@ -3,7 +3,6 @@
 //@ build-fail
 //@ ignore-pass (test emits codegen-time errors)
 //@ needs-llvm-components: x86
-//@ ignore-backends: gcc
 #![feature(no_core, abi_vectorcall)]
 #![no_core]
 

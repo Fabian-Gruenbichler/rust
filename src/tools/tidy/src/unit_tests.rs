@@ -11,12 +11,9 @@
 
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
-pub fn check(root_path: &Path, stdlib: bool, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("unit_tests").path(root_path));
-
+pub fn check(root_path: &Path, stdlib: bool, bad: &mut bool) {
     let skip = move |path: &Path, is_dir| {
         let file_name = path.file_name().unwrap_or_default();
 
@@ -95,11 +92,14 @@ pub fn check(root_path: &Path, stdlib: bool, tidy_ctx: TidyCtx) {
                         .to_owned()
                 };
                 let name = if is_test() { "test" } else { "bench" };
-                check.error(format!(
-                    "`{}:{}` contains `#[{name}]`; {explanation}",
+                tidy_error!(
+                    bad,
+                    "`{}:{}` contains `#[{}]`; {}",
                     path.display(),
                     i + 1,
-                ));
+                    name,
+                    explanation,
+                );
                 return;
             }
         }

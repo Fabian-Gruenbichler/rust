@@ -2,7 +2,6 @@
 
 // FIXME(jieyouxu): triple check if this works in CI
 //@ min-cdb-version: 10.0.26100.2161
-//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

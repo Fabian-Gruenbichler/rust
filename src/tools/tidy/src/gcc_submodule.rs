@@ -4,11 +4,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::diagnostics::TidyCtx;
-
-pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("gcc_submodule");
-
+pub fn check(root_path: &Path, compiler_path: &Path, bad: &mut bool) {
     let cg_gcc_version_path = compiler_path.join("rustc_codegen_gcc/libgccjit.version");
     let cg_gcc_version = std::fs::read_to_string(&cg_gcc_version_path)
         .unwrap_or_else(|_| {
@@ -30,7 +26,7 @@ pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
 
     // Git is not available or we are in a tarball
     if !git_output.status.success() {
-        check.message("Cannot figure out the SHA of the GCC submodule");
+        eprintln!("Cannot figure out the SHA of the GCC submodule");
         return;
     }
 
@@ -47,11 +43,12 @@ pub fn check(root_path: &Path, compiler_path: &Path, tidy_ctx: TidyCtx) {
     // The SHA can start with + if the submodule is modified or - if it is not checked out.
     let gcc_submodule_sha = git_output.trim_start_matches(['+', '-']);
     if gcc_submodule_sha != cg_gcc_version {
-        check.error(format!(
+        *bad = true;
+        eprintln!(
             r#"Commit SHA of the src/gcc submodule (`{gcc_submodule_sha}`) does not match the required GCC version of the GCC codegen backend (`{cg_gcc_version}`).
 Make sure to set the src/gcc submodule to commit {cg_gcc_version}.
 The GCC codegen backend commit is configured at {}."#,
             cg_gcc_version_path.display(),
-        ));
+        );
     }
 }

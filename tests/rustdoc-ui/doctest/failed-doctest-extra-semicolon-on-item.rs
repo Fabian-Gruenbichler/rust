@@ -9,7 +9,6 @@
 /// <https://github.com/rust-lang/rust/issues/91014>
 ///
 /// ```rust
-//~^ WARN the `main` function of this doctest won't be run
 /// struct S {};
 ///
 /// fn main() {

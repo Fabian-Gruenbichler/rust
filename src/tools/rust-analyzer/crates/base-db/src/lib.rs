@@ -6,14 +6,8 @@ pub use salsa_macros;
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
 mod input;
-pub mod target;
 
-use std::{
-    cell::RefCell,
-    hash::BuildHasherDefault,
-    panic,
-    sync::{Once, atomic::AtomicUsize},
-};
+use std::{cell::RefCell, hash::BuildHasherDefault, panic, sync::Once};
 
 pub use crate::{
     change::FileChange,
@@ -21,7 +15,8 @@ pub use crate::{
         BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
         CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
         DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroLoadingError,
-        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, UniqueCrateData,
+        ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        UniqueCrateData,
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};
@@ -35,8 +30,6 @@ use triomphe::Arc;
 pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;
-pub type FxIndexMap<K, V> =
-    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 #[macro_export]
 macro_rules! impl_intern_key {
@@ -333,33 +326,13 @@ pub trait SourceDatabase: salsa::Database {
 
     #[doc(hidden)]
     fn crates_map(&self) -> Arc<CratesMap>;
-
-    fn nonce_and_revision(&self) -> (Nonce, salsa::Revision);
-}
-
-static NEXT_NONCE: AtomicUsize = AtomicUsize::new(0);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Nonce(usize);
-
-impl Default for Nonce {
-    #[inline]
-    fn default() -> Self {
-        Nonce::new()
-    }
-}
-
-impl Nonce {
-    #[inline]
-    pub fn new() -> Nonce {
-        Nonce(NEXT_NONCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst))
-    }
 }
 
 /// Crate related data shared by the whole workspace.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CrateWorkspaceData {
-    pub target: Result<target::TargetData, target::TargetLoadError>,
+    // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
+    pub data_layout: TargetLayoutLoadResult,
     /// Toolchain version used to compile the crate.
     pub toolchain: Option<Version>,
 }

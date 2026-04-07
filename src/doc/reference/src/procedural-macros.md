@@ -1,5 +1,5 @@
 r[macro.proc]
-# Procedural macros
+# Procedural Macros
 
 r[macro.proc.intro]
 *Procedural macros* allow creating syntax extensions as execution of a function.

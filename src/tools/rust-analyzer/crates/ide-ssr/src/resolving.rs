@@ -48,20 +48,16 @@ impl<'db> ResolvedRule<'db> {
         resolution_scope: &ResolutionScope<'db>,
         index: usize,
     ) -> Result<ResolvedRule<'db>, SsrError> {
-        hir::attach_db(resolution_scope.scope.db, || {
-            let resolver = Resolver {
-                resolution_scope,
-                placeholders_by_stand_in: rule.placeholders_by_stand_in,
-            };
-            let resolved_template = match rule.template {
-                Some(template) => Some(resolver.resolve_pattern_tree(template)?),
-                None => None,
-            };
-            Ok(ResolvedRule {
-                pattern: resolver.resolve_pattern_tree(rule.pattern)?,
-                template: resolved_template,
-                index,
-            })
+        let resolver =
+            Resolver { resolution_scope, placeholders_by_stand_in: rule.placeholders_by_stand_in };
+        let resolved_template = match rule.template {
+            Some(template) => Some(resolver.resolve_pattern_tree(template)?),
+            None => None,
+        };
+        Ok(ResolvedRule {
+            pattern: resolver.resolve_pattern_tree(rule.pattern)?,
+            template: resolved_template,
+            index,
         })
     }
 

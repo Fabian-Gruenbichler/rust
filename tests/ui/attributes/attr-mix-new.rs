@@ -5,7 +5,6 @@
 #[rustc_dummy(bar)]
 mod foo {
   #![feature(globs)]
-  //~^ WARN crate-level attribute should be in the root module
 }
 
 fn main() {}

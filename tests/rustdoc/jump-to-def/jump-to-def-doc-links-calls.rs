@@ -8,7 +8,7 @@
 pub struct Bar;
 
 impl std::default::Default for Bar {
-    //@ has - '//a[@href="#20-22"]' 'new'
+    //@ has - '//a[@href="#20-22"]' 'Self::new'
     fn default() -> Self {
         Self::new()
     }
@@ -16,7 +16,7 @@ impl std::default::Default for Bar {
 
 //@ has - '//a[@href="#8"]' 'Bar'
 impl Bar {
-     //@ has - '//a[@href="#24-26"]' 'bar'
+     //@ has - '//a[@href="#24-26"]' 'Self::bar'
      pub fn new()-> Self {
          Self::bar()
      }

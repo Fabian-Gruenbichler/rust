@@ -9,8 +9,7 @@ struct NoConfigurationPredicate;
 struct A0C0;
 
 // Zero attributes, one trailing comma
-#[cfg_attr(all(),)]
-//~^ WARN `#[cfg_attr]` does not expand to any attributes
+#[cfg_attr(all(),)] // Ok
 struct A0C1;
 
 // Zero attributes, two trailing commas

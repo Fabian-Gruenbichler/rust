@@ -1,8 +1,4 @@
-<!-- Old headings. Do not remove or links may break. -->
-
-<a id="writing-error-messages-to-standard-error-instead-of-standard-output"></a>
-
-## Redirecting Errors to Standard Error
+## Writing Error Messages to Standard Error Instead of Standard Output
 
 At the moment, we’re writing all of our output to the terminal using the
 `println!` macro. In most terminals, there are two kinds of output: _standard
@@ -16,7 +12,7 @@ to use something else to print to standard error.
 
 ### Checking Where Errors Are Written
 
-First, let’s observe how the content printed by `minigrep` is currently being
+First let’s observe how the content printed by `minigrep` is currently being
 written to standard output, including any error messages we want to write to
 standard error instead. We’ll do that by redirecting the standard output stream
 to a file while intentionally causing an error. We won’t redirect the standard
@@ -24,10 +20,9 @@ error stream, so any content sent to standard error will continue to display on
 the screen.
 
 Command line programs are expected to send error messages to the standard error
-stream so that we can still see error messages on the screen even if we
-redirect the standard output stream to a file. Our program is not currently
-well behaved: We’re about to see that it saves the error message output to a
-file instead!
+stream so we can still see error messages on the screen even if we redirect the
+standard output stream to a file. Our program is not currently well behaved:
+we’re about to see that it saves the error message output to a file instead!
 
 To demonstrate this behavior, we’ll run the program with `>` and the file path,
 _output.txt_, that we want to redirect the standard output stream to. We won’t
@@ -47,8 +42,8 @@ Problem parsing arguments: not enough arguments
 ```
 
 Yup, our error message is being printed to standard output. It’s much more
-useful for error messages like this to be printed to standard error so that
-only data from a successful run ends up in the file. We’ll change that.
+useful for error messages like this to be printed to standard error so only
+data from a successful run ends up in the file. We’ll change that.
 
 ### Printing Errors to Standard Error
 

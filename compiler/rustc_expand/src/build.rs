@@ -233,7 +233,7 @@ impl<'a> ExtCtxt<'a> {
         };
         let local = Box::new(ast::Local {
             super_: None,
-            pat: Box::new(pat),
+            pat,
             ty,
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Init(ex),
@@ -249,7 +249,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn stmt_let_type_only(&self, span: Span, ty: Box<ast::Ty>) -> ast::Stmt {
         let local = Box::new(ast::Local {
             super_: None,
-            pat: Box::new(self.pat_wild(span)),
+            pat: self.pat_wild(span),
             ty: Some(ty),
             id: ast::DUMMY_NODE_ID,
             kind: LocalKind::Decl,
@@ -528,16 +528,16 @@ impl<'a> ExtCtxt<'a> {
         self.expr_match(sp, head, thin_vec![ok_arm, err_arm])
     }
 
-    pub fn pat(&self, span: Span, kind: PatKind) -> ast::Pat {
-        ast::Pat { id: ast::DUMMY_NODE_ID, kind, span, tokens: None }
+    pub fn pat(&self, span: Span, kind: PatKind) -> Box<ast::Pat> {
+        Box::new(ast::Pat { id: ast::DUMMY_NODE_ID, kind, span, tokens: None })
     }
-    pub fn pat_wild(&self, span: Span) -> ast::Pat {
+    pub fn pat_wild(&self, span: Span) -> Box<ast::Pat> {
         self.pat(span, PatKind::Wild)
     }
-    pub fn pat_lit(&self, span: Span, expr: Box<ast::Expr>) -> ast::Pat {
+    pub fn pat_lit(&self, span: Span, expr: Box<ast::Expr>) -> Box<ast::Pat> {
         self.pat(span, PatKind::Expr(expr))
     }
-    pub fn pat_ident(&self, span: Span, ident: Ident) -> ast::Pat {
+    pub fn pat_ident(&self, span: Span, ident: Ident) -> Box<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)
     }
 
@@ -546,19 +546,19 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         ident: Ident,
         ann: ast::BindingMode,
-    ) -> ast::Pat {
+    ) -> Box<ast::Pat> {
         let pat = PatKind::Ident(ann, ident.with_span_pos(span), None);
         self.pat(span, pat)
     }
-    pub fn pat_path(&self, span: Span, path: ast::Path) -> ast::Pat {
+    pub fn pat_path(&self, span: Span, path: ast::Path) -> Box<ast::Pat> {
         self.pat(span, PatKind::Path(None, path))
     }
     pub fn pat_tuple_struct(
         &self,
         span: Span,
         path: ast::Path,
-        subpats: ThinVec<ast::Pat>,
-    ) -> ast::Pat {
+        subpats: ThinVec<Box<ast::Pat>>,
+    ) -> Box<ast::Pat> {
         self.pat(span, PatKind::TupleStruct(None, path, subpats))
     }
     pub fn pat_struct(
@@ -566,23 +566,23 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         path: ast::Path,
         field_pats: ThinVec<ast::PatField>,
-    ) -> ast::Pat {
+    ) -> Box<ast::Pat> {
         self.pat(span, PatKind::Struct(None, path, field_pats, ast::PatFieldsRest::None))
     }
-    pub fn pat_tuple(&self, span: Span, pats: ThinVec<ast::Pat>) -> ast::Pat {
+    pub fn pat_tuple(&self, span: Span, pats: ThinVec<Box<ast::Pat>>) -> Box<ast::Pat> {
         self.pat(span, PatKind::Tuple(pats))
     }
 
-    pub fn pat_some(&self, span: Span, pat: ast::Pat) -> ast::Pat {
+    pub fn pat_some(&self, span: Span, pat: Box<ast::Pat>) -> Box<ast::Pat> {
         let some = self.std_path(&[sym::option, sym::Option, sym::Some]);
         let path = self.path_global(span, some);
         self.pat_tuple_struct(span, path, thin_vec![pat])
     }
 
-    pub fn arm(&self, span: Span, pat: ast::Pat, expr: Box<ast::Expr>) -> ast::Arm {
+    pub fn arm(&self, span: Span, pat: Box<ast::Pat>, expr: Box<ast::Expr>) -> ast::Arm {
         ast::Arm {
             attrs: AttrVec::new(),
-            pat: Box::new(pat),
+            pat,
             guard: None,
             body: Some(expr),
             span,
@@ -661,11 +661,11 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn param(&self, span: Span, ident: Ident, ty: Box<ast::Ty>) -> ast::Param {
-        let pat = Box::new(self.pat_ident(span, ident));
+        let arg_pat = self.pat_ident(span, ident);
         ast::Param {
             attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,
-            pat,
+            pat: arg_pat,
             span,
             ty,
             is_placeholder: false,

@@ -4,17 +4,14 @@
 // Check that `...` in closures is rejected.
 
 const F: extern "C" fn(...) = |_: ...| {};
-//~^ ERROR: unexpected `...`
-//~| NOTE: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+//~^ ERROR C-variadic type `...` may not be nested inside another type
 
 fn foo() {
     let f = |...| {};
-    //~^ ERROR: unexpected `...`
-    //~| NOTE: not a valid pattern
-    //~| NOTE: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+    //~^ ERROR: `..` patterns are not allowed here
+    //~| ERROR: unexpected `...`
 
     let f = |_: ...| {};
-    //~^ ERROR: unexpected `...`
-    //~| NOTE: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
+    //~^ ERROR C-variadic type `...` may not be nested inside another type
     f(1i64)
 }

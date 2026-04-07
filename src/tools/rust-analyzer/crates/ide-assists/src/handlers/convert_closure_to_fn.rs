@@ -236,7 +236,6 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             };
             let mut fn_ = make::fn_(
                 None,
-                None,
                 closure_name_or_default.clone(),
                 closure_type_params,
                 closure_where_clause,
@@ -506,7 +505,7 @@ fn wrap_capture_in_deref_if_needed(
     make::expr_prefix(T![*], capture_name).into()
 }
 
-fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture<'_>) -> ast::Expr {
+fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture) -> ast::Expr {
     let place = parse_expr_from_str(&capture.display_place_source_code(ctx.db()), ctx.edition())
         .expect("`display_place_source_code()` produced an invalid expr");
     let needs_mut = match capture.kind() {
@@ -805,7 +804,6 @@ impl A {
         );
     }
 
-    #[ignore = "FIXME(next-solver): Fix async closures"]
     #[test]
     fn replaces_async_closure_with_async_fn() {
         check_assist(
@@ -1067,7 +1065,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         *a = 1.2;
         let c = *b;
     }
@@ -1099,7 +1097,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         let _: &mut bool = p2;
         *a = 1.2;
         let c = *b;
@@ -1137,7 +1135,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         let _: &mut bool = p2;
         *a = 1.2;
         let c = *b;

@@ -170,10 +170,14 @@ impl AssistResolveStrategy {
 #[derive(Clone, Debug)]
 pub struct GroupLabel(pub String);
 
-#[derive(Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ExprFillDefaultMode {
-    #[default]
     Todo,
     Default,
     Underscore,
+}
+impl Default for ExprFillDefaultMode {
+    fn default() -> Self {
+        Self::Todo
+    }
 }

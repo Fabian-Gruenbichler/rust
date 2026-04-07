@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{option_arg_ty, peel_and_count_ty_refs};
-use clippy_utils::{get_parent_expr, peel_blocks, span_contains_comment};
+use clippy_utils::ty::{option_arg_ty, peel_mid_ty_refs_is_mutable};
+use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res, peel_blocks, span_contains_comment};
 use rustc_ast::{BindingMode, Mutability};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr};
@@ -73,10 +72,7 @@ fn is_variant_or_wildcard(cx: &LateContext<'_>, pat: &Pat<'_>, can_be_wild: bool
             true
         },
         PatKind::TupleStruct(qpath, ..) => {
-            cx.qpath_res(&qpath, pat.hir_id)
-                .ctor_parent(cx)
-                .is_lang_item(cx, ResultErr)
-                == must_match_err
+            is_res_lang_ctor(cx, cx.qpath_res(&qpath, pat.hir_id), ResultErr) == must_match_err
         },
         PatKind::Binding(_, _, _, Some(pat)) | PatKind::Ref(pat, _) => {
             is_variant_or_wildcard(cx, pat, can_be_wild, must_match_err)
@@ -107,7 +103,7 @@ fn is_ok_or_err<'hir>(cx: &LateContext<'_>, pat: &Pat<'hir>) -> Option<(bool, &'
 /// Check if `expr` contains `Some(ident)`, possibly as a block
 fn is_some_ident<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, ident: &Ident, ty: Ty<'tcx>) -> bool {
     if let ExprKind::Call(body_callee, [body_arg]) = peel_blocks(expr).kind
-        && body_callee.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+        && is_res_lang_ctor(cx, path_res(cx, body_callee), OptionSome)
         && cx.typeck_results().expr_ty(body_arg) == ty
         && let ExprKind::Path(QPath::Resolved(
             _,
@@ -124,7 +120,7 @@ fn is_some_ident<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, ident: &Ident, t
 
 /// Check if `expr` is `None`, possibly as a block
 fn is_none(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    peel_blocks(expr).res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+    is_res_lang_ctor(cx, path_res(cx, peel_blocks(expr)), OptionNone)
 }
 
 /// Suggest replacing `expr` by `scrutinee.METHOD()`, where `METHOD` is either `ok` or
@@ -139,11 +135,15 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
     let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_paren();
 
     let scrutinee_ty = cx.typeck_results().expr_ty(scrutinee);
-    let (_, _, mutability) = peel_and_count_ty_refs(scrutinee_ty);
-    let prefix = match mutability {
-        Some(Mutability::Mut) => ".as_mut()",
-        Some(Mutability::Not) => ".as_ref()",
-        None => "",
+    let (_, n_ref, mutability) = peel_mid_ty_refs_is_mutable(scrutinee_ty);
+    let prefix = if n_ref > 0 {
+        if mutability == Mutability::Mut {
+            ".as_mut()"
+        } else {
+            ".as_ref()"
+        }
+    } else {
+        ""
     };
 
     let sugg = format!("{scrut}{prefix}.{method}()");

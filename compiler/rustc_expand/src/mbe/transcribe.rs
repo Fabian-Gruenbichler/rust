@@ -17,8 +17,8 @@ use rustc_span::{
 use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
-    CountRepetitionMisplaced, MacroVarStillRepeating, MetaVarsDifSeqMatchers, MustRepeatOnce,
-    MveUnrecognizedVar, NoSyntaxVarsExprRepeat,
+    CountRepetitionMisplaced, MetaVarsDifSeqMatchers, MustRepeatOnce, MveUnrecognizedVar,
+    NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::NamedMatch;
 use crate::mbe::macro_parser::NamedMatch::*;
@@ -375,19 +375,6 @@ fn transcribe_metavar<'tx>(
         return Ok(());
     };
 
-    let MatchedSingle(pnr) = cur_matched else {
-        // We were unable to descend far enough. This is an error.
-        return Err(dcx.create_err(MacroVarStillRepeating { span: sp, ident }));
-    };
-
-    transcribe_pnr(tscx, sp, pnr)
-}
-
-fn transcribe_pnr<'tx>(
-    tscx: &mut TranscrCtx<'tx, '_>,
-    mut sp: Span,
-    pnr: &ParseNtResult,
-) -> PResult<'tx, ()> {
     // We wrap the tokens in invisible delimiters, unless they are already wrapped
     // in invisible delimiters with the same `MetaVarKind`. Because some proc
     // macros can't handle multiple layers of invisible delimiters of the same
@@ -417,33 +404,33 @@ fn transcribe_pnr<'tx>(
         )
     };
 
-    let tt = match pnr {
-        ParseNtResult::Tt(tt) => {
+    let tt = match cur_matched {
+        MatchedSingle(ParseNtResult::Tt(tt)) => {
             // `tt`s are emitted into the output stream directly as "raw tokens",
             // without wrapping them into groups. Other variables are emitted into
             // the output stream as groups with `Delimiter::Invisible` to maintain
             // parsing priorities.
             maybe_use_metavar_location(tscx.psess, &tscx.stack, sp, tt, &mut tscx.marker)
         }
-        ParseNtResult::Ident(ident, is_raw) => {
+        MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtIdent(*ident, *is_raw);
             TokenTree::token_alone(kind, sp)
         }
-        ParseNtResult::Lifetime(ident, is_raw) => {
+        MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
             tscx.marker.mark_span(&mut sp);
             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
             let kind = token::NtLifetime(*ident, *is_raw);
             TokenTree::token_alone(kind, sp)
         }
-        ParseNtResult::Item(item) => {
+        MatchedSingle(ParseNtResult::Item(item)) => {
             mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
         }
-        ParseNtResult::Block(block) => {
+        MatchedSingle(ParseNtResult::Block(block)) => {
             mk_delimited(block.span, MetaVarKind::Block, TokenStream::from_ast(block))
         }
-        ParseNtResult::Stmt(stmt) => {
+        MatchedSingle(ParseNtResult::Stmt(stmt)) => {
             let stream = if let StmtKind::Empty = stmt.kind {
                 // FIXME: Properly collect tokens for empty statements.
                 TokenStream::token_alone(token::Semi, stmt.span)
@@ -452,10 +439,10 @@ fn transcribe_pnr<'tx>(
             };
             mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
         }
-        ParseNtResult::Pat(pat, pat_kind) => {
+        MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => {
             mk_delimited(pat.span, MetaVarKind::Pat(*pat_kind), TokenStream::from_ast(pat))
         }
-        ParseNtResult::Expr(expr, kind) => {
+        MatchedSingle(ParseNtResult::Expr(expr, kind)) => {
             let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
                 ExprKind::Lit(_) => (true, true),
                 ExprKind::Unary(UnOp::Neg, e) if matches!(&e.kind, ExprKind::Lit(_)) => {
@@ -473,14 +460,14 @@ fn transcribe_pnr<'tx>(
                 TokenStream::from_ast(expr),
             )
         }
-        ParseNtResult::Literal(lit) => {
+        MatchedSingle(ParseNtResult::Literal(lit)) => {
             mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
         }
-        ParseNtResult::Ty(ty) => {
+        MatchedSingle(ParseNtResult::Ty(ty)) => {
             let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
             mk_delimited(ty.span, MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
         }
-        ParseNtResult::Meta(attr_item) => {
+        MatchedSingle(ParseNtResult::Meta(attr_item)) => {
             let has_meta_form = attr_item.meta_kind().is_some();
             mk_delimited(
                 attr_item.span(),
@@ -488,11 +475,15 @@ fn transcribe_pnr<'tx>(
                 TokenStream::from_ast(attr_item),
             )
         }
-        ParseNtResult::Path(path) => {
+        MatchedSingle(ParseNtResult::Path(path)) => {
             mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
         }
-        ParseNtResult::Vis(vis) => {
+        MatchedSingle(ParseNtResult::Vis(vis)) => {
             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
+        }
+        MatchedSeq(..) => {
+            // We were unable to descend far enough. This is an error.
+            return Err(dcx.create_err(VarStillRepeating { span: sp, ident }));
         }
     };
 

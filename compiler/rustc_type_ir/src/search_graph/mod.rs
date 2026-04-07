@@ -40,7 +40,6 @@ pub use global_cache::GlobalCache;
 pub trait Cx: Copy {
     type Input: Debug + Eq + Hash + Copy;
     type Result: Debug + Eq + Hash + Copy;
-    type AmbiguityInfo: Debug + Eq + Hash + Copy;
 
     type DepNodeIndex;
     type Tracked<T: Debug + Clone>: Debug;
@@ -54,7 +53,7 @@ pub trait Cx: Copy {
 
     fn with_global_cache<R>(self, f: impl FnOnce(&mut GlobalCache<Self>) -> R) -> R;
 
-    fn assert_evaluation_is_concurrent(&self);
+    fn evaluation_is_concurrent(&self) -> bool;
 }
 
 pub trait Delegate: Sized {
@@ -87,23 +86,23 @@ pub trait Delegate: Sized {
         kind: PathKind,
         input: <Self::Cx as Cx>::Input,
     ) -> <Self::Cx as Cx>::Result;
-    fn is_initial_provisional_result(result: <Self::Cx as Cx>::Result) -> Option<PathKind>;
-    fn stack_overflow_result(
+    fn is_initial_provisional_result(
         cx: Self::Cx,
+        kind: PathKind,
         input: <Self::Cx as Cx>::Input,
-    ) -> <Self::Cx as Cx>::Result;
-    fn fixpoint_overflow_result(
+        result: <Self::Cx as Cx>::Result,
+    ) -> bool;
+    fn on_stack_overflow(cx: Self::Cx, input: <Self::Cx as Cx>::Input) -> <Self::Cx as Cx>::Result;
+    fn on_fixpoint_overflow(
         cx: Self::Cx,
         input: <Self::Cx as Cx>::Input,
     ) -> <Self::Cx as Cx>::Result;
 
-    fn is_ambiguous_result(
-        result: <Self::Cx as Cx>::Result,
-    ) -> Option<<Self::Cx as Cx>::AmbiguityInfo>;
+    fn is_ambiguous_result(result: <Self::Cx as Cx>::Result) -> bool;
     fn propagate_ambiguity(
         cx: Self::Cx,
         for_input: <Self::Cx as Cx>::Input,
-        ambiguity_info: <Self::Cx as Cx>::AmbiguityInfo,
+        from_result: <Self::Cx as Cx>::Result,
     ) -> <Self::Cx as Cx>::Result;
 
     fn compute_goal(
@@ -215,27 +214,6 @@ impl HeadUsages {
     fn is_empty(self) -> bool {
         let HeadUsages { inductive, unknown, coinductive, forced_ambiguity } = self;
         inductive == 0 && unknown == 0 && coinductive == 0 && forced_ambiguity == 0
-    }
-
-    fn is_single(self, path_kind: PathKind) -> bool {
-        match path_kind {
-            PathKind::Inductive => matches!(
-                self,
-                HeadUsages { inductive: _, unknown: 0, coinductive: 0, forced_ambiguity: 0 },
-            ),
-            PathKind::Unknown => matches!(
-                self,
-                HeadUsages { inductive: 0, unknown: _, coinductive: 0, forced_ambiguity: 0 },
-            ),
-            PathKind::Coinductive => matches!(
-                self,
-                HeadUsages { inductive: 0, unknown: 0, coinductive: _, forced_ambiguity: 0 },
-            ),
-            PathKind::ForcedAmbiguity => matches!(
-                self,
-                HeadUsages { inductive: 0, unknown: 0, coinductive: 0, forced_ambiguity: _ },
-            ),
-        }
     }
 }
 
@@ -891,7 +869,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         }
 
         debug!("encountered stack overflow");
-        D::stack_overflow_result(cx, input)
+        D::on_stack_overflow(cx, input)
     }
 
     /// When reevaluating a goal with a changed provisional result, all provisional cache entry
@@ -910,29 +888,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             !entries.is_empty()
         });
     }
-}
 
-/// We need to rebase provisional cache entries when popping one of their cycle
-/// heads from the stack. This may not necessarily mean that we've actually
-/// reached a fixpoint for that cycle head, which impacts the way we rebase
-/// provisional cache entries.
-enum RebaseReason<X: Cx> {
-    NoCycleUsages,
-    Ambiguity(X::AmbiguityInfo),
-    Overflow,
-    /// We've actually reached a fixpoint.
-    ///
-    /// This either happens in the first evaluation step for the cycle head.
-    /// In this case the used provisional result depends on the cycle `PathKind`.
-    /// We store this path kind to check whether the the provisional cache entry
-    /// we're rebasing relied on the same cycles.
-    ///
-    /// In later iterations cycles always return `stack_entry.provisional_result`
-    /// so we no longer depend on the `PathKind`. We store `None` in that case.
-    ReachedFixpoint(Option<PathKind>),
-}
-
-impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     /// A necessary optimization to handle complex solver cycles. A provisional cache entry
     /// relies on a set of cycle heads and the path towards these heads. When popping a cycle
     /// head from the stack after we've finished computing it, we can't be sure that the
@@ -952,9 +908,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     /// to me.
     fn rebase_provisional_cache_entries(
         &mut self,
-        cx: X,
         stack_entry: &StackEntry<X>,
-        rebase_reason: RebaseReason<X>,
+        mut mutate_result: impl FnMut(X::Input, X::Result) -> X::Result,
     ) {
         let popped_head_index = self.stack.next_index();
         #[allow(rustc::potential_query_instability)]
@@ -1022,30 +977,9 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                         let eph = ep.extend_with_paths(ph);
                         heads.insert(head_index, eph, head.usages);
                     }
-
-                    // The provisional cache entry does depend on the provisional result
-                    // of the popped cycle head. We need to mutate the result of our
-                    // provisional cache entry in case we did not reach a fixpoint.
-                    match rebase_reason {
-                        // If the cycle head does not actually depend on itself, then
-                        // the provisional result used by the provisional cache entry
-                        // is not actually equal to the final provisional result. We
-                        // need to discard the provisional cache entry in this case.
-                        RebaseReason::NoCycleUsages => return false,
-                        RebaseReason::Ambiguity(info) => {
-                            *result = D::propagate_ambiguity(cx, input, info);
-                        }
-                        RebaseReason::Overflow => *result = D::fixpoint_overflow_result(cx, input),
-                        RebaseReason::ReachedFixpoint(None) => {}
-                        RebaseReason::ReachedFixpoint(Some(path_kind)) => {
-                            if !popped_head.usages.is_single(path_kind) {
-                                return false;
-                            }
-                        }
-                    };
                 }
 
-                let Some(new_highest_head_index) = heads.opt_highest_cycle_head_index() else {
+                let Some(head_index) = heads.opt_highest_cycle_head_index() else {
                     return false;
                 };
 
@@ -1054,9 +988,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
                 *path_from_head = path_from_head.extend(Self::cycle_path_kind(
                     &self.stack,
                     stack_entry.step_kind_from_parent,
-                    new_highest_head_index,
+                    head_index,
                 ));
-
+                // Mutate the result of the provisional cache entry in case we did
+                // not reach a fixpoint.
+                *result = mutate_result(input, *result);
                 true
             });
             !entries.is_empty()
@@ -1271,22 +1207,35 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
     }
 
     /// Whether we've reached a fixpoint when evaluating a cycle head.
-    #[instrument(level = "trace", skip(self, stack_entry), ret)]
     fn reached_fixpoint(
         &mut self,
+        cx: X,
         stack_entry: &StackEntry<X>,
         usages: HeadUsages,
         result: X::Result,
-    ) -> Result<Option<PathKind>, ()> {
+    ) -> bool {
         let provisional_result = stack_entry.provisional_result;
-        if let Some(provisional_result) = provisional_result {
-            if provisional_result == result { Ok(None) } else { Err(()) }
-        } else if let Some(path_kind) = D::is_initial_provisional_result(result)
-            .filter(|&path_kind| usages.is_single(path_kind))
-        {
-            Ok(Some(path_kind))
+        if usages.is_empty() {
+            true
+        } else if let Some(provisional_result) = provisional_result {
+            provisional_result == result
         } else {
-            Err(())
+            let check = |k| D::is_initial_provisional_result(cx, k, stack_entry.input, result);
+            match usages {
+                HeadUsages { inductive: _, unknown: 0, coinductive: 0, forced_ambiguity: 0 } => {
+                    check(PathKind::Inductive)
+                }
+                HeadUsages { inductive: 0, unknown: _, coinductive: 0, forced_ambiguity: 0 } => {
+                    check(PathKind::Unknown)
+                }
+                HeadUsages { inductive: 0, unknown: 0, coinductive: _, forced_ambiguity: 0 } => {
+                    check(PathKind::Coinductive)
+                }
+                HeadUsages { inductive: 0, unknown: 0, coinductive: 0, forced_ambiguity: _ } => {
+                    check(PathKind::ForcedAmbiguity)
+                }
+                _ => false,
+            }
         }
     }
 
@@ -1331,19 +1280,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // is equal to the provisional result of the previous iteration, or because
             // this was only the head of either coinductive or inductive cycles, and the
             // final result is equal to the initial response for that case.
-            if let Ok(fixpoint) = self.reached_fixpoint(&stack_entry, usages, result) {
-                self.rebase_provisional_cache_entries(
-                    cx,
-                    &stack_entry,
-                    RebaseReason::ReachedFixpoint(fixpoint),
-                );
-                return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
-            } else if usages.is_empty() {
-                self.rebase_provisional_cache_entries(
-                    cx,
-                    &stack_entry,
-                    RebaseReason::NoCycleUsages,
-                );
+            if self.reached_fixpoint(cx, &stack_entry, usages, result) {
+                self.rebase_provisional_cache_entries(&stack_entry, |_, result| result);
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }
 
@@ -1359,12 +1297,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             // As we only get to this branch if we haven't yet reached a fixpoint,
             // we also taint all provisional cache entries which depend on the
             // current goal.
-            if let Some(info) = D::is_ambiguous_result(result) {
-                self.rebase_provisional_cache_entries(
-                    cx,
-                    &stack_entry,
-                    RebaseReason::Ambiguity(info),
-                );
+            if D::is_ambiguous_result(result) {
+                self.rebase_provisional_cache_entries(&stack_entry, |input, _| {
+                    D::propagate_ambiguity(cx, input, result)
+                });
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             };
 
@@ -1373,8 +1309,10 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D, X> {
             i += 1;
             if i >= D::FIXPOINT_STEP_LIMIT {
                 debug!("canonical cycle overflow");
-                let result = D::fixpoint_overflow_result(cx, input);
-                self.rebase_provisional_cache_entries(cx, &stack_entry, RebaseReason::Overflow);
+                let result = D::on_fixpoint_overflow(cx, input);
+                self.rebase_provisional_cache_entries(&stack_entry, |input, _| {
+                    D::on_fixpoint_overflow(cx, input)
+                });
                 return EvaluationResult::finalize(stack_entry, encountered_overflow, result);
             }
 

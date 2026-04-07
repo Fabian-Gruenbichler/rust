@@ -1,10 +1,9 @@
 use futures::future::FutureExt;
 use parking_lot::RwLock;
-use site::job_queue::{create_queue_process, is_job_queue_enabled};
+use site::job_queue::{cron_main, run_new_queue};
 use site::load;
 use std::env;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::task;
 
 #[cfg(unix)]
@@ -43,7 +42,8 @@ async fn main() {
             let commits = res.index.load().commits().len();
             let artifacts = res.index.load().artifacts().count();
             if commits + artifacts == 0 {
-                eprintln!("Warning: loading complete but no data identified.");
+                eprintln!("Loading complete but no data identified; exiting.");
+                std::process::exit(1);
             }
             eprintln!("Loading complete; found {} artifacts", commits + artifacts);
             eprintln!(
@@ -55,17 +55,13 @@ async fn main() {
         })
     })
     .fuse();
-    println!("Starting server with port={port:?}");
+    println!("Starting server with port={:?}", port);
 
     let server = site::server::start(ctxt.clone(), port).fuse();
 
-    if is_job_queue_enabled() {
+    if run_new_queue() {
         task::spawn(async move {
-            create_queue_process(
-                ctxt.clone(),
-                Duration::from_secs(queue_update_interval_seconds),
-            )
-            .await;
+            cron_main(ctxt.clone(), queue_update_interval_seconds).await;
         });
     }
 

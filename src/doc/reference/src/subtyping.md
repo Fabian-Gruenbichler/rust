@@ -1,5 +1,5 @@
 r[subtype]
-# Subtyping and variance
+# Subtyping and Variance
 
 r[subtype.intro]
 Subtyping is implicit and can occur at any stage in type checking or

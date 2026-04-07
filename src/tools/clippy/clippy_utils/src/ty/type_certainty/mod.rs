@@ -329,7 +329,7 @@ fn update_res(
     None
 }
 
-#[expect(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_possible_truncation)]
 fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let Some(callee_def_id) = (match expr.kind {
         ExprKind::Call(callee, _) => {

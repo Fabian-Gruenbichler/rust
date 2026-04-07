@@ -1,4 +1,5 @@
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
+//@ min-llvm-version: 20
 //@ only-64bit
 //@ revisions: LLVM20 LLVM21
 //@ [LLVM21] min-llvm-version: 21

@@ -563,8 +563,6 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
             config::AutoDiff::Enable => {}
             // We handle this below
             config::AutoDiff::NoPostopt => {}
-            // Disables TypeTree generation
-            config::AutoDiff::NoTT => {}
         }
     }
     // This helps with handling enums for now.
@@ -619,7 +617,7 @@ pub(crate) fn run_pass_manager(
         crate::builder::gpu_offload::handle_gpu_code(cgcx, &cx);
     }
 
-    if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
+    if cfg!(llvm_enzyme) && enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {

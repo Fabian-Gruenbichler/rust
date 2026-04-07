@@ -1,12 +1,11 @@
 use rustc_errors::MultiSpan;
-use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
-use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind, find_attr};
+use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::{ExpnKind, Span, kw};
+use rustc_span::{ExpnKind, Span, kw, sym};
 
 use crate::lints::{NonLocalDefinitionsCargoUpdateNote, NonLocalDefinitionsDiag};
 use crate::{LateContext, LateLintPass, LintContext, fluent_generated as fluent};
@@ -242,10 +241,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 )
             }
             ItemKind::Macro(_, _macro, _kinds)
-                if find_attr!(
-                    cx.tcx.get_all_attrs(item.owner_id.def_id),
-                    AttributeKind::MacroExport { .. }
-                ) =>
+                if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
                 cx.emit_span_lint(
                     NON_LOCAL_DEFINITIONS,

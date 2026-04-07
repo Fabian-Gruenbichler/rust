@@ -39,7 +39,9 @@ fn check_impl<'tcx>(
 
     // Skip impls where one of the self type is an error type.
     // This occurs with e.g., resolve failures (#30589).
-    trait_ref.error_reported()?;
+    if trait_ref.references_error() {
+        return Ok(());
+    }
 
     enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id, trait_def)
         .and(enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id, trait_def))
@@ -163,7 +165,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
     let mut res = tcx.ensure_ok().specialization_graph_of(def_id);
 
     for &impl_def_id in impls {
-        let impl_header = tcx.impl_trait_header(impl_def_id);
+        let impl_header = tcx.impl_trait_header(impl_def_id).unwrap();
         let trait_ref = impl_header.trait_ref.instantiate_identity();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
@@ -186,9 +188,9 @@ fn check_object_overlap<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let trait_def_id = trait_ref.def_id;
 
-    if let Err(guar) = trait_ref.error_reported() {
+    if trait_ref.references_error() {
         debug!("coherence: skipping impl {:?} with error {:?}", impl_def_id, trait_ref);
-        return Err(guar);
+        return Ok(());
     }
 
     // check for overlap with the automatic `impl Trait for dyn Trait`

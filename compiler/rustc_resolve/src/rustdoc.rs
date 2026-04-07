@@ -2,8 +2,6 @@ use std::mem;
 use std::ops::Range;
 
 use itertools::Itertools;
-/// Re-export the markdown parser used by rustdoc.
-pub use pulldown_cmark;
 use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, Options, Parser, Tag,
 };
@@ -216,7 +214,8 @@ pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
     for (attr, item_id) in attrs {
         if let Some((doc_str, comment_kind)) = attr.doc_str_and_comment_kind() {
             let doc = beautify_doc_string(doc_str, comment_kind);
-            let (span, kind, from_expansion) = if let Some(span) = attr.is_doc_comment() {
+            let (span, kind, from_expansion) = if attr.is_doc_comment() {
+                let span = attr.span();
                 (span, DocFragmentKind::SugaredDoc, span.from_expansion())
             } else {
                 let attr_span = attr.span();

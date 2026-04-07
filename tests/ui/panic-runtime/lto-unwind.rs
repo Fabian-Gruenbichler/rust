@@ -3,7 +3,6 @@
 //@ needs-unwind
 //@ no-prefer-dynamic
 //@ needs-subprocess
-//@ ignore-backends: gcc
 
 use std::process::Command;
 use std::env;

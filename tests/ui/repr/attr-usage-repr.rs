@@ -46,11 +46,9 @@ enum EInt {
 }
 
 #[repr()] //~ ERROR attribute should be applied to a struct, enum, or union [E0517]
-//~^ WARN unused attribute
 type SirThisIsAType = i32;
 
 #[repr()]
-//~^ WARN unused attribute
 struct EmptyReprArgumentList(i32);
 
 fn main() {}

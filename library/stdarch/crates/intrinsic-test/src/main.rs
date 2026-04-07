@@ -13,16 +13,23 @@ fn main() {
     let args: Cli = clap::Parser::parse();
     let processed_cli_options = ProcessedCli::new(args);
 
-    match processed_cli_options.target.as_str() {
-        "aarch64-unknown-linux-gnu"
-        | "armv7-unknown-linux-gnueabihf"
-        | "aarch64_be-unknown-linux-gnu" => run(ArmArchitectureTest::create(processed_cli_options)),
+    let test_environment_result: Option<Box<dyn SupportedArchitectureTest>> =
+        match processed_cli_options.target.as_str() {
+            "aarch64-unknown-linux-gnu"
+            | "armv7-unknown-linux-gnueabihf"
+            | "aarch64_be-unknown-linux-gnu" => {
+                Some(ArmArchitectureTest::create(processed_cli_options))
+            }
 
-        _ => std::process::exit(0),
+            _ => None,
+        };
+
+    if test_environment_result.is_none() {
+        std::process::exit(0);
     }
-}
 
-fn run(test_environment: impl SupportedArchitectureTest) {
+    let test_environment = test_environment_result.unwrap();
+
     info!("building C binaries");
     if !test_environment.build_c_file() {
         std::process::exit(2);

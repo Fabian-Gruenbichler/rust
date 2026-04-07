@@ -4,6 +4,7 @@
     clippy::let_unit_value,
     clippy::no_effect,
     clippy::toplevel_ref_arg,
+    clippy::uninlined_format_args,
     clippy::useless_vec
 )]
 
@@ -32,13 +33,13 @@ fn main() {
     match (a, b, c) {
         //~^ match_single_binding
         (x, y, z) => {
-            println!("{x} {y} {z}");
+            println!("{} {} {}", x, y, z);
         },
     }
     // Lint
     match (a, b, c) {
         //~^ match_single_binding
-        (x, y, z) => println!("{x} {y} {z}"),
+        (x, y, z) => println!("{} {} {}", x, y, z),
     }
     // Ok
     foo!(a);
@@ -50,7 +51,7 @@ fn main() {
     // Ok
     let d = Some(5);
     match d {
-        Some(d) => println!("{d}"),
+        Some(d) => println!("{}", d),
         _ => println!("None"),
     }
     // Lint
@@ -63,7 +64,7 @@ fn main() {
         //~^ match_single_binding
         _ => {
             let x = 29;
-            println!("x has a value of {x}");
+            println!("x has a value of {}", x);
         },
     }
     // Lint
@@ -80,24 +81,24 @@ fn main() {
     let p = Point { x: 0, y: 7 };
     match p {
         //~^ match_single_binding
-        Point { x, y } => println!("Coords: ({x}, {y})"),
+        Point { x, y } => println!("Coords: ({}, {})", x, y),
     }
     // Lint
     match p {
         //~^ match_single_binding
-        Point { x: x1, y: y1 } => println!("Coords: ({x1}, {y1})"),
+        Point { x: x1, y: y1 } => println!("Coords: ({}, {})", x1, y1),
     }
     // Lint
     let x = 5;
     match x {
         //~^ match_single_binding
-        ref r => println!("Got a reference to {r}"),
+        ref r => println!("Got a reference to {}", r),
     }
     // Lint
     let mut x = 5;
     match x {
         //~^ match_single_binding
-        ref mut mr => println!("Got a mutable reference to {mr}"),
+        ref mut mr => println!("Got a mutable reference to {}", mr),
     }
     // Lint
     let product = match coords() {
@@ -149,7 +150,7 @@ fn issue_8723() {
     val = match val.split_at(idx) {
         //~^ match_single_binding
         (pre, suf) => {
-            println!("{pre}");
+            println!("{}", pre);
             suf
         },
     };
@@ -272,7 +273,7 @@ mod issue15018 {
         let x = 1;
         match (a, b, c) {
             //~^ match_single_binding
-            (x, y, z) => println!("{x} {y} {z}"),
+            (x, y, z) => println!("{} {} {}", x, y, z),
         }
         println!("x = {x}");
     }
@@ -280,7 +281,7 @@ mod issue15018 {
     fn not_used_later(a: i32, b: i32, c: i32) {
         match (a, b, c) {
             //~^ match_single_binding
-            (x, y, z) => println!("{x} {y} {z}"),
+            (x, y, z) => println!("{} {} {}", x, y, z),
         }
     }
 
@@ -288,7 +289,7 @@ mod issue15018 {
     fn not_used_later_but_shadowed(a: i32, b: i32, c: i32) {
         match (a, b, c) {
             //~^ match_single_binding
-            (x, y, z) => println!("{x} {y} {z}"),
+            (x, y, z) => println!("{} {} {}", x, y, z),
         }
         let x = 1;
         println!("x = {x}");
@@ -298,30 +299,30 @@ mod issue15018 {
     fn not_used_later_but_shadowed_nested(a: i32, b: i32, c: i32) {
         match (a, b, c) {
             //~^ match_single_binding
-            (x, y, z) => println!("{x} {x} {y}"),
+            (x, y, z) => println!("{} {} {}", x, y, z),
         }
         if let (x, y, z) = (a, b, c) {
-            println!("{x} {y} {z}")
+            println!("{} {} {}", x, y, z)
         }
 
         {
             let x: i32 = 1;
             match (a, b, c) {
                 //~^ match_single_binding
-                (x, y, z) => println!("{x} {y} {z}"),
+                (x, y, z) => println!("{} {} {}", x, y, z),
             }
             if let (x, y, z) = (a, x, c) {
-                println!("{x} {y} {z}")
+                println!("{} {} {}", x, y, z)
             }
         }
 
         {
             match (a, b, c) {
                 //~^ match_single_binding
-                (x, y, z) => println!("{x} {y} {z}"),
+                (x, y, z) => println!("{} {} {}", x, y, z),
             }
             let fn_ = |y| {
-                println!("{a} {b} {y}");
+                println!("{} {} {}", a, b, y);
             };
             fn_(c);
         }

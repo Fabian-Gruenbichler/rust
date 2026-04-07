@@ -3,7 +3,6 @@
 //@[cfail2] compile-flags: --crate-type=lib -Zassert-incr-state=loaded
 //@ edition: 2021
 //@ build-pass
-//@ ignore-backends: gcc
 
 #![allow(dead_code)]
 

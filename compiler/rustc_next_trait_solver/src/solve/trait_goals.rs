@@ -4,9 +4,7 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
-use rustc_type_ir::solve::{
-    AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
-};
+use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
     TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
@@ -371,16 +369,18 @@ where
                     return ecx.forced_ambiguity(MaybeCause::Ambiguity);
                 }
             };
-        let (inputs, output) = ecx.instantiate_binder_with_infer(tupled_inputs_and_output);
 
         // A built-in `Fn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred =
-            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
+        let output_is_sized_pred = tupled_inputs_and_output.map_bound(|(_, output)| {
+            ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output])
+        });
 
-        let pred =
-            ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
-                .upcast(cx);
+        let pred = tupled_inputs_and_output
+            .map_bound(|(inputs, _)| {
+                ty::TraitRef::new(cx, goal.predicate.def_id(), [goal.predicate.self_ty(), inputs])
+            })
+            .upcast(cx);
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -408,26 +408,28 @@ where
                 // This region doesn't matter because we're throwing away the coroutine type
                 Region::new_static(cx),
             )?;
-        let AsyncCallableRelevantTypes {
-            tupled_inputs_ty,
-            output_coroutine_ty,
-            coroutine_return_ty: _,
-        } = ecx.instantiate_binder_with_infer(tupled_inputs_and_output_and_coroutine);
 
         // A built-in `AsyncFn` impl only holds if the output is sized.
         // (FIXME: technically we only need to check this if the type is a fn ptr...)
-        let output_is_sized_pred = ty::TraitRef::new(
-            cx,
-            cx.require_trait_lang_item(SolverTraitLangItem::Sized),
-            [output_coroutine_ty],
+        let output_is_sized_pred = tupled_inputs_and_output_and_coroutine.map_bound(
+            |AsyncCallableRelevantTypes { output_coroutine_ty, .. }| {
+                ty::TraitRef::new(
+                    cx,
+                    cx.require_trait_lang_item(SolverTraitLangItem::Sized),
+                    [output_coroutine_ty],
+                )
+            },
         );
 
-        let pred = ty::TraitRef::new(
-            cx,
-            goal.predicate.def_id(),
-            [goal.predicate.self_ty(), tupled_inputs_ty],
-        )
-        .upcast(cx);
+        let pred = tupled_inputs_and_output_and_coroutine
+            .map_bound(|AsyncCallableRelevantTypes { tupled_inputs_ty, .. }| {
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), tupled_inputs_ty],
+                )
+            })
+            .upcast(cx);
         Self::probe_and_consider_implied_clause(
             ecx,
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
@@ -815,13 +817,15 @@ where
                 }
 
                 // Trait upcasting, or `dyn Trait + Auto + 'a` -> `dyn Trait + 'b`.
-                (ty::Dynamic(a_data, a_region), ty::Dynamic(b_data, b_region)) => ecx
-                    .consider_builtin_dyn_upcast_candidates(
-                        goal, a_data, a_region, b_data, b_region,
-                    ),
+                (
+                    ty::Dynamic(a_data, a_region, ty::Dyn),
+                    ty::Dynamic(b_data, b_region, ty::Dyn),
+                ) => ecx.consider_builtin_dyn_upcast_candidates(
+                    goal, a_data, a_region, b_data, b_region,
+                ),
 
                 // `T` -> `dyn Trait` unsizing.
-                (_, ty::Dynamic(b_region, b_data)) => result_to_single(
+                (_, ty::Dynamic(b_region, b_data, ty::Dyn)) => result_to_single(
                     ecx.consider_builtin_unsize_to_dyn_candidate(goal, b_region, b_data),
                 ),
 
@@ -1357,7 +1361,6 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn merge_trait_candidates(
         &mut self,
-        candidate_preference_mode: CandidatePreferenceMode,
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
@@ -1381,23 +1384,6 @@ where
             // as they would otherwise overlap.
             assert!(trivial_builtin_impls.next().is_none());
             return Ok((candidate.result, Some(TraitGoalProvenVia::Misc)));
-        }
-
-        // Extract non-nested alias bound candidates, will be preferred over where bounds if
-        // we're proving an auto-trait, sizedness trait or default trait.
-        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker)
-            && candidates.iter().any(|c| {
-                matches!(c.source, CandidateSource::AliasBound(AliasBoundKind::SelfBounds))
-            })
-        {
-            let alias_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(..)))
-                .collect();
-            return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
-                Ok((response, Some(TraitGoalProvenVia::AliasBound)))
-            } else {
-                Ok((self.bail_with_ambiguity(&alias_bounds), None))
-            };
         }
 
         // If there are non-global where-bounds, prefer where-bounds
@@ -1447,10 +1433,9 @@ where
             };
         }
 
-        // Next, prefer any alias bound (nested or otherwise).
-        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound(_))) {
+        if candidates.iter().any(|c| matches!(c.source, CandidateSource::AliasBound)) {
             let alias_bounds: Vec<_> = candidates
-                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound(_)))
+                .extract_if(.., |c| matches!(c.source, CandidateSource::AliasBound))
                 .collect();
             return if let Some((response, _)) = self.try_merge_candidates(&alias_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::AliasBound)))
@@ -1491,9 +1476,7 @@ where
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let (candidates, failed_candidate_info) =
             self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
-        let candidate_preference_mode =
-            CandidatePreferenceMode::compute(self.cx(), goal.predicate.def_id());
-        self.merge_trait_candidates(candidate_preference_mode, candidates, failed_candidate_info)
+        self.merge_trait_candidates(candidates, failed_candidate_info)
     }
 
     fn try_stall_coroutine(&mut self, self_ty: I::Ty) -> Option<Result<Candidate<I>, NoSolution>> {

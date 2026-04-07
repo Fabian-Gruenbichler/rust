@@ -3,6 +3,7 @@
 // use a larger value to prevent unrolling.
 
 //@ compile-flags: -Copt-level=3
+//@ min-llvm-version: 20
 
 #![crate_type = "lib"]
 

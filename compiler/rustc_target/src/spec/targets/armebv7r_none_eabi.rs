@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "armebv7r-none-eabi".into(),
         metadata: TargetMetadata {
             description: Some("Bare Armv7-R, Big Endian".into()),
-            tier: Some(3),
+            tier: Some(2),
             host_tools: Some(false),
             std: Some(false),
         },

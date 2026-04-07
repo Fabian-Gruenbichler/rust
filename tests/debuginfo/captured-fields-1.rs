@@ -1,6 +1,5 @@
 //@ compile-flags:-g
 //@ edition:2021
-//@ ignore-backends: gcc
 // === GDB TESTS ===================================================================================
 
 // gdb-command:run

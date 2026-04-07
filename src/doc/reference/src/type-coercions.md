@@ -187,7 +187,7 @@ r[coerce.types.never]
 * `!` to any `T`
 
 r[coerce.unsize]
-### Unsized coercions
+### Unsized Coercions
 
 r[coerce.unsize.intro]
 The following coercions are called `unsized coercions`, since they

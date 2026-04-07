@@ -2,7 +2,6 @@
 
 mod overly_long_real_world_cases;
 
-use hir::setup_tracing;
 use ide_db::{
     LineIndexDatabase, RootDatabase,
     assists::{AssistResolveStrategy, ExprFillDefaultMode},
@@ -74,16 +73,14 @@ fn check_nth_fix_with_config(
     let after = trim_indent(ra_fixture_after);
 
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let diagnostic = hir::attach_db(&db, || {
-        super::full_diagnostics(
-            &db,
-            &config,
-            &AssistResolveStrategy::All,
-            file_position.file_id.file_id(&db),
-        )
-        .pop()
-        .expect("no diagnostics")
-    });
+    let diagnostic = super::full_diagnostics(
+        &db,
+        &config,
+        &AssistResolveStrategy::All,
+        file_position.file_id.file_id(&db),
+    )
+    .pop()
+    .expect("no diagnostics");
     let fix = &diagnostic
         .fixes
         .unwrap_or_else(|| panic!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
@@ -129,14 +126,12 @@ pub(crate) fn check_has_fix(
     let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
     let mut conf = DiagnosticsConfig::test_sample();
     conf.expr_fill_default = ExprFillDefaultMode::Default;
-    let fix = hir::attach_db(&db, || {
-        super::full_diagnostics(
-            &db,
-            &conf,
-            &AssistResolveStrategy::All,
-            file_position.file_id.file_id(&db),
-        )
-    })
+    let fix = super::full_diagnostics(
+        &db,
+        &conf,
+        &AssistResolveStrategy::All,
+        file_position.file_id.file_id(&db),
+    )
     .into_iter()
     .find(|d| {
         d.fixes
@@ -170,14 +165,12 @@ pub(crate) fn check_has_fix(
 /// Checks that there's a diagnostic *without* fix at `$0`.
 pub(crate) fn check_no_fix(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (db, file_position) = RootDatabase::with_position(ra_fixture);
-    let diagnostic = hir::attach_db(&db, || {
-        super::full_diagnostics(
-            &db,
-            &DiagnosticsConfig::test_sample(),
-            &AssistResolveStrategy::All,
-            file_position.file_id.file_id(&db),
-        )
-    })
+    let diagnostic = super::full_diagnostics(
+        &db,
+        &DiagnosticsConfig::test_sample(),
+        &AssistResolveStrategy::All,
+        file_position.file_id.file_id(&db),
+    )
     .pop()
     .unwrap();
     assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
@@ -205,20 +198,12 @@ pub(crate) fn check_diagnostics_with_config(
     config: DiagnosticsConfig,
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
 ) {
-    let _tracing = setup_tracing();
-
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     let mut annotations = files
         .iter()
         .copied()
         .flat_map(|file_id| {
-            hir::attach_db(&db, || {
-                super::full_diagnostics(
-                    &db,
-                    &config,
-                    &AssistResolveStrategy::All,
-                    file_id.file_id(&db),
-                )
+            super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id.file_id(&db))
                 .into_iter()
                 .map(|d| {
                     let mut annotation = String::new();
@@ -236,7 +221,6 @@ pub(crate) fn check_diagnostics_with_config(
                     annotation.push_str(&d.message);
                     (d.range, annotation)
                 })
-            })
         })
         .map(|(diagnostic, annotation)| (diagnostic.file_id, (diagnostic.range, annotation)))
         .into_group_map();
@@ -288,19 +272,15 @@ fn test_disabled_diagnostics() {
     let (db, file_id) = RootDatabase::with_single_file(r#"mod foo;"#);
     let file_id = file_id.file_id(&db);
 
-    let diagnostics = hir::attach_db(&db, || {
-        super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id)
-    });
+    let diagnostics = super::full_diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
     assert!(diagnostics.is_empty());
 
-    let diagnostics = hir::attach_db(&db, || {
-        super::full_diagnostics(
-            &db,
-            &DiagnosticsConfig::test_sample(),
-            &AssistResolveStrategy::All,
-            file_id,
-        )
-    });
+    let diagnostics = super::full_diagnostics(
+        &db,
+        &DiagnosticsConfig::test_sample(),
+        &AssistResolveStrategy::All,
+        file_id,
+    );
     assert!(!diagnostics.is_empty());
 }
 

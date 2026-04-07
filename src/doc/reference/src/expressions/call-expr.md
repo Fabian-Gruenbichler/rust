@@ -35,7 +35,7 @@ let name: &'static str = (|| "Rust")();
 ```
 
 r[expr.call.desugar]
-## Disambiguating function calls
+## Disambiguating Function Calls
 
 r[expr.call.desugar.fully-qualified]
 All function calls are sugar for a more explicit [fully-qualified syntax].

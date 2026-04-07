@@ -1,7 +1,7 @@
 use crate::cell::Cell;
 use crate::sync as public;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
-use crate::sync::once::OnceExclusiveState;
+use crate::sync::poison::once::ExclusiveState;
 use crate::sys::futex::{Futex, Primitive, futex_wait, futex_wake_all};
 
 // On some platforms, the OS is very nice and handles the waiter queue for us.
@@ -83,21 +83,21 @@ impl Once {
     }
 
     #[inline]
-    pub(crate) fn state(&mut self) -> OnceExclusiveState {
+    pub(crate) fn state(&mut self) -> ExclusiveState {
         match *self.state_and_queued.get_mut() {
-            INCOMPLETE => OnceExclusiveState::Incomplete,
-            POISONED => OnceExclusiveState::Poisoned,
-            COMPLETE => OnceExclusiveState::Complete,
+            INCOMPLETE => ExclusiveState::Incomplete,
+            POISONED => ExclusiveState::Poisoned,
+            COMPLETE => ExclusiveState::Complete,
             _ => unreachable!("invalid Once state"),
         }
     }
 
     #[inline]
-    pub(crate) fn set_state(&mut self, new_state: OnceExclusiveState) {
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
         *self.state_and_queued.get_mut() = match new_state {
-            OnceExclusiveState::Incomplete => INCOMPLETE,
-            OnceExclusiveState::Poisoned => POISONED,
-            OnceExclusiveState::Complete => COMPLETE,
+            ExclusiveState::Incomplete => INCOMPLETE,
+            ExclusiveState::Poisoned => POISONED,
+            ExclusiveState::Complete => COMPLETE,
         };
     }
 

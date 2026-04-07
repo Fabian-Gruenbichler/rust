@@ -12,7 +12,7 @@ use rustc_span::{Span, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
-use crate::method::{MethodCallee, TreatNotYetDefinedOpaques};
+use crate::method::MethodCallee;
 use crate::{FnCtxt, PlaceOp};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -210,17 +210,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        // FIXME(trait-system-refactor-initiative#231): we may want to treat
-        // opaque types as rigid here to support `impl Deref<Target = impl Index<usize>>`.
-        let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
-        self.lookup_method_for_operator(
-            self.misc(span),
-            imm_op,
-            imm_tr,
-            base_ty,
-            opt_rhs_ty,
-            treat_opaques,
-        )
+        self.lookup_method_for_operator(self.misc(span), imm_op, imm_tr, base_ty, opt_rhs_ty)
     }
 
     fn try_mutable_overloaded_place_op(
@@ -240,19 +230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        // We have to replace the operator with the mutable variant for the
-        // program to compile, so we don't really have a choice here and want
-        // to just try using `DerefMut` even if its not in the item bounds
-        // of the opaque.
-        let treat_opaques = TreatNotYetDefinedOpaques::AsInfer;
-        self.lookup_method_for_operator(
-            self.misc(span),
-            mut_op,
-            mut_tr,
-            base_ty,
-            opt_rhs_ty,
-            treat_opaques,
-        )
+        self.lookup_method_for_operator(self.misc(span), mut_op, mut_tr, base_ty, opt_rhs_ty)
     }
 
     /// Convert auto-derefs, indices, etc of an expression from `Deref` and `Index`

@@ -24,7 +24,6 @@ use std::sync::LazyLock;
 use regex::RegexSetBuilder;
 use rustc_hash::FxHashMap;
 
-use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[cfg(test)]
@@ -339,9 +338,7 @@ fn is_unexplained_ignore(extension: &str, line: &str) -> bool {
     true
 }
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("style").path(path));
-
+pub fn check(path: &Path, bad: &mut bool) {
     fn skip(path: &Path, is_dir: bool) -> bool {
         if path.file_name().is_some_and(|name| name.to_string_lossy().starts_with(".#")) {
             // vim or emacs temporary file
@@ -394,7 +391,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             });
 
         if contents.is_empty() {
-            check.error(format!("{}: empty file", file.display()));
+            tidy_error!(bad, "{}: empty file", file.display());
         }
 
         let extension = file.extension().unwrap().to_string_lossy();
@@ -470,7 +467,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             }
 
             let mut err = |msg: &str| {
-                check.error(format!("{}:{}: {msg}", file.display(), i + 1));
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
 
             if trimmed.contains("dbg!")
@@ -614,7 +611,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     && backtick_count % 2 == 1
                 {
                     let mut err = |msg: &str| {
-                        check.error(format!("{}:{start_line}: {msg}", file.display()));
+                        tidy_error!(bad, "{}:{start_line}: {msg}", file.display());
                     };
                     let block_len = (i + 1) - start_line;
                     if block_len == 1 {
@@ -635,12 +632,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         }
         if leading_new_lines {
             let mut err = |_| {
-                check.error(format!("{}: leading newline", file.display()));
+                tidy_error!(bad, "{}: leading newline", file.display());
             };
             suppressible_tidy_err!(err, skip_leading_newlines, "missing leading newline");
         }
         let mut err = |msg: &str| {
-            check.error(format!("{}: {}", file.display(), msg));
+            tidy_error!(bad, "{}: {}", file.display(), msg);
         };
         match trailing_new_lines {
             0 => suppressible_tidy_err!(err, skip_trailing_newlines, "missing trailing newline"),
@@ -653,36 +650,38 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         };
         if lines > LINES {
             let mut err = |_| {
-                check.error(format!(
-                    "{}: too many lines ({lines}) (add `// \
+                tidy_error!(
+                    bad,
+                    "{}: too many lines ({}) (add `// \
                      ignore-tidy-filelength` to the file to suppress this error)",
                     file.display(),
-                ));
+                    lines
+                );
             };
             suppressible_tidy_err!(err, skip_file_length, "");
         }
 
         if let Directive::Ignore(false) = skip_cr {
-            check.error(format!("{}: ignoring CR characters unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring CR characters unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_tab {
-            check.error(format!("{}: ignoring tab characters unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_end_whitespace {
-            check.error(format!("{}: ignoring trailing whitespace unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_trailing_newlines {
-            check.error(format!("{}: ignoring trailing newlines unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring trailing newlines unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_leading_newlines {
-            check.error(format!("{}: ignoring leading newlines unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring leading newlines unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_copyright {
-            check.error(format!("{}: ignoring copyright unnecessarily", file.display()));
+            tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());
         }
         // We deliberately do not warn about these being unnecessary,
         // that would just lead to annoying churn.
         let _unused = skip_line_length;
         let _unused = skip_file_length;
-    });
+    })
 }

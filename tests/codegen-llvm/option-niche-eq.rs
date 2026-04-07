@@ -1,4 +1,5 @@
 //@ revisions: REGULAR LLVM21
+//@ min-llvm-version: 20
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 //@ [LLVM21] min-llvm-version: 21
 #![crate_type = "lib"]

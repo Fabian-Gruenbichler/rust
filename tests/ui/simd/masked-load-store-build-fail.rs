@@ -1,5 +1,4 @@
 //@ build-fail
-//@ ignore-backends: gcc
 #![feature(repr_simd, core_intrinsics)]
 
 use std::intrinsics::simd::{simd_masked_load, simd_masked_store};

@@ -107,7 +107,7 @@ fn some_unused_variables() {
 ```
 
 r[attributes.meta]
-## Meta item attribute syntax
+## Meta Item Attribute Syntax
 
 r[attributes.meta.intro]
 A "meta item" is the syntax used for the [Attr] rule by most [built-in

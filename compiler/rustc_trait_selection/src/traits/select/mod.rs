@@ -28,11 +28,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
-    may_use_unstable_feature,
+    self, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt,
+    TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate, may_use_unstable_feature,
 };
-use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 
@@ -476,11 +474,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         } else {
             let has_non_region_infer = stack.obligation.predicate.has_non_region_infer();
-            let candidate_preference_mode =
-                CandidatePreferenceMode::compute(self.tcx(), stack.obligation.predicate.def_id());
-            if let Some(candidate) =
-                self.winnow_candidates(has_non_region_infer, candidate_preference_mode, candidates)
-            {
+            if let Some(candidate) = self.winnow_candidates(has_non_region_infer, candidates) {
                 self.filter_reservation_impls(candidate)
             } else {
                 Ok(None)
@@ -1629,16 +1623,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub(super) fn for_each_item_bound<T>(
         &mut self,
         mut self_ty: Ty<'tcx>,
-        mut for_each: impl FnMut(
-            &mut Self,
-            ty::Clause<'tcx>,
-            usize,
-            AliasBoundKind,
-        ) -> ControlFlow<T, ()>,
+        mut for_each: impl FnMut(&mut Self, ty::Clause<'tcx>, usize) -> ControlFlow<T, ()>,
         on_ambiguity: impl FnOnce(),
     ) -> ControlFlow<T, ()> {
         let mut idx = 0;
-        let mut alias_bound_kind = AliasBoundKind::SelfBounds;
+        let mut in_parent_alias_type = false;
 
         loop {
             let (kind, alias_ty) = match *self_ty.kind() {
@@ -1654,14 +1643,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // share the same type as `self_ty`. This is because for truly rigid
             // projections, we will never be able to equate, e.g. `<T as Tr>::A`
             // with `<<T as Tr>::A as Tr>::A`.
-            let relevant_bounds = if matches!(alias_bound_kind, AliasBoundKind::NonSelfBounds) {
+            let relevant_bounds = if in_parent_alias_type {
                 self.tcx().item_non_self_bounds(alias_ty.def_id)
             } else {
                 self.tcx().item_self_bounds(alias_ty.def_id)
             };
 
             for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
-                for_each(self, bound, idx, alias_bound_kind)?;
+                for_each(self, bound, idx)?;
                 idx += 1;
             }
 
@@ -1671,7 +1660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return ControlFlow::Continue(());
             }
 
-            alias_bound_kind = AliasBoundKind::NonSelfBounds;
+            in_parent_alias_type = true;
         }
     }
 
@@ -1832,7 +1821,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn winnow_candidates(
         &mut self,
         has_non_region_infer: bool,
-        candidate_preference_mode: CandidatePreferenceMode,
         mut candidates: Vec<EvaluatedCandidate<'tcx>>,
     ) -> Option<SelectionCandidate<'tcx>> {
         if candidates.len() == 1 {
@@ -1886,29 +1874,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             break;
         }
 
-        let mut alias_bounds = candidates.iter().filter_map(|c| {
-            if let ProjectionCandidate { idx, kind } = c.candidate {
-                Some((idx, kind))
-            } else {
-                None
-            }
-        });
-        // Extract non-nested alias bound candidates, will be preferred over where bounds if
-        // we're proving an auto-trait, sizedness trait or default trait.
-        if matches!(candidate_preference_mode, CandidatePreferenceMode::Marker) {
-            match alias_bounds
-                .clone()
-                .filter_map(|(idx, kind)| (kind == AliasBoundKind::SelfBounds).then_some(idx))
-                .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) })
-            {
-                Some(Some(idx)) => {
-                    return Some(ProjectionCandidate { idx, kind: AliasBoundKind::SelfBounds });
-                }
-                Some(None) => {}
-                None => return None,
-            }
-        }
-
         // The next highest priority is for non-global where-bounds. However, while we don't
         // prefer global where-clauses here, we do bail with ambiguity when encountering both
         // a global and a non-global where-clause.
@@ -1942,16 +1907,12 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // fairly arbitrary but once again necessary for backwards compatibility.
         // If there are multiple applicable candidates which don't affect type inference,
         // choose the one with the lowest index.
-        match alias_bounds.try_reduce(|(c1, k1), (c2, k2)| {
-            if has_non_region_infer {
-                None
-            } else if c1 < c2 {
-                Some((c1, k1))
-            } else {
-                Some((c2, k2))
-            }
-        }) {
-            Some(Some((idx, kind))) => return Some(ProjectionCandidate { idx, kind }),
+        let alias_bound = candidates
+            .iter()
+            .filter_map(|c| if let ProjectionCandidate(i) = c.candidate { Some(i) } else { None })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+        match alias_bound {
+            Some(Some(index)) => return Some(ProjectionCandidate(index)),
             Some(None) => {}
             None => return None,
         }
@@ -2036,12 +1997,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
-                | PointerLikeCandidate
                 | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
                 ParamCandidate(_) | ImplCandidate(_) => true,
-                ProjectionCandidate { .. } | ObjectCandidate(_) => unreachable!(),
+                ProjectionCandidate(_) | ObjectCandidate(_) => unreachable!(),
             }) {
                 return Some(ImplCandidate(def_id));
             } else {
@@ -2399,7 +2359,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 if self.infcx.can_define_opaque_ty(def_id) {
                     unreachable!()
                 } else {
-                    // We can resolve the opaque type to its hidden type,
+                    // We can resolve the `impl Trait` to its concrete type,
                     // which enforces a DAG between the functions requiring
                     // the auto trait bounds in question.
                     match self.tcx().type_of_opaque(def_id) {
@@ -2488,7 +2448,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         impl_def_id: DefId,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Normalized<'tcx, GenericArgsRef<'tcx>> {
-        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
+        let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
         match self.match_impl(impl_def_id, impl_trait_header, obligation) {
             Ok(args) => args,
             Err(()) => {

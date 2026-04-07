@@ -154,6 +154,7 @@ Item =
 | Static
 | Struct
 | Trait
+| TraitAlias
 | TypeAlias
 | Union
 | Use
@@ -305,8 +306,11 @@ Trait =
   Attr* Visibility?
   'unsafe'? 'auto'?
   'trait' Name GenericParamList?
-  (((':' TypeBoundList?)? WhereClause? AssocItemList) |
-  ('=' TypeBoundList? WhereClause? ';'))
+  (':' TypeBoundList?)? WhereClause? AssocItemList
+
+TraitAlias =
+  Attr* Visibility?
+  'trait' Name GenericParamList? '=' TypeBoundList? WhereClause? ';'
 
 AssocItemList =
   '{' Attr* AssocItem* '}'

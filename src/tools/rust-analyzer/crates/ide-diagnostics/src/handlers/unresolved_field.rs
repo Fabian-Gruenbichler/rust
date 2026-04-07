@@ -1,3 +1,5 @@
+use std::iter;
+
 use either::Either;
 use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
@@ -192,20 +194,17 @@ fn add_field_to_struct_fix(
                 Some(make::visibility_pub_crate())
             };
             // FIXME: Allow for choosing a visibility modifier see https://github.com/rust-lang/rust-analyzer/issues/11563
-            let indent = IndentLevel::from_node(struct_syntax.value);
+            let indent = IndentLevel::from_node(struct_syntax.value) + 1;
 
-            let field =
-                make::record_field(visibility, field_name, suggested_type).indent(indent + 1);
+            let field = make::record_field(visibility, field_name, suggested_type).indent(indent);
+            let record_field_list = make::record_field_list(iter::once(field));
             // A Unit Struct with no `;` is invalid syntax. We should not suggest this fix.
             let semi_colon =
                 algo::skip_trivia_token(struct_syntax.value.last_token()?, Direction::Prev)?;
             if semi_colon.kind() != SyntaxKind::SEMICOLON {
                 return None;
             }
-            src_change_builder.replace(
-                semi_colon.text_range(),
-                format!(" {{\n{}{field},\n{indent}}}", indent + 1),
-            );
+            src_change_builder.replace(semi_colon.text_range(), record_field_list.to_string());
 
             Some(Assist {
                 id: AssistId::quick_fix("convert-unit-struct-to-record-struct"),
@@ -231,7 +230,7 @@ fn record_field_layout(
     field_list: ast::RecordFieldList,
     struct_syntax: &SyntaxNode,
 ) -> Option<(TextSize, String)> {
-    let (offset, needs_comma, indent) = match field_list.fields().last() {
+    let (offset, needs_comma, trailing_new_line, indent) = match field_list.fields().last() {
         Some(record_field) => {
             let syntax = algo::skip_trivia_token(field_list.r_curly_token()?, Direction::Prev)?;
 
@@ -240,22 +239,19 @@ fn record_field_layout(
             (
                 last_field_syntax.text_range().end(),
                 syntax.kind() != SyntaxKind::COMMA,
+                false,
                 last_field_indent,
             )
         }
         // Empty Struct. Add a field right before the closing brace
         None => {
             let indent = IndentLevel::from_node(struct_syntax) + 1;
-            let offset = field_list.l_curly_token()?.text_range().end();
-            (offset, false, indent)
+            let offset = field_list.r_curly_token()?.text_range().start();
+            (offset, false, true, indent)
         }
     };
-    let trailing_new_line = if !field_list.syntax().text().contains_char('\n') {
-        format!("\n{}", field_list.indent_level())
-    } else {
-        String::new()
-    };
-    let comma = if needs_comma { ",\n" } else { "\n" };
+    let comma = if needs_comma { ",\n" } else { "" };
+    let trailing_new_line = if trailing_new_line { "\n" } else { "" };
     let record_field = make::record_field(visibility, name, suggested_type);
 
     Some((offset, format!("{comma}{indent}{record_field}{trailing_new_line}")))
@@ -381,24 +377,18 @@ fn foo() {
     fn unresolved_field_fix_on_unit() {
         check_fix(
             r#"
-            mod indent {
                 struct Foo;
 
                 fn foo() {
                     Foo.bar$0;
                 }
-            }
             "#,
             r#"
-            mod indent {
-                struct Foo {
-                    bar: (),
-                }
+                struct Foo{ bar: () }
 
                 fn foo() {
                     Foo.bar;
                 }
-            }
             "#,
         );
     }
@@ -406,7 +396,6 @@ fn foo() {
     fn unresolved_field_fix_on_empty() {
         check_fix(
             r#"
-            mod indent {
                 struct Foo{
                 }
 
@@ -414,10 +403,8 @@ fn foo() {
                     let foo = Foo{};
                     foo.bar$0;
                 }
-            }
             "#,
             r#"
-            mod indent {
                 struct Foo{
                     bar: ()
                 }
@@ -426,32 +413,6 @@ fn foo() {
                     let foo = Foo{};
                     foo.bar;
                 }
-            }
-            "#,
-        );
-
-        check_fix(
-            r#"
-            mod indent {
-                struct Foo {}
-
-                fn foo() {
-                    let foo = Foo{};
-                    foo.bar$0;
-                }
-            }
-            "#,
-            r#"
-            mod indent {
-                struct Foo {
-                    bar: ()
-                }
-
-                fn foo() {
-                    let foo = Foo{};
-                    foo.bar;
-                }
-            }
             "#,
         );
     }

@@ -1,24 +1,26 @@
 #![crate_name = "compiletest"]
+// Needed by the "new" test executor that does not depend on libtest.
+// FIXME(Zalathar): We should be able to get rid of `internal_output_capture`,
+// by having `runtest` manually capture all of its println-like output instead.
+// That would result in compiletest being written entirely in stable Rust!
+#![feature(internal_output_capture)]
 
 #[cfg(test)]
 mod tests;
 
-pub mod cli;
-mod common;
+pub mod common;
 mod debuggers;
-mod diagnostics;
-mod directives;
-mod edition;
-mod errors;
+pub mod diagnostics;
+pub mod directives;
+pub mod errors;
 mod executor;
 mod json;
 mod output_capture;
 mod panic_hook;
 mod raise_fd_limit;
 mod read2;
-mod runtest;
-pub mod rustdoc_gui_test;
-mod util;
+pub mod runtest;
+pub mod util;
 
 use core::panic;
 use std::collections::HashSet;
@@ -41,8 +43,7 @@ use crate::common::{
     CodegenBackend, CompareMode, Config, Debugger, PassMode, TestMode, TestPaths, UI_EXTENSIONS,
     expected_output_path, output_base_dir, output_relative_path,
 };
-use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
-use crate::edition::parse_edition;
+use crate::directives::DirectivesCache;
 use crate::executor::{CollectedTest, ColorConfig};
 
 /// Creates the `Config` instance for this invocation of compiletest.
@@ -50,7 +51,7 @@ use crate::executor::{CollectedTest, ColorConfig};
 /// The config mostly reflects command-line arguments, but there might also be
 /// some code here that inspects environment variables or even runs executables
 /// (e.g. when discovering debugger versions).
-fn parse_config(args: Vec<String>) -> Config {
+pub fn parse_config(args: Vec<String>) -> Config {
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
@@ -177,6 +178,12 @@ fn parse_config(args: Vec<String>) -> Config {
         // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
         .optflag("", "no-capture", "don't capture stdout/stderr of tests")
+        .optopt(
+            "N",
+            "new-output-capture",
+            "enables or disables the new output-capture implementation",
+            "off|on",
+        )
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
@@ -310,17 +317,11 @@ fn parse_config(args: Vec<String>) -> Config {
             .free
             .iter()
             .map(|f| {
-                // Here `f` is relative to `./tests/run-make`. So if you run
-                //
-                //   ./x test tests/run-make/crate-loading
-                //
-                //  then `f` is "crate-loading".
                 let path = Utf8Path::new(f);
                 let mut iter = path.iter().skip(1);
 
+                // We skip the test folder and check if the user passed `rmake.rs`.
                 if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
-                    // Strip the "rmake.rs" suffix. For example, if `f` is
-                    // "crate-loading/rmake.rs" then this gives us "crate-loading".
                     path.parent().unwrap().to_string()
                 } else {
                     f.to_string()
@@ -328,12 +329,6 @@ fn parse_config(args: Vec<String>) -> Config {
             })
             .collect::<Vec<_>>()
     } else {
-        // Note that the filters are relative to the root dir of the different test
-        // suites. For example, with:
-        //
-        //   ./x test tests/ui/lint/unused
-        //
-        // the filter is "lint/unused".
         matches.free.clone()
     };
     let compare_mode = matches.opt_str("compare-mode").map(|s| {
@@ -453,7 +448,7 @@ fn parse_config(args: Vec<String>) -> Config {
         has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
-        edition: matches.opt_str("edition").as_deref().map(parse_edition),
+        edition: matches.opt_str("edition"),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -464,6 +459,7 @@ fn parse_config(args: Vec<String>) -> Config {
         host_linker: matches.opt_str("host-linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         nodejs: matches.opt_str("nodejs"),
+        npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
 
@@ -472,6 +468,14 @@ fn parse_config(args: Vec<String>) -> Config {
         supported_crate_types: OnceLock::new(),
 
         nocapture: matches.opt_present("no-capture"),
+        new_output_capture: {
+            let value = matches
+                .opt_str("new-output-capture")
+                .or_else(|| env::var("COMPILETEST_NEW_OUTPUT_CAPTURE").ok())
+                .unwrap_or_else(|| "off".to_owned());
+            parse_bool_option(&value)
+                .unwrap_or_else(|| panic!("unknown `--new-output-capture` value `{value}` given"))
+        },
 
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
@@ -487,7 +491,27 @@ fn parse_config(args: Vec<String>) -> Config {
     }
 }
 
-fn opt_str2(maybestr: Option<String>) -> String {
+/// Parses the same set of boolean values accepted by rustc command-line arguments.
+///
+/// Accepting all of these values is more complicated than just picking one
+/// pair, but has the advantage that contributors who are used to rustc
+/// shouldn't have to think about which values are legal.
+fn parse_bool_option(value: &str) -> Option<bool> {
+    match value {
+        "off" | "no" | "n" | "false" => Some(false),
+        "on" | "yes" | "y" | "true" => Some(true),
+        _ => None,
+    }
+}
+
+pub fn opt_str(maybestr: &Option<String>) -> &str {
+    match *maybestr {
+        None => "(none)",
+        Some(ref s) => s,
+    }
+}
+
+pub fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
         None => "(none)".to_owned(),
         Some(s) => s,
@@ -495,7 +519,7 @@ fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 /// Called by `main` after the config has been parsed.
-fn run_tests(config: Arc<Config>) {
+pub fn run_tests(config: Arc<Config>) {
     debug!(?config, "run_tests");
 
     panic_hook::install_panic_hook();
@@ -524,6 +548,11 @@ fn run_tests(config: Arc<Config>) {
     //
     // SAFETY: at this point we're still single-threaded.
     unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
+
+    // Let tests know which target they're running as.
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("TARGET", &config.target) };
 
     let mut configs = Vec::new();
     if let TestMode::DebugInfo = config.mode {
@@ -628,7 +657,7 @@ impl TestCollector {
 /// FIXME(Zalathar): Now that we no longer rely on libtest, try to overhaul
 /// test discovery to take into account the filters/tests specified on the
 /// command-line, instead of having to enumerate everything.
-fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
+pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
     debug!("making tests from {}", config.src_test_suite_root);
     let common_inputs_stamp = common_inputs_stamp(&config);
     let modified_tests =
@@ -840,7 +869,7 @@ fn collect_tests_from_dir(
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
-fn is_test(file_name: &str) -> bool {
+pub fn is_test(file_name: &str) -> bool {
     if !file_name.ends_with(".rs") {
         return false;
     }
@@ -863,10 +892,7 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     };
 
     // Scan the test file to discover its revisions, if any.
-    let file_contents =
-        fs::read_to_string(&test_path).expect("reading test file for directives should succeed");
-    let file_directives = FileDirectives::from_file_contents(&test_path, &file_contents);
-    let early_props = EarlyProps::from_file_directives(&cx.config, &file_directives);
+    let early_props = EarlyProps::from_file(&cx.config, &test_path);
 
     // Normally we create one structure per revision, with two exceptions:
     // - If a test doesn't use revisions, create a dummy revision (None) so that
@@ -884,13 +910,8 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // `CollectedTest` that can be handed over to the test executor.
     collector.tests.extend(revisions.into_iter().map(|revision| {
         // Create a test name and description to hand over to the executor.
-        let (test_name, filterable_path) =
-            make_test_name_and_filterable_path(&cx.config, testpaths, revision);
-
-        // While scanning for ignore/only/needs directives, also collect aux
-        // paths for up-to-date checking.
-        let mut aux_props = AuxProps::default();
-
+        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
+        let test_name = make_test_name(&cx.config, testpaths, revision);
         // Create a description struct for the test/revision.
         // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
         // because they historically needed to set the libtest ignored flag.
@@ -899,19 +920,14 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             &cx.cache,
             test_name,
             &test_path,
-            &filterable_path,
-            &file_directives,
+            src_file,
             revision,
             &mut collector.poisoned,
-            &mut aux_props,
         );
 
         // If a test's inputs haven't changed since the last time it ran,
         // mark it as ignored so that the executor will skip it.
-        if !desc.ignore
-            && !cx.config.force_rerun
-            && is_up_to_date(cx, testpaths, &aux_props, revision)
-        {
+        if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
             desc.ignore = true;
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
             // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
@@ -940,7 +956,7 @@ fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str
 fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
-    aux_props: &AuxProps,
+    props: &EarlyProps,
     revision: Option<&str>,
 ) -> Vec<Utf8PathBuf> {
     let mut related = vec![];
@@ -957,11 +973,8 @@ fn files_related_to_test(
         related.push(testpaths.file.clone());
     }
 
-    for aux in aux_props.all_aux_path_strings() {
+    for aux in props.aux.all_aux_path_strings() {
         // FIXME(Zalathar): Perform all `auxiliary` path resolution in one place.
-        // FIXME(Zalathar): This only finds auxiliary files used _directly_ by
-        // the test file; if a transitive auxiliary is modified, the test might
-        // be treated as "up-to-date" even though it should run.
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
         related.push(path);
     }
@@ -986,7 +999,7 @@ fn files_related_to_test(
 fn is_up_to_date(
     cx: &TestCollectorCx,
     testpaths: &TestPaths,
-    aux_props: &AuxProps,
+    props: &EarlyProps,
     revision: Option<&str>,
 ) -> bool {
     let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
@@ -1007,7 +1020,7 @@ fn is_up_to_date(
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
-    for path in files_related_to_test(&cx.config, testpaths, aux_props, revision) {
+    for path in files_related_to_test(&cx.config, testpaths, props, revision) {
         inputs_stamp.add_path(&path);
     }
 
@@ -1059,11 +1072,7 @@ impl Stamp {
 }
 
 /// Creates a name for this test/revision that can be handed over to the executor.
-fn make_test_name_and_filterable_path(
-    config: &Config,
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-) -> (String, Utf8PathBuf) {
+fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> String {
     // Print the name of the file, relative to the sources root.
     let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
@@ -1075,23 +1084,14 @@ fn make_test_name_and_filterable_path(
         None => String::new(),
     };
 
-    let name = format!(
+    format!(
         "[{}{}{}] {}{}",
         config.mode,
         debugger,
         mode_suffix,
         path,
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
-    );
-
-    // `path` is the full path from the repo root like, `tests/ui/foo/bar.rs`.
-    // Filtering is applied without the `tests/ui/` part, so strip that off.
-    // First strip off "tests" to make sure we don't have some unexpected path.
-    let mut filterable_path = path.strip_prefix("tests").unwrap().to_owned();
-    // Now strip off e.g. "ui" or "run-make" component.
-    filterable_path = filterable_path.components().skip(1).collect();
-
-    (name, filterable_path)
+    )
 }
 
 /// Checks that test discovery didn't find any tests whose name stem is a prefix
@@ -1133,7 +1133,7 @@ fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
     }
 }
 
-fn early_config_check(config: &Config) {
+pub fn early_config_check(config: &Config) {
     if !config.has_html_tidy && config.mode == TestMode::Rustdoc {
         warning!("`tidy` (html-tidy.org) is not installed; diffs will not be generated");
     }

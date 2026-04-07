@@ -1,6 +1,7 @@
 //@ add-core-stubs
 //@ needs-asm-support
 //@ revisions: loongarch32_ilp32d loongarch32_ilp32s loongarch64_lp64d loongarch64_lp64s
+//@ min-llvm-version: 20
 //@[loongarch32_ilp32d] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32_ilp32d] needs-llvm-components: loongarch
 //@[loongarch32_ilp32s] compile-flags: --target loongarch32-unknown-none-softfloat
@@ -9,7 +10,6 @@
 //@[loongarch64_lp64d] needs-llvm-components: loongarch
 //@[loongarch64_lp64s] compile-flags: --target loongarch64-unknown-none-softfloat
 //@[loongarch64_lp64s] needs-llvm-components: loongarch
-//@ ignore-backends: gcc
 
 #![crate_type = "lib"]
 #![feature(no_core)]

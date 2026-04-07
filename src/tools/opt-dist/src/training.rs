@@ -39,6 +39,7 @@ fn init_compiler_benchmarks(
         "--exact-match",
         crates.join(",").as_str(),
     ])
+    .env("RUST_LOG", "collector=debug")
     .env("RUSTC", env.rustc_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
     .workdir(&env.rustc_perf_dir());

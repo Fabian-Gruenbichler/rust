@@ -33,10 +33,6 @@ impl CodegenBackend for TheBackend {
         ""
     }
 
-    fn name(&self) -> &'static str {
-        "the-backend"
-    }
-
     fn codegen_crate(&self, tcx: TyCtxt<'_>) -> Box<dyn Any> {
         Box::new(CodegenResults {
             modules: vec![],

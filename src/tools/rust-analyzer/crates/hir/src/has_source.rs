@@ -14,7 +14,8 @@ use tt::TextRange;
 use crate::{
     Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
     InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
-    Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef, db::HirDatabase,
+    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef,
+    db::HirDatabase,
 };
 
 pub trait HasSource {
@@ -167,6 +168,12 @@ impl HasSource for Trait {
         Some(self.id.lookup(db).source(db))
     }
 }
+impl HasSource for TraitAlias {
+    type Ast = ast::TraitAlias;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        Some(self.id.lookup(db).source(db))
+    }
+}
 impl HasSource for TypeAlias {
     type Ast = ast::TypeAlias;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
@@ -195,7 +202,7 @@ impl HasSource for Impl {
 }
 
 impl HasSource for TypeOrConstParam {
-    type Ast = Either<ast::TypeOrConstParam, ast::Trait>;
+    type Ast = Either<ast::TypeOrConstParam, ast::TraitOrAlias>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
         let child_source = self.id.parent.child_source(db);
         child_source.map(|it| it.get(self.id.local_id).cloned()).transpose()
@@ -238,7 +245,7 @@ impl HasSource for Param<'_> {
                 .map(|value| InFile { file_id, value })
             }
             Callee::Closure(closure, _) => {
-                let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure);
+                let InternedClosure(owner, expr_id) = db.lookup_intern_closure(closure.into());
                 let (_, source_map) = db.body_with_source_map(owner);
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
                 let root = db.parse_or_expand(file_id);

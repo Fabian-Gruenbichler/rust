@@ -1,4 +1,3 @@
-//@aux-build:proc_macros.rs
 #![warn(clippy::explicit_deref_methods)]
 #![allow(unused_variables, unused_must_use)]
 #![allow(
@@ -14,8 +13,6 @@
 )]
 
 use std::ops::{Deref, DerefMut};
-
-extern crate proc_macros;
 
 fn concat(deref_str: &str) -> String {
     format!("{}bar", deref_str)
@@ -123,18 +120,6 @@ fn main() {
 
     let b: &str = expr_deref!(a.deref());
     //~^ explicit_deref_methods
-
-    proc_macros::external! {
-        let a: &mut String = &mut String::from("foo");
-        let b: &str = a.deref();
-    }
-
-    // Issue #15168
-    proc_macros::with_span! {
-        span
-        let a: &mut String = &mut String::from("foo");
-        let b: &str = a.deref();
-    }
 
     // The struct does not implement Deref trait
     #[derive(Copy, Clone)]

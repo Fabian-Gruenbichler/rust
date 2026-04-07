@@ -4,26 +4,21 @@
 use std::path::Path;
 use std::str::FromStr;
 
-use crate::diagnostics::{CheckId, TidyCtx};
-
 const RUSTDOC_JSON_TYPES: &str = "src/rustdoc-json-types";
 
-pub fn check(src_path: &Path, ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_json").path(src_path));
-
+pub fn check(src_path: &Path, ci_info: &crate::CiInfo, bad: &mut bool) {
+    println!("Checking tidy rustdoc_json...");
     let Some(base_commit) = &ci_info.base_commit else {
-        check.verbose_msg("No base commit, skipping rustdoc_json check");
+        eprintln!("No base commit, skipping rustdoc_json check");
         return;
     };
 
     // First we check that `src/rustdoc-json-types` was modified.
-    if !crate::files_modified(ci_info, |p| p.starts_with(RUSTDOC_JSON_TYPES)) {
+    if !crate::files_modified(ci_info, |p| p == RUSTDOC_JSON_TYPES) {
         // `rustdoc-json-types` was not modified so nothing more to check here.
+        println!("`rustdoc-json-types` was not modified.");
         return;
     }
-
-    check.message("`rustdoc-json-types` modified, checking format version");
-
     // Then we check that if `FORMAT_VERSION` was updated, the `Latest feature:` was also updated.
     match crate::git_diff(base_commit, src_path.join("rustdoc-json-types")) {
         Some(output) => {
@@ -50,29 +45,34 @@ pub fn check(src_path: &Path, ci_info: &crate::CiInfo, tidy_ctx: TidyCtx) {
                 }
             }
             if format_version_updated != latest_feature_comment_updated {
-                let msg = if latest_feature_comment_updated {
-                    format!(
-                        "`Latest feature` comment was updated whereas `FORMAT_VERSION` wasn't in `{RUSTDOC_JSON_TYPES}/lib.rs`"
-                    )
+                *bad = true;
+                if latest_feature_comment_updated {
+                    eprintln!(
+                        "error in `rustdoc_json` tidy check: `Latest feature` comment was updated \
+                         whereas `FORMAT_VERSION` wasn't in `{RUSTDOC_JSON_TYPES}/lib.rs`"
+                    );
                 } else {
-                    format!(
-                        "`Latest feature` comment was not updated whereas `FORMAT_VERSION` was in `{RUSTDOC_JSON_TYPES}/lib.rs`"
-                    )
-                };
-                check.error(msg);
+                    eprintln!(
+                        "error in `rustdoc_json` tidy check: `Latest feature` comment was not \
+                         updated whereas `FORMAT_VERSION` was in `{RUSTDOC_JSON_TYPES}/lib.rs`"
+                    );
+                }
             }
             match (new_version, old_version) {
                 (Some(new_version), Some(old_version)) if new_version != old_version + 1 => {
-                    check.error(format!(
-                        "invalid `FORMAT_VERSION` increase in `{RUSTDOC_JSON_TYPES}/lib.rs`, should be `{}`, found `{new_version}`",
+                    *bad = true;
+                    eprintln!(
+                        "error in `rustdoc_json` tidy check: invalid `FORMAT_VERSION` increase in \
+                         `{RUSTDOC_JSON_TYPES}/lib.rs`, should be `{}`, found `{new_version}`",
                         old_version + 1,
-                    ));
+                    );
                 }
                 _ => {}
             }
         }
         None => {
-            check.error("failed to run `git diff` in rustdoc_json check");
+            *bad = true;
+            eprintln!("error: failed to run `git diff` in rustdoc_json check");
         }
     }
 }

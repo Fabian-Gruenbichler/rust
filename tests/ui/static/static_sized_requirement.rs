@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ check-pass
 
-#![feature(no_core)]
+#![feature(no_core, lang_items)]
 #![no_core]
 #![crate_type = "lib"]
 

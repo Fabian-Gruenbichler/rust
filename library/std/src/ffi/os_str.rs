@@ -1215,8 +1215,6 @@ impl OsStr {
 
     /// Checks if all characters in this string are within the ASCII range.
     ///
-    /// An empty string returns `true`.
-    ///
     /// # Examples
     ///
     /// ```

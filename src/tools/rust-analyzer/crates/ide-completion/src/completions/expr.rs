@@ -9,7 +9,7 @@ use syntax::ast;
 use crate::{
     CompletionContext, Completions,
     completions::record::add_default_update,
-    context::{PathCompletionCtx, PathExprCtx, Qualified},
+    context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
 };
 
 struct PathCallback<'a, F> {
@@ -57,17 +57,14 @@ pub(crate) fn complete_expr_path(
 
     let &PathExprCtx {
         in_block_expr,
+        in_breakable,
         after_if_expr,
-        before_else_kw,
         in_condition,
         incomplete_let,
-        after_incomplete_let,
-        in_value,
         ref ref_expr_parent,
         after_amp,
         ref is_func_update,
         ref innermost_ret_ty,
-        ref innermost_breakable_ty,
         ref impl_,
         in_match_guard,
         ..
@@ -142,8 +139,9 @@ pub(crate) fn complete_expr_path(
         Qualified::With { resolution: None, .. } => {}
         Qualified::With { resolution: Some(resolution), .. } => {
             // Add associated types on type parameters and `Self`.
-            ctx.scope.assoc_type_shorthand_candidates(resolution, |alias| {
+            ctx.scope.assoc_type_shorthand_candidates(resolution, |_, alias| {
                 acc.add_type_alias(ctx, alias);
+                None::<()>
             });
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
@@ -256,7 +254,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
-                                ctx.config.find_path_config(ctx.is_nightly),
+                                ctx.config.import_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -278,7 +276,7 @@ pub(crate) fn complete_expr_path(
                             .find_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
-                                ctx.config.find_path_config(ctx.is_nightly),
+                                ctx.config.import_path_config(ctx.is_nightly),
                             )
                             .filter(|it| it.len() > 1);
 
@@ -297,7 +295,7 @@ pub(crate) fn complete_expr_path(
                             acc,
                             ctx,
                             e,
-                            impl_.as_ref(),
+                            impl_,
                             |acc, ctx, variant, path| {
                                 acc.add_qualified_enum_variant(ctx, path_ctx, variant, path)
                             },
@@ -363,16 +361,10 @@ pub(crate) fn complete_expr_path(
                     add_keyword("loop", "loop {\n    $0\n}");
                     if in_match_guard {
                         add_keyword("if", "if $0");
-                    } else if in_value {
-                        add_keyword("if", "if $1 {\n    $2\n} else {\n    $0\n}");
                     } else {
                         add_keyword("if", "if $1 {\n    $0\n}");
                     }
-                    if in_value {
-                        add_keyword("if let", "if let $1 = $2 {\n    $3\n} else {\n    $0\n}");
-                    } else {
-                        add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
-                    }
+                    add_keyword("if let", "if let $1 = $2 {\n    $0\n}");
                     add_keyword("for", "for $1 in $2 {\n    $0\n}");
                     add_keyword("true", "true");
                     add_keyword("false", "false");
@@ -387,11 +379,8 @@ pub(crate) fn complete_expr_path(
                         add_keyword("let", "let $1 = $0;");
                     }
 
-                    if !before_else_kw && (after_if_expr || after_incomplete_let) {
-                        add_keyword("else", "else {\n    $0\n}");
-                    }
-
                     if after_if_expr {
+                        add_keyword("else", "else {\n    $0\n}");
                         add_keyword("else if", "else if $1 {\n    $0\n}");
                     }
 
@@ -405,21 +394,14 @@ pub(crate) fn complete_expr_path(
                         add_keyword("mut", "mut ");
                     }
 
-                    if let Some(loop_ty) = innermost_breakable_ty {
+                    if in_breakable != BreakableKind::None {
                         if in_block_expr {
                             add_keyword("continue", "continue;");
+                            add_keyword("break", "break;");
                         } else {
                             add_keyword("continue", "continue");
+                            add_keyword("break", "break");
                         }
-                        add_keyword(
-                            "break",
-                            match (loop_ty.is_unit(), in_block_expr) {
-                                (true, true) => "break;",
-                                (true, false) => "break",
-                                (false, true) => "break $0;",
-                                (false, false) => "break $0",
-                            },
-                        );
                     }
 
                     if let Some(ret_ty) = innermost_ret_ty {

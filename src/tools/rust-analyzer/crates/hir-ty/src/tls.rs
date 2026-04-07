@@ -10,7 +10,6 @@ use crate::{
 };
 use hir_def::{AdtId, ItemContainerId, Lookup, TypeAliasId};
 
-#[allow(unused)]
 pub(crate) use unsafe_tls::{set_current_program, with_current_program};
 
 pub(crate) struct DebugContext<'a>(&'a dyn HirDatabase);
@@ -137,7 +136,6 @@ mod unsafe_tls {
         if PROGRAM.is_set() { PROGRAM.with(|prog| op(Some(prog))) } else { op(None) }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn set_current_program<OP, R>(p: &dyn HirDatabase, op: OP) -> R
     where
         OP: FnOnce() -> R,

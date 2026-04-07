@@ -86,7 +86,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) 
             ty::FnPtr(..) => {
                 return Err((span, "function pointers in const fn are unstable".into()));
             },
-            ty::Dynamic(preds, _) => {
+            ty::Dynamic(preds, _, _) => {
                 for pred in *preds {
                     match pred.skip_binder() {
                         ty::ExistentialPredicate::AutoTrait(_) | ty::ExistentialPredicate::Projection(_) => {
@@ -126,7 +126,7 @@ fn check_rvalue<'tcx>(
 ) -> McfResult {
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
-        Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
+        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
             check_place(cx, *place, span, body, msrv)
         },
         Rvalue::CopyForDeref(place) => check_place(cx, *place, span, body, msrv),
@@ -141,8 +141,7 @@ fn check_rvalue<'tcx>(
             | CastKind::FloatToFloat
             | CastKind::FnPtrToPtr
             | CastKind::PtrToPtr
-            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _)
-            | CastKind::Subtype,
+            | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _),
             operand,
             _,
         ) => check_operand(cx, operand, span, body, msrv),
@@ -232,7 +231,9 @@ fn check_statement<'tcx>(
 
         StatementKind::FakeRead(box (_, place)) => check_place(cx, *place, span, body, msrv),
         // just an assignment
-        StatementKind::SetDiscriminant { place, .. } => check_place(cx, **place, span, body, msrv),
+        StatementKind::SetDiscriminant { place, .. } | StatementKind::Deinit(place) => {
+            check_place(cx, **place, span, body, msrv)
+        },
 
         StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(op)) => check_operand(cx, op, span, body, msrv),
 
@@ -311,6 +312,7 @@ fn check_place<'tcx>(
             | ProjectionElem::OpaqueCast(..)
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Subtype(_)
             | ProjectionElem::Index(_)
             | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }
@@ -473,7 +475,7 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
 
         let ocx = ObligationCtxt::new(&infcx);
         ocx.register_obligations(impl_src.nested_obligations());
-        ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+        ocx.select_all_or_error().is_empty()
     }
 
     !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)

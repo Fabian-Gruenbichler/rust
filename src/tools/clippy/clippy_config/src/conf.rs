@@ -1,9 +1,9 @@
 use crate::ClippyConfiguration;
 use crate::types::{
-    DisallowedPath, DisallowedPathWithoutReplacement, InherentImplLintScope, MacroMatcher, MatchLintBehaviour,
-    PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering, SourceItemOrderingCategory,
-    SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind,
-    SourceItemOrderingTraitAssocItemKinds, SourceItemOrderingWithinModuleItemGroupings,
+    DisallowedPath, DisallowedPathWithoutReplacement, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour,
+    Rename, SourceItemOrdering, SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings,
+    SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    SourceItemOrderingWithinModuleItemGroupings,
 };
 use clippy_utils::msrvs::Msrv;
 use itertools::Itertools;
@@ -248,7 +248,7 @@ macro_rules! define_Conf {
 
         #[derive(Deserialize)]
         #[serde(field_identifier, rename_all = "kebab-case")]
-        #[expect(non_camel_case_types)]
+        #[allow(non_camel_case_types)]
         enum Field { $($name,)* third_party, }
 
         struct ConfVisitor<'a>(&'a SourceFile);
@@ -663,9 +663,6 @@ define_Conf! {
     /// A list of paths to types that should be treated as if they do not contain interior mutability
     #[lints(borrow_interior_mutable_const, declare_interior_mutable_const, ifs_same_cond, mutable_key_type)]
     ignore_interior_mutability: Vec<String> = Vec::from(["bytes::Bytes".into()]),
-    /// Sets the scope ("crate", "file", or "module") in which duplicate inherent `impl` blocks for the same type are linted.
-    #[lints(multiple_inherent_impl)]
-    inherent_impl_lint_scope: InherentImplLintScope = InherentImplLintScope::Crate,
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
@@ -744,7 +741,6 @@ define_Conf! {
         from_over_into,
         if_then_some_else_none,
         index_refutable_slice,
-        inefficient_to_string,
         io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
@@ -783,7 +779,6 @@ define_Conf! {
         needless_borrow,
         non_std_lazy_statics,
         option_as_ref_deref,
-        or_fun_call,
         ptr_as_ptr,
         question_mark,
         redundant_field_names,
@@ -795,10 +790,9 @@ define_Conf! {
         transmute_ptr_to_ref,
         tuple_array_conversions,
         type_repetition_in_bounds,
-        unchecked_time_subtraction,
+        unchecked_duration_subtraction,
         uninlined_format_args,
         unnecessary_lazy_evaluations,
-        unnecessary_unwrap,
         unnested_or_patterns,
         unused_trait_names,
         use_self,
@@ -812,9 +806,6 @@ define_Conf! {
     /// exported visibility, or whether they are marked as "pub".
     #[lints(pub_underscore_fields)]
     pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PubliclyExported,
-    /// Whether the type itself in a struct or enum should be replaced with `Self` when encountering recursive types.
-    #[lints(use_self)]
-    recursive_self_in_type_definitions: bool = true,
     /// Whether to lint only if it's multiline.
     #[lints(semicolon_inside_block)]
     semicolon_inside_block_ignore_singleline: bool = false,
@@ -1219,7 +1210,7 @@ mod tests {
 
         for entry in toml_files {
             let file = fs::read_to_string(entry.path()).unwrap();
-            #[expect(clippy::zero_sized_map_values)]
+            #[allow(clippy::zero_sized_map_values)]
             if let Ok(map) = toml::from_str::<HashMap<String, IgnoredAny>>(&file) {
                 for name in map.keys() {
                     names.remove(name.as_str());

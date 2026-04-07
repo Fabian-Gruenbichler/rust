@@ -6,15 +6,12 @@ use std::path::Path;
 
 use ignore::DirEntry;
 
-use crate::diagnostics::{CheckId, TidyCtx};
 use crate::walk::walk;
 
 // Array containing `("beginning of tag", "end of tag")`.
 const TAGS: &[(&str, &str)] = &[("{#", "#}"), ("{%", "%}"), ("{{", "}}")];
 
-pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("rustdoc_templates").path(librustdoc_path));
-
+pub fn check(librustdoc_path: &Path, bad: &mut bool) {
     walk(
         &librustdoc_path.join("html/templates"),
         |path, is_dir| is_dir || path.extension().is_none_or(|ext| ext != OsStr::new("html")),
@@ -49,11 +46,12 @@ pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
                         })
                     {
                         // It seems like ending this line with a jinja tag is not needed after all.
-                        check.error(format!(
+                        tidy_error!(
+                            bad,
                             "`{}` at line {}: unneeded `{{# #}}` tag at the end of the line",
                             path.path().display(),
                             pos + 1,
-                        ));
+                        );
                     }
                     continue;
                 }
@@ -69,11 +67,12 @@ pub fn check(librustdoc_path: &Path, tidy_ctx: TidyCtx) {
                 }) {
                     None => {
                         // No it's not, let's error.
-                        check.error(format!(
+                        tidy_error!(
+                            bad,
                             "`{}` at line {}: missing `{{# #}}` at the end of the line",
                             path.path().display(),
                             pos + 1,
-                        ));
+                        );
                     }
                     Some(end_tag) => {
                         // We skip the tag.

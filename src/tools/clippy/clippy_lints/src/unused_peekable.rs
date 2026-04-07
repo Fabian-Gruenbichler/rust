@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::ty::peel_and_count_ty_refs;
-use clippy_utils::{fn_def_id, peel_ref_operators, sym};
+use clippy_utils::ty::{is_type_diagnostic_item, peel_mid_ty_refs_is_mutable};
+use clippy_utils::{fn_def_id, is_trait_method, path_to_local_id, peel_ref_operators, sym};
 use rustc_ast::Mutability;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, LetStmt, Node, PatKind, PathSegment, StmtKind};
@@ -50,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
         // Don't lint `Peekable`s returned from a block
         if let Some(expr) = block.expr
             && let Some(ty) = cx.typeck_results().expr_ty_opt(peel_ref_operators(cx, expr))
-            && ty.is_diag_item(cx, sym::IterPeekable)
+            && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
         {
             return;
         }
@@ -62,8 +61,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                 && let Some(init) = local.init
                 && !init.span.from_expansion()
                 && let Some(ty) = cx.typeck_results().expr_ty_opt(init)
-                && let (ty, _, None | Some(Mutability::Mut)) = peel_and_count_ty_refs(ty)
-                && ty.is_diag_item(cx, sym::IterPeekable)
+                && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
+                && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
             {
                 let mut vis = PeekableVisitor::new(cx, binding);
 
@@ -117,7 +116,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {
-        if ex.res_local_id() == Some(self.expected_hir_id) {
+        if path_to_local_id(ex, self.expected_hir_id) {
             for (_, node) in self.cx.tcx.hir_parent_iter(ex.hir_id) {
                 match node {
                     Node::Expr(expr) => {
@@ -161,11 +160,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 
                                 // foo.some_method() excluding Iterator methods
                                 if remaining_args.iter().any(|arg| arg_is_mut_peekable(self.cx, arg))
-                                    && !self
-                                        .cx
-                                        .ty_based_def(expr)
-                                        .opt_parent(self.cx)
-                                        .is_diag_item(self.cx, sym::Iterator)
+                                    && !is_trait_method(self.cx, expr, sym::Iterator)
                                 {
                                     return ControlFlow::Break(());
                                 }
@@ -216,8 +211,8 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 
 fn arg_is_mut_peekable(cx: &LateContext<'_>, arg: &Expr<'_>) -> bool {
     if let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
-        && let (ty, _, None | Some(Mutability::Mut)) = peel_and_count_ty_refs(ty)
-        && ty.is_diag_item(cx, sym::IterPeekable)
+        && let (ty, _, Mutability::Mut) = peel_mid_ty_refs_is_mutable(ty)
+        && is_type_diagnostic_item(cx, ty, sym::IterPeekable)
     {
         true
     } else {

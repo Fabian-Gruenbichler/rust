@@ -1,19 +1,19 @@
 //@ known-bug: #120016
-//@ compile-flags: -Zvalidate-mir
+//@ compile-flags: -Zcrate-attr=feature(const_async_blocks)
 //@ edition: 2021
 
-#![feature(type_alias_impl_trait)]
+#![feature(type_alias_impl_trait, const_async_blocks)]
 
 struct Bug {
     V1: [(); {
-        type F = impl Sized;
+        type F = impl std::future::Future<Output = impl Sized>;
         #[define_opaque(F)]
         fn concrete_use() -> F {
-            //~^ ERROR
-            1i32
+            //~^ ERROR to be a future that resolves to `u8`, but it resolves to `()`
+            async {}
         }
-        let f: F = 0u32;
-
+        let f: F = async { 1 };
+        //~^ ERROR `async` blocks are not allowed in constants
         1
     }],
 }

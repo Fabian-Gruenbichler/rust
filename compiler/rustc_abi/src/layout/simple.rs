@@ -4,8 +4,7 @@ use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexVec};
 
 use crate::{
-    AbiAlign, BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size,
-    Variants,
+    BackendRepr, FieldsShape, HasDataLayout, LayoutData, Niche, Primitive, Scalar, Size, Variants,
 };
 
 /// "Simple" layout constructors that cannot fail.
@@ -21,10 +20,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized },
             largest_niche: None,
             uninhabited: false,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: dl.i8_align.abi,
             randomization_seed: Hash64::new(0),
         }
     }
@@ -38,10 +37,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: dl.i8_align.abi,
             randomization_seed: Hash64::ZERO,
         }
     }
@@ -90,10 +89,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
     pub fn scalar_pair<C: HasDataLayout>(cx: &C, a: Scalar, b: Scalar) -> Self {
         let dl = cx.data_layout();
-        let b_align = b.align(dl).abi;
-        let align = a.align(dl).abi.max(b_align).max(dl.aggregate_align);
-        let b_offset = a.size(dl).align_to(b_align);
-        let size = (b_offset + b.size(dl)).align_to(align);
+        let b_align = b.align(dl);
+        let align = a.align(dl).max(b_align).max(dl.aggregate_align);
+        let b_offset = a.size(dl).align_to(b_align.abi);
+        let size = (b_offset + b.size(dl)).align_to(align.abi);
 
         // HACK(nox): We iter on `b` and then `a` because `max_by_key`
         // returns the last maximum.
@@ -113,10 +112,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::ScalarPair(a, b),
             largest_niche,
             uninhabited: false,
-            align: AbiAlign::new(align),
+            align,
             size,
             max_repr_align: None,
-            unadjusted_abi_align: align,
+            unadjusted_abi_align: align.abi,
             randomization_seed: Hash64::new(combined_seed),
         }
     }
@@ -139,10 +138,10 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
             uninhabited: true,
-            align: AbiAlign::new(dl.i8_align),
+            align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align,
+            unadjusted_abi_align: dl.i8_align.abi,
             randomization_seed: Hash64::ZERO,
         }
     }

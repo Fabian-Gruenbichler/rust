@@ -14,7 +14,6 @@
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ check-pass
 
-//~v WARN the `main` function of this doctest won't be run
 //! ```
 //! # if cfg!(miri) { return; }
 //! use std::ops::Deref;
@@ -23,7 +22,6 @@
 //!     assert!(false);
 //! }
 //! ```
-//~v WARN the `main` function of this doctest won't be run
 //!
 //! ```
 //! let x = 2;

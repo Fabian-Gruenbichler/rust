@@ -178,6 +178,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::<Scalar>::BOTTOM,
                 );
             }
+            StatementKind::Deinit(box place) => {
+                // Deinit makes the place uninitialized.
+                state.flood_with(place.as_ref(), &self.map, FlatSet::<Scalar>::BOTTOM);
+            }
             StatementKind::Retag(..) => {
                 // We don't track references.
             }
@@ -305,7 +309,12 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     self.assign_operand(state, target, operand);
                 }
             }
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
+            Rvalue::CopyForDeref(rhs) => {
+                state.flood(target.as_ref(), &self.map);
+                if let Some(target) = self.map.find(target.as_ref()) {
+                    self.assign_operand(state, target, &Operand::Copy(*rhs));
+                }
+            }
             Rvalue::Aggregate(kind, operands) => {
                 // If we assign `target = Enum::Variant#0(operand)`,
                 // we must make sure that all `target as Variant#i` are `Top`.
@@ -403,6 +412,18 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         let val = match rvalue {
+            Rvalue::Len(place) => {
+                let place_ty = place.ty(self.local_decls, self.tcx);
+                if let ty::Array(_, len) = place_ty.ty.kind() {
+                    Const::Ty(self.tcx.types.usize, *len)
+                        .try_eval_scalar(self.tcx, self.typing_env)
+                        .map_or(FlatSet::Top, FlatSet::Elem)
+                } else if let [ProjectionElem::Deref] = place.projection[..] {
+                    state.get_len(place.local.into(), &self.map)
+                } else {
+                    FlatSet::Top
+                }
+            }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
@@ -431,7 +452,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     FlatSet::Top => FlatSet::Top,
                 }
             }
-            Rvalue::Cast(CastKind::Transmute | CastKind::Subtype, operand, _) => {
+            Rvalue::Cast(CastKind::Transmute, operand, _) => {
                 match self.eval_operand(operand, state) {
                     FlatSet::Elem(op) => self.wrap_immediate(*op),
                     FlatSet::Bottom => FlatSet::Bottom,
@@ -444,30 +465,22 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 let (val, _overflow) = self.binary_op(state, *op, left, right);
                 val
             }
-            Rvalue::UnaryOp(op, operand) => {
-                if let UnOp::PtrMetadata = op
-                    && let Some(place) = operand.place()
-                    && let Some(len) = self.map.find_len(place.as_ref())
-                {
-                    return ValueOrPlace::Place(len);
-                }
-                match self.eval_operand(operand, state) {
-                    FlatSet::Elem(value) => self
-                        .ecx
-                        .unary_op(*op, &value)
-                        .discard_err()
-                        .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
-                    FlatSet::Bottom => FlatSet::Bottom,
-                    FlatSet::Top => FlatSet::Top,
-                }
-            }
+            Rvalue::UnaryOp(op, operand) => match self.eval_operand(operand, state) {
+                FlatSet::Elem(value) => self
+                    .ecx
+                    .unary_op(*op, &value)
+                    .discard_err()
+                    .map_or(FlatSet::Top, |val| self.wrap_immediate(*val)),
+                FlatSet::Bottom => FlatSet::Bottom,
+                FlatSet::Top => FlatSet::Top,
+            },
             Rvalue::NullaryOp(null_op, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
                 };
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
-                    NullOp::AlignOf if layout.is_sized() => layout.align.bytes(),
+                    NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .ecx
                         .tcx
@@ -479,8 +492,9 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
             Rvalue::Use(operand) => return self.handle_operand(operand, state),
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
-            Rvalue::ShallowInitBox(..) => bug!("`ShallowInitBox` in runtime MIR"),
+            Rvalue::CopyForDeref(place) => {
+                return self.handle_operand(&Operand::Copy(*place), state);
+            }
             Rvalue::Ref(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
                 return ValueOrPlace::TOP;
@@ -490,6 +504,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::Aggregate(..)
+            | Rvalue::ShallowInitBox(..)
             | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;

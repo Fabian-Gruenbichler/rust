@@ -20,7 +20,7 @@ use crate::{
     EnumVariantId, ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId,
     GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId, LocalModuleId, Lookup,
     Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UseId, VariantId,
+    TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     db::DefDatabase,
     expr_store::{
@@ -105,6 +105,7 @@ pub enum TypeNs {
     TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
     TraitId(TraitId),
+    TraitAliasId(TraitAliasId),
 
     ModuleId(ModuleId),
 }
@@ -1149,6 +1150,7 @@ impl<'db> ModuleItemMap<'db> {
                 let ty = match def.def {
                     ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
                     ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+                    ModuleDefId::TraitAliasId(it) => TypeNs::TraitAliasId(it),
                     ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
                     ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
@@ -1193,6 +1195,7 @@ fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
 
         ModuleDefId::AdtId(AdtId::EnumId(_) | AdtId::UnionId(_))
         | ModuleDefId::TraitId(_)
+        | ModuleDefId::TraitAliasId(_)
         | ModuleDefId::TypeAliasId(_)
         | ModuleDefId::BuiltinType(_)
         | ModuleDefId::MacroId(_)
@@ -1211,6 +1214,7 @@ fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
         ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
         ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+        ModuleDefId::TraitAliasId(it) => TypeNs::TraitAliasId(it),
 
         ModuleDefId::ModuleId(it) => TypeNs::ModuleId(it),
 
@@ -1316,6 +1320,12 @@ impl HasResolver for TraitId {
     }
 }
 
+impl HasResolver for TraitAliasId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+        lookup_resolver(db, self).push_generic_params_scope(db, self.into())
+    }
+}
+
 impl<T: Into<AdtId> + Copy> HasResolver for T {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
         let def = self.into();
@@ -1400,6 +1410,7 @@ impl HasResolver for GenericDefId {
             GenericDefId::FunctionId(inner) => inner.resolver(db),
             GenericDefId::AdtId(adt) => adt.resolver(db),
             GenericDefId::TraitId(inner) => inner.resolver(db),
+            GenericDefId::TraitAliasId(inner) => inner.resolver(db),
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),

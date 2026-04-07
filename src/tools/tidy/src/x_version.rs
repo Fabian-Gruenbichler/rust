@@ -3,18 +3,12 @@ use std::process::{Command, Stdio};
 
 use semver::Version;
 
-use crate::diagnostics::{CheckId, TidyCtx};
-
-pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("x_version").path(root));
+pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let cargo_list = Command::new(cargo).args(["install", "--list"]).stdout(Stdio::piped()).spawn();
 
     let child = match cargo_list {
         Ok(child) => child,
-        Err(e) => {
-            check.error(format!("failed to run `cargo`: {e}"));
-            return;
-        }
+        Err(e) => return tidy_error!(bad, "failed to run `cargo`: {}", e),
     };
 
     let cargo_list = child.wait_with_output().unwrap();
@@ -53,10 +47,13 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
                 )
             }
         } else {
-            check.error("Unable to parse the latest version of `x` at `src/tools/x/Cargo.toml`")
+            tidy_error!(
+                bad,
+                "Unable to parse the latest version of `x` at `src/tools/x/Cargo.toml`"
+            )
         }
     } else {
-        check.error(format!("failed to check version of `x`: {}", cargo_list.status))
+        tidy_error!(bad, "failed to check version of `x`: {}", cargo_list.status)
     }
 }
 

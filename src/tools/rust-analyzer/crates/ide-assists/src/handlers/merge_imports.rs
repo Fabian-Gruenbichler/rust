@@ -605,7 +605,7 @@ use foo::$0{
 ",
             r"
 use foo::{
-    FooBar, bar::baz,
+    bar::baz, FooBar
 };
 ",
         )

@@ -47,6 +47,7 @@ fn check_compare<'a>(cx: &LateContext<'a>, bit_op: &Expr<'a>, cmp_op: BinOpKind,
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn check_bit_mask(
     cx: &LateContext<'_>,
     bit_op: BinOpKind,

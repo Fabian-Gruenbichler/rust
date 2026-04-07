@@ -7,5 +7,7 @@ use std::intrinsics::sqrtf32;
 // CHECK: @llvm.sqrt.f32(float) #{{[0-9]*}}
 
 fn main() {
-    sqrtf32(0.0f32);
+    unsafe {
+        sqrtf32(0.0f32);
+    }
 }

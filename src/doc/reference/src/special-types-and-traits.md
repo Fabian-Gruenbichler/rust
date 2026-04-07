@@ -64,7 +64,7 @@ is considered to own a `T` for the purposes of [variance], [drop check], and
 [auto traits](#auto-traits).
 
 r[lang-types.ops]
-## Operator traits
+## Operator Traits
 
 The traits in [`std::ops`] and [`std::cmp`] are used to overload [operators],
 [indexing expressions], and [call expressions].

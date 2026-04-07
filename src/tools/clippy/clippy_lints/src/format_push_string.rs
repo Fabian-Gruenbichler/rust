@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::ty::is_type_lang_item;
 use rustc_hir::{AssignOpKind, Expr, ExprKind, LangItem, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -41,10 +41,7 @@ declare_clippy_lint! {
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
-        .expr_ty(e)
-        .peel_refs()
-        .is_lang_item(cx, LangItem::String)
+    is_type_lang_item(cx, cx.typeck_results().expr_ty(e).peel_refs(), LangItem::String)
 }
 fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     let e = e.peel_blocks().peel_borrows();

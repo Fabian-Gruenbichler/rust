@@ -24,7 +24,6 @@ use std::fmt::Display;
 use std::iter::Peekable;
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[cfg(test)]
@@ -44,7 +43,8 @@ const END_MARKER: &str = "tidy-alphabetical-end";
 fn check_section<'a>(
     file: impl Display,
     lines: impl Iterator<Item = (usize, &'a str)>,
-    check: &mut RunningCheck,
+    err: &mut dyn FnMut(&str) -> std::io::Result<()>,
+    bad: &mut bool,
 ) {
     let mut prev_line = String::new();
     let mut first_indent = None;
@@ -56,10 +56,12 @@ fn check_section<'a>(
         }
 
         if line.contains(START_MARKER) {
-            check.error(format!(
+            tidy_error_ext!(
+                err,
+                bad,
                 "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`",
                 idx + 1
-            ));
+            );
             return;
         }
 
@@ -102,44 +104,45 @@ fn check_section<'a>(
         let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ');
 
         if version_sort(trimmed_line, prev_line_trimmed_lowercase).is_lt() {
-            check.error(format!("{file}:{}: line not in alphabetical order", idx + 1));
+            tidy_error_ext!(err, bad, "{file}:{}: line not in alphabetical order", idx + 1);
         }
 
         prev_line = line;
     }
 
-    check.error(format!("{file}: reached end of file expecting `{END_MARKER}`"));
+    tidy_error_ext!(err, bad, "{file}: reached end of file expecting `{END_MARKER}`")
 }
 
 fn check_lines<'a>(
     file: &impl Display,
     mut lines: impl Iterator<Item = (usize, &'a str)>,
-    check: &mut RunningCheck,
+    err: &mut dyn FnMut(&str) -> std::io::Result<()>,
+    bad: &mut bool,
 ) {
     while let Some((idx, line)) = lines.next() {
         if line.contains(END_MARKER) {
-            check.error(format!(
+            tidy_error_ext!(
+                err,
+                bad,
                 "{file}:{} found `{END_MARKER}` expecting `{START_MARKER}`",
                 idx + 1
-            ));
+            )
         }
 
         if line.contains(START_MARKER) {
-            check_section(file, &mut lines, check);
+            check_section(file, &mut lines, err, bad);
         }
     }
 }
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("alphabetical").path(path));
-
+pub fn check(path: &Path, bad: &mut bool) {
     let skip =
         |path: &_, _is_dir| filter_dirs(path) || path.ends_with("tidy/src/alphabetical/tests.rs");
 
     walk(path, skip, &mut |entry, contents| {
         let file = &entry.path().display();
         let lines = contents.lines().enumerate();
-        check_lines(file, lines, &mut check)
+        check_lines(file, lines, &mut crate::tidy_error, bad)
     });
 }
 

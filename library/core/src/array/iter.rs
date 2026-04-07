@@ -2,9 +2,9 @@
 
 use crate::intrinsics::transmute_unchecked;
 use crate::iter::{FusedIterator, TrustedLen, TrustedRandomAccessNoCoerce};
-use crate::mem::{ManuallyDrop, MaybeUninit};
+use crate::mem::MaybeUninit;
 use crate::num::NonZero;
-use crate::ops::{Deref as _, DerefMut as _, IndexRange, Range, Try};
+use crate::ops::{IndexRange, Range, Try};
 use crate::{fmt, ptr};
 
 mod iter_inner;
@@ -18,17 +18,17 @@ type InnerUnsized<T> = iter_inner::PolymorphicIter<[MaybeUninit<T>]>;
 #[rustc_diagnostic_item = "ArrayIntoIter"]
 #[derive(Clone)]
 pub struct IntoIter<T, const N: usize> {
-    inner: ManuallyDrop<InnerSized<T, N>>,
+    inner: InnerSized<T, N>,
 }
 
 impl<T, const N: usize> IntoIter<T, N> {
     #[inline]
     fn unsize(&self) -> &InnerUnsized<T> {
-        self.inner.deref()
+        &self.inner
     }
     #[inline]
     fn unsize_mut(&mut self) -> &mut InnerUnsized<T> {
-        self.inner.deref_mut()
+        &mut self.inner
     }
 }
 
@@ -69,7 +69,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
         // SAFETY: The original array was entirely initialized and the the alive
         // range we're passing here represents that fact.
         let inner = unsafe { InnerSized::new_unchecked(IndexRange::zero_to(N), data) };
-        IntoIter { inner: ManuallyDrop::new(inner) }
+        IntoIter { inner }
     }
 }
 
@@ -146,7 +146,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         let alive = unsafe { IndexRange::new_unchecked(initialized.start, initialized.end) };
         // SAFETY: one of our safety condition is that these items are initialized.
         let inner = unsafe { InnerSized::new_unchecked(alive, buffer) };
-        IntoIter { inner: ManuallyDrop::new(inner) }
+        IntoIter { inner }
     }
 
     /// Creates an iterator over `T` which returns no elements.
@@ -205,7 +205,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     #[inline]
     pub const fn empty() -> Self {
         let inner = InnerSized::empty();
-        IntoIter { inner: ManuallyDrop::new(inner) }
+        IntoIter { inner }
     }
 
     /// Returns an immutable slice of all elements that have not been yielded
@@ -320,20 +320,11 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
 }
 
 #[stable(feature = "array_value_iter_impls", since = "1.40.0")]
-// Even though all the Drop logic could be completely handled by
-// PolymorphicIter, this impl still serves two purposes:
-// - Drop has been part of the public API, so we can't remove it
-// - the partial_drop function doesn't always get fully optimized away
-//   for !Drop types and ends up as dead code in the final binary.
-//   Branching on needs_drop higher in the call-tree allows it to be
-//   removed by earlier optimization passes.
 impl<T, const N: usize> Drop for IntoIter<T, N> {
     #[inline]
     fn drop(&mut self) {
-        if crate::mem::needs_drop::<T>() {
-            // SAFETY: This is the only place where we drop this field.
-            unsafe { ManuallyDrop::drop(&mut self.inner) }
-        }
+        // `inner` now handles this, but it'd technically be a breaking change
+        // to remove this `impl`, even though it's useless.
     }
 }
 

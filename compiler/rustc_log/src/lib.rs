@@ -39,13 +39,11 @@ use std::io::{self, IsTerminal};
 
 use tracing::dispatcher::SetGlobalDefaultError;
 use tracing::{Event, Subscriber};
-use tracing_subscriber::Registry;
 use tracing_subscriber::filter::{Directive, EnvFilter, LevelFilter};
 use tracing_subscriber::fmt::FmtContext;
 use tracing_subscriber::fmt::format::{self, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
-// Re-export tracing
-pub use {tracing, tracing_core, tracing_subscriber};
+use tracing_subscriber::{Layer, Registry};
 
 /// The values of all the environment variables that matter for configuring a logger.
 /// Errors are explicitly preserved so that we can share error handling.
@@ -75,7 +73,7 @@ impl LoggerConfig {
 
 /// Initialize the logger with the given values for the filter, coloring, and other options env variables.
 pub fn init_logger(cfg: LoggerConfig) -> Result<(), Error> {
-    init_logger_with_additional_layer(cfg, Registry::default)
+    init_logger_with_additional_layer(cfg, || Registry::default())
 }
 
 /// Trait alias for the complex return type of `build_subscriber` in
@@ -147,26 +145,28 @@ where
         .with_thread_ids(verbose_thread_ids)
         .with_thread_names(verbose_thread_ids);
 
-    if let Ok(v) = cfg.wraptree {
-        match v.parse::<usize>() {
-            Ok(v) => layer = layer.with_wraparound(v),
+    match cfg.wraptree {
+        Ok(v) => match v.parse::<usize>() {
+            Ok(v) => {
+                layer = layer.with_wraparound(v);
+            }
             Err(_) => return Err(Error::InvalidWraptree(v)),
-        }
+        },
+        Err(_) => {} // no wraptree
     }
 
-    let subscriber = build_subscriber();
-    // NOTE: It is important to make sure that the filter is applied on the last layer
+    let subscriber = build_subscriber().with(layer.with_filter(filter));
     match cfg.backtrace {
         Ok(backtrace_target) => {
             let fmt_layer = tracing_subscriber::fmt::layer()
                 .with_writer(io::stderr)
                 .without_time()
                 .event_format(BacktraceFormatter { backtrace_target });
-            let subscriber = subscriber.with(layer).with(fmt_layer).with(filter);
+            let subscriber = subscriber.with(fmt_layer);
             tracing::subscriber::set_global_default(subscriber)?;
         }
         Err(_) => {
-            tracing::subscriber::set_global_default(subscriber.with(layer).with(filter))?;
+            tracing::subscriber::set_global_default(subscriber)?;
         }
     };
 

@@ -7,7 +7,6 @@
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
-//@ ignore-backends: gcc
 
 // === GDB TESTS ==================================================================================
 

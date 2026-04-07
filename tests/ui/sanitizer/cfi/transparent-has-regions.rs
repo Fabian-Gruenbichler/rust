@@ -3,7 +3,6 @@
 //@ no-prefer-dynamic
 //@ only-x86_64-unknown-linux-gnu
 //@ build-pass
-//@ ignore-backends: gcc
 
 pub trait Trait {}
 

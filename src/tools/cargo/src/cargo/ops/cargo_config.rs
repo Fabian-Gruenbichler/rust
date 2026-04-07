@@ -128,13 +128,7 @@ fn print_toml(gctx: &GlobalContext, opts: &GetOptions<'_>, key: &ConfigKey, cv: 
         CV::List(vals, _def) => {
             if opts.show_origin {
                 drop_println!(gctx, "{} = [", key);
-                for cv in vals {
-                    let (val, def) = match cv {
-                        CV::String(s, def) => (s.as_str(), def),
-                        // This is actually unreachable until we start supporting list of different types.
-                        // It should be validated already during the deserialization.
-                        v => todo!("support {} type ", v.desc()),
-                    };
+                for (val, def) in vals {
                     drop_println!(
                         gctx,
                         "    {}, # {}",
@@ -145,15 +139,7 @@ fn print_toml(gctx: &GlobalContext, opts: &GetOptions<'_>, key: &ConfigKey, cv: 
                 }
                 drop_println!(gctx, "]");
             } else {
-                let vals: toml_edit::Array = vals
-                    .iter()
-                    .map(|cv| match cv {
-                        CV::String(s, _) => toml_edit::Value::from(s.as_str()),
-                        // This is actually unreachable until we start supporting list of different types.
-                        // It should be validated already during the deserialization.
-                        v => todo!("support {} type ", v.desc()),
-                    })
-                    .collect();
+                let vals: toml_edit::Array = vals.iter().map(|x| &x.0).collect();
                 drop_println!(gctx, "{} = {}", key, vals);
             }
         }
@@ -218,7 +204,7 @@ fn print_json(gctx: &GlobalContext, key: &ConfigKey, cv: &CV, include_key: bool)
             CV::Integer(val, _def) => json!(val),
             CV::String(val, _def) => json!(val),
             CV::List(vals, _def) => {
-                let jvals: Vec<_> = vals.iter().map(cv_to_json).collect();
+                let jvals: Vec<_> = vals.iter().map(|(val, _def)| json!(val)).collect();
                 json!(jvals)
             }
             CV::Table(map, _def) => {

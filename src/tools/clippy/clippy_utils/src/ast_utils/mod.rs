@@ -143,7 +143,7 @@ pub fn eq_struct_rest(l: &StructRest, r: &StructRest) -> bool {
     }
 }
 
-#[expect(clippy::too_many_lines, reason = "big match statement")]
+#[allow(clippy::too_many_lines)] // Just a big match statement
 pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     use ExprKind::*;
     if !over(&l.attrs, &r.attrs, eq_attr) {
@@ -328,7 +328,7 @@ pub fn eq_item<K>(l: &Item<K>, r: &Item<K>, mut eq_kind: impl FnMut(&K, &K) -> b
     over(&l.attrs, &r.attrs, eq_attr) && eq_vis(&l.vis, &r.vis) && eq_kind(&l.kind, &r.kind)
 }
 
-#[expect(clippy::too_many_lines, reason = "big match statement")]
+#[expect(clippy::too_many_lines)] // Just a big match statement
 pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
     use ItemKind::*;
     match (l, r) {
@@ -562,7 +562,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 defaultness: ld,
                 ident: li,
                 generics: lg,
-                after_where_clause: lw,
+                where_clauses: _,
                 bounds: lb,
                 ty: lt,
             }),
@@ -570,7 +570,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 defaultness: rd,
                 ident: ri,
                 generics: rg,
-                after_where_clause: rw,
+                where_clauses: _,
                 bounds: rb,
                 ty: rt,
             }),
@@ -578,7 +578,6 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && over(&lw.predicates, &rw.predicates, eq_where_predicate)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },
@@ -646,7 +645,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 defaultness: ld,
                 ident: li,
                 generics: lg,
-                after_where_clause: lw,
+                where_clauses: _,
                 bounds: lb,
                 ty: lt,
             }),
@@ -654,7 +653,7 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 defaultness: rd,
                 ident: ri,
                 generics: rg,
-                after_where_clause: rw,
+                where_clauses: _,
                 bounds: rb,
                 ty: rt,
             }),
@@ -662,7 +661,6 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd)
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
-                && over(&lw.predicates, &rw.predicates, eq_where_predicate)
                 && over(lb, rb, eq_generic_bound)
                 && both(lt.as_ref(), rt.as_ref(), |l, r| eq_ty(l, r))
         },

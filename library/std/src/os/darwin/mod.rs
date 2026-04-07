@@ -17,8 +17,6 @@
 #![doc(cfg(target_vendor = "apple"))]
 
 pub mod fs;
-pub mod objc;
-
 // deprecated, but used for public reexport under `std::os::unix::raw`, as
 // well as `std::os::macos`/`std::os::ios`, because those modules precede the
 // decision to remove these.

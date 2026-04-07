@@ -14,10 +14,7 @@ struct A([u8]);
 struct B(&'static [u8]);
 
 #[derive(ConstParamTy, Eq, PartialEq)]
-struct C(unsized_const_param::Foo);
-
-#[derive(std::marker::ConstParamTy, Eq, PartialEq)]
 //~^ ERROR: the trait `ConstParamTy_` cannot be implemented for this type
-struct D(unsized_const_param::GenericNotUnsizedParam<&'static [u8]>);
+struct C(unsized_const_param::Foo);
 
 fn main() {}

@@ -1,5 +1,7 @@
 use rustc_span::{Symbol, sym};
 
+use crate::attr::{self, AttributeExt};
+
 #[derive(Debug)]
 pub enum EntryPointType {
     /// This function is not an entrypoint.
@@ -28,11 +30,11 @@ pub enum EntryPointType {
 }
 
 pub fn entry_point_type(
-    has_rustc_main: bool,
+    attrs: &[impl AttributeExt],
     at_root: bool,
     name: Option<Symbol>,
 ) -> EntryPointType {
-    if has_rustc_main {
+    if attr::contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else if let Some(name) = name
         && name == sym::main

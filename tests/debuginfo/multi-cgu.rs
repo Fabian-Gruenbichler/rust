@@ -3,7 +3,6 @@
 
 //@ compile-flags:-g -Ccodegen-units=2
 //@ disable-gdb-pretty-printers
-//@ ignore-backends: gcc
 
 // === GDB TESTS ===============================================================
 

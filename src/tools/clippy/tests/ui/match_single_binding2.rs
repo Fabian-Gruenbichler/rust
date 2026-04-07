@@ -1,5 +1,6 @@
 #![warn(clippy::match_single_binding)]
 #![allow(unused_variables)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     // Lint (additional curly braces needed, see #6572)
@@ -29,7 +30,7 @@ fn main() {
         Some((first, _second)) => {
             match get_tup() {
             //~^ match_single_binding
-                (a, b) => println!("a {a:?} and b {b:?}"),
+                (a, b) => println!("a {:?} and b {:?}", a, b),
             }
         },
         None => println!("nothing"),

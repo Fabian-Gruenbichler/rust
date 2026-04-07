@@ -4,7 +4,6 @@
 //
 //@ compile-flags:-g -Zmir-enable-passes=+ReferencePropagation,-ConstDebugInfo
 //@ disable-gdb-pretty-printers
-//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

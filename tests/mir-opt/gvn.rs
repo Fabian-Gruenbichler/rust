@@ -1065,8 +1065,8 @@ fn dereference_indexing(array: [u8; 2], index: usize) {
         &array[i]
     };
 
-    // CHECK-NOT: StorageDead([[i]]);
-    // CHECK: [[tmp:_.*]] = copy _1[[[i]]];
+    // CHECK-NOT: [{{.*}}]
+    // CHECK: [[tmp:_.*]] = copy (*[[a]]);
     // CHECK: opaque::<u8>(move [[tmp]])
     opaque(*a);
 }

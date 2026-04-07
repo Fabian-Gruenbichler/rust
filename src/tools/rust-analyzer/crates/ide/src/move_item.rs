@@ -72,6 +72,7 @@ fn find_ancestors(item: SyntaxElement, direction: Direction, range: TextRange) -
         SyntaxKind::MACRO_CALL,
         SyntaxKind::TYPE_ALIAS,
         SyntaxKind::TRAIT,
+        SyntaxKind::TRAIT_ALIAS,
         SyntaxKind::IMPL,
         SyntaxKind::MACRO_DEF,
         SyntaxKind::STRUCT,

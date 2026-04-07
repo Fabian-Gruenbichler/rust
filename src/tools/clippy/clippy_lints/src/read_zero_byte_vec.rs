@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_hir, span_lint_hir_and_then};
 use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
-use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::source::snippet;
 use clippy_utils::{get_enclosing_block, sym};
 
 use rustc_errors::Applicability;
@@ -83,12 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                             expr.span,
                             "reading zero byte data to `Vec`",
                             |diag| {
-                                let span = first_stmt_containing_expr(cx, expr).map_or(expr.span, |stmt| stmt.span);
-                                let indent = indent_of(cx, span).unwrap_or(0);
                                 diag.span_suggestion(
-                                    span.shrink_to_lo(),
+                                    expr.span,
                                     "try",
-                                    format!("{ident}.resize({len}, 0);\n{}", " ".repeat(indent)),
+                                    format!("{}.resize({len}, 0); {}", ident, snippet(cx, expr.span, "..")),
                                     applicability,
                                 );
                             },
@@ -102,15 +100,14 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 expr.span,
                                 "reading zero byte data to `Vec`",
                                 |diag| {
-                                    let span = first_stmt_containing_expr(cx, expr).map_or(expr.span, |stmt| stmt.span);
-                                    let indent = indent_of(cx, span).unwrap_or(0);
                                     diag.span_suggestion(
-                                        span.shrink_to_lo(),
+                                        expr.span,
                                         "try",
                                         format!(
-                                            "{ident}.resize({}, 0);\n{}",
+                                            "{}.resize({}, 0); {}",
+                                            ident,
                                             snippet(cx, e.span, ".."),
-                                            " ".repeat(indent)
+                                            snippet(cx, expr.span, "..")
                                         ),
                                         applicability,
                                     );
@@ -131,16 +128,6 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
             }
         }
     }
-}
-
-fn first_stmt_containing_expr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx hir::Stmt<'tcx>> {
-    cx.tcx.hir_parent_iter(expr.hir_id).find_map(|(_, node)| {
-        if let hir::Node::Stmt(stmt) = node {
-            Some(stmt)
-        } else {
-            None
-        }
-    })
 }
 
 struct ReadVecVisitor<'tcx> {

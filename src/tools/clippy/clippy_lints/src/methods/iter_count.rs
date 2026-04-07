@@ -1,7 +1,7 @@
 use super::utils::derefs_to_slice;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -13,21 +13,21 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
     let ty = cx.typeck_results().expr_ty(recv);
     let caller_type = if derefs_to_slice(cx, recv, ty).is_some() {
         "slice"
-    } else if ty.is_diag_item(cx, sym::Vec) {
+    } else if is_type_diagnostic_item(cx, ty, sym::Vec) {
         "Vec"
-    } else if ty.is_diag_item(cx, sym::VecDeque) {
+    } else if is_type_diagnostic_item(cx, ty, sym::VecDeque) {
         "VecDeque"
-    } else if ty.is_diag_item(cx, sym::HashSet) {
+    } else if is_type_diagnostic_item(cx, ty, sym::HashSet) {
         "HashSet"
-    } else if ty.is_diag_item(cx, sym::HashMap) {
+    } else if is_type_diagnostic_item(cx, ty, sym::HashMap) {
         "HashMap"
-    } else if ty.is_diag_item(cx, sym::BTreeMap) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BTreeMap) {
         "BTreeMap"
-    } else if ty.is_diag_item(cx, sym::BTreeSet) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BTreeSet) {
         "BTreeSet"
-    } else if ty.is_diag_item(cx, sym::LinkedList) {
+    } else if is_type_diagnostic_item(cx, ty, sym::LinkedList) {
         "LinkedList"
-    } else if ty.is_diag_item(cx, sym::BinaryHeap) {
+    } else if is_type_diagnostic_item(cx, ty, sym::BinaryHeap) {
         "BinaryHeap"
     } else {
         return;

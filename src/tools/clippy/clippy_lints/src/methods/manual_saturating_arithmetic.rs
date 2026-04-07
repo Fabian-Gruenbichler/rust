@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::sym;
+use clippy_utils::{path_res, sym};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -84,7 +83,7 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
 
     // `T::MAX` and `T::MIN` constants
     if let hir::ExprKind::Path(hir::QPath::TypeRelative(base, seg)) = expr.kind
-        && matches!(base.basic_res(), Res::PrimTy(_))
+        && let Res::PrimTy(_) = path_res(cx, base)
     {
         match seg.ident.name {
             sym::MAX => return Some(MinMax::Max),

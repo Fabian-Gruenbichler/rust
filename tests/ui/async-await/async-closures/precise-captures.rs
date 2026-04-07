@@ -10,7 +10,6 @@
 //   in <https://github.com/rust-lang/rust/pull/123350>.
 
 #![allow(unused_mut)]
-#![allow(unused_assignments)]
 
 extern crate block_on;
 

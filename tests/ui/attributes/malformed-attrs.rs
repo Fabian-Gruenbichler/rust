@@ -73,7 +73,6 @@
 //~| ERROR attribute cannot be used on
 #[crate_name]
 //~^ ERROR malformed
-//~| WARN crate-level attribute should be an inner attribute
 #[doc]
 //~^ ERROR valid forms for the attribute are
 //~| WARN this was previously accepted by the compiler
@@ -83,12 +82,8 @@
 //~^ ERROR malformed
 #[link]
 //~^ ERROR malformed
-//~| WARN attribute should be applied to an `extern` block with non-Rust ABI
-//~| WARN previously accepted
 #[link_name]
 //~^ ERROR malformed
-//~| WARN cannot be used on functions
-//~| WARN previously accepted
 #[link_section]
 //~^ ERROR malformed
 #[coverage]
@@ -100,8 +95,6 @@
 //~| WARN this was previously accepted by the compiler
 #[no_implicit_prelude = 23]
 //~^ ERROR malformed
-//~| WARN cannot be used on functions
-//~| WARN previously accepted
 #[proc_macro = 18]
 //~^ ERROR malformed
 //~| ERROR the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
@@ -192,11 +185,10 @@ extern "C" {
 #[forbid]
 //~^ ERROR malformed
 #[debugger_visualizer]
-//~^ ERROR malformed `debugger_visualizer` attribute input
+//~^ ERROR invalid argument
+//~| ERROR malformed `debugger_visualizer` attribute input
 #[automatically_derived = 18]
 //~^ ERROR malformed
-//~| WARN cannot be used on modules
-//~| WARN previously accepted
 mod yooo {
 
 }
@@ -219,7 +211,7 @@ extern crate wloop;
 //~^ ERROR can't find crate for `wloop` [E0463]
 
 #[macro_export = 18]
-//~^ ERROR valid forms for the attribute are
+//~^ ERROR malformed `macro_export` attribute input
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
 //~| ERROR allow_internal_unsafe side-steps the unsafe_code lint

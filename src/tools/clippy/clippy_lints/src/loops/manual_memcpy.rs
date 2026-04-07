@@ -1,11 +1,10 @@
 use super::{IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::local_used_in;
-use clippy_utils::{get_enclosing_block, higher, sugg};
+use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::walk_block;
@@ -68,7 +67,7 @@ pub(super) fn check<'tcx>(
                             && !local_used_in(cx, canonical_id, base_left)
                             && !local_used_in(cx, canonical_id, base_right)
 							// Source and destination must be different
-                            && base_left.res_local_id() != base_right.res_local_id()
+                            && path_to_local(base_left) != path_to_local(base_right)
                     {
                         Some((
                             ty,
@@ -129,7 +128,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if let ExprKind::MethodCall(method, recv, [], _) = end.kind
             && method.ident.name == sym::len
-            && recv.res_local_id() == base.res_local_id()
+            && path_to_local(recv) == path_to_local(base)
         {
             if sugg.to_string() == end_str {
                 sugg::EMPTY.into()
@@ -365,7 +364,7 @@ fn get_details_from_idx<'tcx>(
     starts: &[Start<'tcx>],
 ) -> Option<(StartKind<'tcx>, Offset)> {
     fn get_start<'tcx>(e: &Expr<'_>, starts: &[Start<'tcx>]) -> Option<StartKind<'tcx>> {
-        let id = e.res_local_id()?;
+        let id = path_to_local(e)?;
         starts.iter().find(|start| start.id == id).map(|start| start.kind)
     }
 
@@ -426,7 +425,7 @@ fn get_assignments<'a, 'tcx>(
         .chain(*expr)
         .filter(move |e| {
             if let ExprKind::AssignOp(_, place, _) = e.kind {
-                place.res_local_id().is_some_and(|id| {
+                path_to_local(place).is_some_and(|id| {
                     !loop_counters
                         .iter()
                         // skip the first item which should be `StartKind::Range`

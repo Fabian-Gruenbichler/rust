@@ -57,8 +57,4 @@ const NULL_FAT_PTR: NonNull<dyn Send> = unsafe {
     mem::transmute((0_usize, meta))
 };
 
-static S: u32 = 0; // just a static to construct a maybe-null pointer off of
-const MAYBE_NULL_PTR: NonNull<()> = unsafe { mem::transmute((&raw const S).wrapping_add(4)) };
-//~^ ERROR invalid value
-
 fn main() {}

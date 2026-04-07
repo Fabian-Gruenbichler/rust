@@ -29,6 +29,11 @@ impl BenchmarkSetId {
 pub enum BenchmarkSetMember {
     /// Benchmark a specific compile-time benchmark
     CompileBenchmark(BenchmarkName),
+    /// Benchmark *all* the runtime benchmarks.
+    /// For simplicity, we currently always benchmark all of them on a single collector.
+    RuntimeBenchmarks,
+    /// Benchmark the rustc bootstrap
+    Rustc,
 }
 
 /// Return the number of benchmark sets for the given target.
@@ -97,6 +102,8 @@ pub fn expand_benchmark_set(id: BenchmarkSetId) -> Vec<BenchmarkSetMember> {
                 compile(UNUSED_WARNINGS),
                 compile(WF_PROJECTION_STRESS_65510),
                 compile(WG_GRAMMAR),
+                BenchmarkSetMember::Rustc,
+                BenchmarkSetMember::RuntimeBenchmarks,
             ]
         }
         (Target::X86_64UnknownLinuxGnu, 1..) => {
@@ -162,6 +169,8 @@ mod tests {
 
         // Check that the union of all sets contains all the required benchmarks
         let all_members = sets.iter().flatten().collect::<HashSet<_>>();
+        assert!(all_members.contains(&BenchmarkSetMember::Rustc));
+        assert!(all_members.contains(&BenchmarkSetMember::RuntimeBenchmarks));
 
         const BENCHMARK_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/compile-benchmarks");
         let all_compile_benchmarks =
@@ -178,12 +187,13 @@ mod tests {
             );
         }
         for benchmark in &all_members {
-            let BenchmarkSetMember::CompileBenchmark(name) = benchmark;
-            assert!(
-                all_compile_benchmarks.contains(name),
-                "Compile-time benchmark {name} does not exist on disk or is a stable benchmark"
-            );
+            if let BenchmarkSetMember::CompileBenchmark(name) = benchmark {
+                assert!(
+                    all_compile_benchmarks.contains(name),
+                    "Compile-time benchmark {name} does not exist on disk or is a stable benchmark"
+                );
+            }
         }
-        assert_eq!(all_members.len(), all_compile_benchmarks.len());
+        assert_eq!(all_members.len(), all_compile_benchmarks.len() + 2);
     }
 }

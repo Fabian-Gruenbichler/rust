@@ -86,10 +86,10 @@ impl AttributeExt for Attribute {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span> {
+    fn is_doc_comment(&self) -> bool {
         match self.kind {
-            AttrKind::Normal(..) => None,
-            AttrKind::DocComment(..) => Some(self.span),
+            AttrKind::Normal(..) => false,
+            AttrKind::DocComment(..) => true,
         }
     }
 
@@ -776,7 +776,7 @@ pub trait AttributeExt: Debug {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span>;
+    fn is_doc_comment(&self) -> bool;
 
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
@@ -863,9 +863,8 @@ impl Attribute {
         AttributeExt::path_matches(self, name)
     }
 
-    // on ast attributes we return a bool since that's what most code already expects
     pub fn is_doc_comment(&self) -> bool {
-        AttributeExt::is_doc_comment(self).is_some()
+        AttributeExt::is_doc_comment(self)
     }
 
     #[inline]

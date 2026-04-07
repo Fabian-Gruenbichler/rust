@@ -10,15 +10,14 @@ r[type.inferred.intro]
 The inferred type asks the compiler to infer the type if possible based on the
 surrounding information available.
 
-> [!EXAMPLE]
-> The inferred type is often used in generic arguments:
->
-> ```rust
-> let x: Vec<_> = (0..10).collect();
-> ```
-
 r[type.inferred.constraint]
-The inferred type cannot be used in item signatures.
+It cannot be used in item signatures.
+
+It is often used in generic arguments:
+
+```rust
+let x: Vec<_> = (0..10).collect();
+```
 
 <!--
   What else should be said here?

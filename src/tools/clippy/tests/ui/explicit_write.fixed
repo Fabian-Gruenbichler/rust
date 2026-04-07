@@ -1,5 +1,6 @@
 #![warn(clippy::explicit_write)]
 #![allow(unused_imports)]
+#![allow(clippy::uninlined_format_args)]
 
 fn stdout() -> String {
     String::new()
@@ -39,7 +40,7 @@ fn main() {
         //~^ explicit_write
 
         let value = 1;
-        eprintln!("with {value}");
+        eprintln!("with {}", value);
         //~^ explicit_write
         eprintln!("with {} {}", 2, value);
         //~^ explicit_write
@@ -48,7 +49,7 @@ fn main() {
         eprintln!("macro arg {}", one!());
         //~^ explicit_write
         let width = 2;
-        eprintln!("{value:w$}", w = width);
+        eprintln!("{:w$}", value, w = width);
         //~^ explicit_write
     }
     // these should not warn, different destination

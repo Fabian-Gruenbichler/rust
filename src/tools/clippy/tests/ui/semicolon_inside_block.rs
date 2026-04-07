@@ -3,8 +3,7 @@
     clippy::unused_unit,
     clippy::unnecessary_operation,
     clippy::no_effect,
-    clippy::single_element_loop,
-    clippy::double_parens
+    clippy::single_element_loop
 )]
 #![warn(clippy::semicolon_inside_block)]
 
@@ -86,20 +85,6 @@ fn main() {
     { unit_fn_block(); };
 
     unit_fn_block()
-}
-
-#[rustfmt::skip]
-fn issue15380() {
-    ( {0;0});
-
-    ({
-        0;
-        0
-    });
-
-    (({ 0 }))      ;
-
-    ( ( { 0 } ) ) ;
 }
 
 pub fn issue15388() {

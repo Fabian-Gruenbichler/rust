@@ -4,7 +4,6 @@
 // Performed step-over and step-into debug stepping through call statements.
 
 //@ compile-flags:-g
-//@ ignore-backends: gcc
 
 // === GDB TESTS ===================================================================================
 

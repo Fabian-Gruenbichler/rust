@@ -815,10 +815,7 @@ mod cfg {
 #[cfg($0)]
 "#,
             expect![[r#"
-                ba all
-                ba any
                 ba dbg
-                ba not
                 ba opt_level
                 ba test
                 ba true
@@ -830,74 +827,7 @@ mod cfg {
 #[cfg(b$0)]
 "#,
             expect![[r#"
-                ba all
-                ba any
                 ba dbg
-                ba not
-                ba opt_level
-                ba test
-                ba true
-            "#]],
-        );
-    }
-
-    #[test]
-    fn inside_cfg_attr() {
-        check(
-            r#"
-//- /main.rs cfg:test,dbg=false,opt_level=2
-#[cfg_attr($0)]
-"#,
-            expect![[r#"
-                ba all
-                ba any
-                ba dbg
-                ba not
-                ba opt_level
-                ba test
-                ba true
-            "#]],
-        );
-        check(
-            r#"
-//- /main.rs cfg:test,dbg=false,opt_level=2
-#[cfg_attr(b$0)]
-"#,
-            expect![[r#"
-                ba all
-                ba any
-                ba dbg
-                ba not
-                ba opt_level
-                ba test
-                ba true
-            "#]],
-        );
-        check(
-            r#"
-//- /main.rs cfg:test,dbg=false,opt_level=2
-#[cfg_attr($0, allow(deprecated))]
-"#,
-            expect![[r#"
-                ba all
-                ba any
-                ba dbg
-                ba not
-                ba opt_level
-                ba test
-                ba true
-            "#]],
-        );
-        check(
-            r#"
-//- /main.rs cfg:test,dbg=false,opt_level=2
-#[cfg_attr(b$0, allow(deprecated))]
-"#,
-            expect![[r#"
-                ba all
-                ba any
-                ba dbg
-                ba not
                 ba opt_level
                 ba test
                 ba true
@@ -920,20 +850,6 @@ mod cfg {
                 ba big
                 ba little
             "#]],
-        );
-    }
-
-    #[test]
-    fn inside_conditional() {
-        check_edit(
-            "all",
-            r#"
-//- /main.rs cfg:test,dbg=false,opt_level=2
-#[cfg($0)]
-"#,
-            r#"
-#[cfg(all($0))]
-"#,
         );
     }
 }

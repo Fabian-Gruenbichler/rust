@@ -136,12 +136,7 @@ impl CargoTestHandle {
         }
 
         Ok(Self {
-            _handle: CommandHandle::spawn(
-                cmd,
-                CargoTestOutputParser::new(&test_target),
-                sender,
-                None,
-            )?,
+            _handle: CommandHandle::spawn(cmd, CargoTestOutputParser::new(&test_target), sender)?,
         })
     }
 }

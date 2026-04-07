@@ -1,6 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
-
 #![feature(c_variadic)]
 
 use std::ffi::VaList;

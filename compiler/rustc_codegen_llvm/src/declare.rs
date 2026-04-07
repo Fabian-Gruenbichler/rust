@@ -23,11 +23,13 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, FromGeneric, Type, Value, Visibility};
+use crate::llvm::Visibility;
+use crate::type_::Type;
+use crate::value::Value;
+use crate::{attributes, llvm};
 
 /// Declare a function with a SimpleCx.
 ///
@@ -74,7 +76,7 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
         attrs.push(llvm::AttributeKind::NoRedZone.create_attr(cx.llcx));
     }
 
-    attrs.extend(attributes::non_lazy_bind_attr(cx, cx.tcx.sess));
+    attrs.extend(attributes::non_lazy_bind_attr(cx));
 
     attributes::apply_to_llfn(llfn, Function, &attrs);
 
@@ -228,6 +230,13 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         } else {
             Some(self.declare_global(name, ty))
         }
+    }
+
+    /// Declare a private global
+    ///
+    /// Use this function when you intend to define a global without a name.
+    pub(crate) fn define_private_global(&self, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMRustInsertPrivateGlobal(self.llmod(), ty) }
     }
 
     /// Gets declared value by name.

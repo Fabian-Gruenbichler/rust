@@ -8,8 +8,8 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::tool;
 use crate::core::build_steps::tool::{
-    SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode, get_tool_target_compiler,
-    prepare_tool_cargo,
+    COMPILETEST_ALLOW_FEATURES, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, ToolTargetBuildMode,
+    get_tool_target_compiler, prepare_tool_cargo,
 };
 use crate::core::builder::{
     self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
@@ -61,9 +61,6 @@ impl Step for Std {
             return;
         }
 
-        // Explicitly pass -p for all dependencies crates -- this will force cargo
-        // to also check the tests/benches/examples for these crates, rather
-        // than just the leaf crate.
         let crates = std_crates_for_run_make(&run);
         run.builder.ensure(Std {
             build_compiler: prepare_compiler_for_check(run.builder, run.target, Mode::Std)
@@ -86,10 +83,14 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, target, &mut cargo);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
+        }
+
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
         }
 
         let _guard = builder.msg(
@@ -134,7 +135,14 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, target, &mut cargo);
+
+        // Explicitly pass -p for all dependencies krates -- this will force cargo
+        // to also check the tests/benches/examples for these crates, rather
+        // than just the leaf crate.
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
@@ -646,7 +654,7 @@ macro_rules! tool_check_step {
             // The part of this path after the final '/' is also used as a display name.
             path: $path:literal
             $(, alt_path: $alt_path:literal )*
-            // `Mode` to use when checking this tool
+            // Closure that returns `Mode` based on the passed `&Builder<'_>`
             , mode: $mode:expr
             // Subset of nightly features that are allowed to be used when checking
             $(, allow_features: $allow_features:expr )?
@@ -674,7 +682,8 @@ macro_rules! tool_check_step {
 
             fn make_run(run: RunConfig<'_>) {
                 let target = run.target;
-                let mode: Mode = $mode;
+                let builder = run.builder;
+                let mode = $mode(builder);
 
                 let compiler = prepare_compiler_for_check(run.builder, target, mode);
 
@@ -695,7 +704,7 @@ macro_rules! tool_check_step {
                     _value
                 };
                 let extra_features: &[&str] = &[$($($enable_features),*)?];
-                let mode: Mode = $mode;
+                let mode = $mode(builder);
                 run_tool_check_step(builder, compiler, target, $path, mode, allow_features, extra_features);
             }
 
@@ -758,50 +767,57 @@ fn run_tool_check_step(
 tool_check_step!(Rustdoc {
     path: "src/tools/rustdoc",
     alt_path: "src/librustdoc",
-    mode: Mode::ToolRustcPrivate
+    mode: |_builder| Mode::ToolRustcPrivate
 });
 // Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
-tool_check_step!(Clippy { path: "src/tools/clippy", mode: Mode::ToolRustcPrivate });
-tool_check_step!(Miri { path: "src/tools/miri", mode: Mode::ToolRustcPrivate });
-tool_check_step!(CargoMiri { path: "src/tools/miri/cargo-miri", mode: Mode::ToolRustcPrivate });
-tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: Mode::ToolRustcPrivate });
+tool_check_step!(Clippy { path: "src/tools/clippy", mode: |_builder| Mode::ToolRustcPrivate });
+tool_check_step!(Miri { path: "src/tools/miri", mode: |_builder| Mode::ToolRustcPrivate });
+tool_check_step!(CargoMiri {
+    path: "src/tools/miri/cargo-miri",
+    mode: |_builder| Mode::ToolRustcPrivate
+});
+tool_check_step!(Rustfmt { path: "src/tools/rustfmt", mode: |_builder| Mode::ToolRustcPrivate });
 tool_check_step!(RustAnalyzer {
     path: "src/tools/rust-analyzer",
-    mode: Mode::ToolRustcPrivate,
+    mode: |_builder| Mode::ToolRustcPrivate,
     allow_features: tool::RustAnalyzer::ALLOW_FEATURES,
     enable_features: ["in-rust-tree"],
 });
 tool_check_step!(MiroptTestTools {
     path: "src/tools/miropt-test-tools",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 // We want to test the local std
 tool_check_step!(TestFloatParse {
     path: "src/tools/test-float-parse",
-    mode: Mode::ToolStd,
+    mode: |_builder| Mode::ToolStd,
     allow_features: TEST_FLOAT_PARSE_ALLOW_FEATURES
 });
 tool_check_step!(FeaturesStatusDump {
     path: "src/tools/features-status-dump",
-    mode: Mode::ToolBootstrap
+    mode: |_builder| Mode::ToolBootstrap
 });
 
-tool_check_step!(Bootstrap { path: "src/bootstrap", mode: Mode::ToolBootstrap, default: false });
+tool_check_step!(Bootstrap {
+    path: "src/bootstrap",
+    mode: |_builder| Mode::ToolBootstrap,
+    default: false
+});
 
 // `run-make-support` will be built as part of suitable run-make compiletest test steps, but support
 // check to make it easier to work on.
 tool_check_step!(RunMakeSupport {
     path: "src/tools/run-make-support",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
 
 tool_check_step!(CoverageDump {
     path: "src/tools/coverage-dump",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
 
@@ -809,32 +825,23 @@ tool_check_step!(CoverageDump {
 // so this is mainly for people working on compiletest to run locally.
 tool_check_step!(Compiletest {
     path: "src/tools/compiletest",
-    mode: Mode::ToolBootstrap,
-    default: false,
-});
-
-// As with compiletest, rustdoc-gui-test is automatically built when running
-// relevant tests. So being able to check it is mainly useful for people
-// working on on rustdoc-gui-test itself, or on its compiletest dependency.
-tool_check_step!(RustdocGuiTest {
-    path: "src/tools/rustdoc-gui-test",
-    mode: Mode::ToolBootstrap,
+    mode: |builder: &Builder<'_>| if builder.config.compiletest_use_stage0_libtest {
+        Mode::ToolBootstrap
+    } else {
+        Mode::ToolStd
+    },
+    allow_features: COMPILETEST_ALLOW_FEATURES,
     default: false,
 });
 
 tool_check_step!(Linkchecker {
     path: "src/tools/linkchecker",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
 
 tool_check_step!(BumpStage0 {
     path: "src/tools/bump-stage0",
-    mode: Mode::ToolBootstrap,
+    mode: |_builder| Mode::ToolBootstrap,
     default: false
 });
-
-// Tidy is implicitly checked when `./x test tidy` is executed
-// (if you set a pre-push hook, the command is called).
-// So this is mainly for people working on tidy.
-tool_check_step!(Tidy { path: "src/tools/tidy", mode: Mode::ToolBootstrap, default: false });

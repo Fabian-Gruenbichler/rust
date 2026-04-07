@@ -1443,8 +1443,7 @@ fn env_rustflags_misspelled() {
             .env("RUST_FLAGS", "foo")
             .with_stderr_data(
                 "\
-[WARNING] ignoring environment variable `RUST_FLAGS`
-[NOTE] rust flags are passed via `RUSTFLAGS`
+[WARNING] Cargo does not read `RUST_FLAGS` environment variable. Did you mean `RUSTFLAGS`?
 ...
 ",
             )
@@ -1472,8 +1471,7 @@ fn env_rustflags_misspelled_build_script() {
     p.cargo("check")
         .env("RUST_FLAGS", "foo")
         .with_stderr_data(str![[r#"
-[WARNING] ignoring environment variable `RUST_FLAGS`
-[NOTE] rust flags are passed via `RUSTFLAGS`
+[WARNING] Cargo does not read `RUST_FLAGS` environment variable. Did you mean `RUSTFLAGS`?
 [COMPILING] foo v0.0.1 ([ROOT]/foo)
 [FINISHED] `dev` profile [unoptimized + debuginfo] target(s) in [ELAPSED]s
 

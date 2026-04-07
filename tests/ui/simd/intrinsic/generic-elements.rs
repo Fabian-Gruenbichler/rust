@@ -1,5 +1,4 @@
 //@ build-fail
-//@ ignore-backends: gcc
 
 #![feature(
     repr_simd,

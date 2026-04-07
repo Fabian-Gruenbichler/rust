@@ -24,4 +24,3 @@
     - [Writing Tests](./tests/writing.md)
     - [Benchmarking and Profiling](./tests/profiling.md)
     - [Crater](./tests/crater.md)
-- [Documentation](./documentation/index.md)

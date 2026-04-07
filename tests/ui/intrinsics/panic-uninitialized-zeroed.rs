@@ -7,7 +7,7 @@
 //@ ignore-backends: gcc
 //@ edition:2024
 
-#![allow(deprecated, invalid_value, unreachable_code)]
+#![allow(deprecated, invalid_value)]
 #![feature(never_type, rustc_private)]
 
 use std::{

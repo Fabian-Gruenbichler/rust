@@ -41,6 +41,3 @@ macro_rules! derive_dup_matcher { derive() {$x:ident $x:ident} => {} }
 //~^ ERROR duplicate matcher binding
 //~| NOTE duplicate binding
 //~| NOTE previous binding
-
-macro_rules! derive_unsafe { unsafe derive() {} => {} }
-//~^ ERROR `unsafe` is only supported on `attr` rules

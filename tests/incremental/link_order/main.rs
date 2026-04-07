@@ -1,7 +1,6 @@
 //@ aux-build:my_lib.rs
 //@ revisions:cfail1 cfail2
 //@ compile-flags:-Z query-dep-graph
-//@ ignore-backends: gcc
 
 // Tests that re-ordering the `-l` arguments used
 // when compiling an external dependency does not lead to

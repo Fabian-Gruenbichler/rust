@@ -189,7 +189,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     }
 
     pub fn trait_impl(&self, impl_def: DefId) -> EarlyBinder<'tcx, TraitRef<'tcx>> {
-        self.tcx.impl_trait_ref(impl_def)
+        self.tcx.impl_trait_ref(impl_def).unwrap()
     }
 
     pub fn generics_of(&self, def_id: DefId) -> &'tcx ty::Generics {

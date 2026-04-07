@@ -217,8 +217,7 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
-    pub const fn mul_add(self, a: f32, b: f32) -> f32 {
+    pub fn mul_add(self, a: f32, b: f32) -> f32 {
         core::f32::math::mul_add(self, a, b)
     }
 
@@ -339,7 +338,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
-        intrinsics::powf32(self, n)
+        unsafe { intrinsics::powf32(self, n) }
     }
 
     /// Returns the square root of a number.
@@ -396,7 +395,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        intrinsics::expf32(self)
+        unsafe { intrinsics::expf32(self) }
     }
 
     /// Returns `2^(self)`.
@@ -421,7 +420,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
-        intrinsics::exp2f32(self)
+        unsafe { intrinsics::exp2f32(self) }
     }
 
     /// Returns the natural logarithm of the number.
@@ -456,7 +455,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        intrinsics::logf32(self)
+        unsafe { intrinsics::logf32(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -526,7 +525,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
-        intrinsics::log2f32(self)
+        unsafe { intrinsics::log2f32(self) }
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -559,7 +558,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        intrinsics::log10f32(self)
+        unsafe { intrinsics::log10f32(self) }
     }
 
     /// The positive difference of two numbers.
@@ -684,7 +683,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        intrinsics::sinf32(self)
+        unsafe { intrinsics::sinf32(self) }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -708,7 +707,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        intrinsics::cosf32(self)
+        unsafe { intrinsics::cosf32(self) }
     }
 
     /// Computes the tangent of a number (in radians).
@@ -827,12 +826,10 @@ impl f32 {
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
     ///
-    ///  | `x`     | `y`     | Piecewise Definition | Range         |
-    ///  |---------|---------|----------------------|---------------|
-    ///  | `>= +0` | `>= +0` | `arctan(y/x)`        | `[+0, +pi/2]` |
-    ///  | `>= +0` | `<= -0` | `arctan(y/x)`        | `[-pi/2, -0]` |
-    ///  | `<= -0` | `>= +0` | `arctan(y/x) + pi`   | `[+pi/2, +pi]`|
-    ///  | `<= -0` | `<= -0` | `arctan(y/x) - pi`   | `[-pi, -pi/2]`|
+    /// * `x = 0`, `y = 0`: `0`
+    /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
+    /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
+    /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// # Unspecified precision
     ///

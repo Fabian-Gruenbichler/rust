@@ -1,7 +1,7 @@
 #!/bin/bash
 # We want to make sure all PRs are targeting the right branch when they're
 # opened, otherwise we risk (for example) to land a beta-specific change to the
-# default branch. This script ensures the branch of the PR matches the channel.
+# master branch. This script ensures the branch of the PR matches the channel.
 
 set -euo pipefail
 IFS=$'\n\t'
@@ -16,7 +16,7 @@ fi
 channel=$(cat "$(ciCheckoutPath)/src/ci/channel")
 case "${channel}" in
     nightly)
-        channel_branch="main"
+        channel_branch="master"
         ;;
     beta)
         channel_branch="beta"

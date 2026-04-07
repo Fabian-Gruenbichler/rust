@@ -145,24 +145,25 @@ impl<'a> AstValidator<'a> {
         &mut self,
         ty_alias: &TyAlias,
     ) -> Result<(), errors::WhereClauseBeforeTypeAlias> {
-        if ty_alias.ty.is_none() || !ty_alias.generics.where_clause.has_where_token {
+        if ty_alias.ty.is_none() || !ty_alias.where_clauses.before.has_where_token {
             return Ok(());
         }
 
-        let span = ty_alias.generics.where_clause.span;
+        let (before_predicates, after_predicates) =
+            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split);
+        let span = ty_alias.where_clauses.before.span;
 
-        let sugg = if !ty_alias.generics.where_clause.predicates.is_empty()
-            || !ty_alias.after_where_clause.has_where_token
+        let sugg = if !before_predicates.is_empty() || !ty_alias.where_clauses.after.has_where_token
         {
             let mut state = State::new();
 
-            if !ty_alias.after_where_clause.has_where_token {
+            if !ty_alias.where_clauses.after.has_where_token {
                 state.space();
                 state.word_space("where");
             }
 
-            let mut first = ty_alias.after_where_clause.predicates.is_empty();
-            for p in &ty_alias.generics.where_clause.predicates {
+            let mut first = after_predicates.is_empty();
+            for p in before_predicates {
                 if !first {
                     state.word_space(",");
                 }
@@ -173,7 +174,7 @@ impl<'a> AstValidator<'a> {
             errors::WhereClauseBeforeTypeAliasSugg::Move {
                 left: span,
                 snippet: state.s.eof(),
-                right: ty_alias.after_where_clause.span.shrink_to_hi(),
+                right: ty_alias.where_clauses.after.span.shrink_to_hi(),
             }
         } else {
             errors::WhereClauseBeforeTypeAliasSugg::Remove { span }
@@ -565,7 +566,11 @@ impl<'a> AstValidator<'a> {
         self.dcx().emit_err(errors::BoundInContext { span, ctx });
     }
 
-    fn check_foreign_ty_genericless(&self, generics: &Generics, after_where_clause: &WhereClause) {
+    fn check_foreign_ty_genericless(
+        &self,
+        generics: &Generics,
+        where_clauses: &TyAliasWhereClauses,
+    ) {
         let cannot_have = |span, descr, remove_descr| {
             self.dcx().emit_err(errors::ExternTypesCannotHave {
                 span,
@@ -579,14 +584,14 @@ impl<'a> AstValidator<'a> {
             cannot_have(generics.span, "generic parameters", "generic parameters");
         }
 
-        let check_where_clause = |where_clause: &WhereClause| {
+        let check_where_clause = |where_clause: TyAliasWhereClause| {
             if where_clause.has_where_token {
                 cannot_have(where_clause.span, "`where` clauses", "`where` clause");
             }
         };
 
-        check_where_clause(&generics.where_clause);
-        check_where_clause(&after_where_clause);
+        check_where_clause(where_clauses.before);
+        check_where_clause(where_clauses.after);
     }
 
     fn check_foreign_kind_bodyless(&self, ident: Ident, kind: &str, body_span: Option<Span>) {
@@ -691,7 +696,7 @@ impl<'a> AstValidator<'a> {
 
         match fn_ctxt {
             FnCtxt::Foreign => return,
-            FnCtxt::Free | FnCtxt::Assoc(_) => match sig.header.ext {
+            FnCtxt::Free => match sig.header.ext {
                 Extern::Implicit(_) => {
                     if !matches!(sig.header.safety, Safety::Unsafe(_)) {
                         self.dcx().emit_err(errors::CVariadicMustBeUnsafe {
@@ -721,6 +726,11 @@ impl<'a> AstValidator<'a> {
                     self.dcx().emit_err(err);
                 }
             },
+            FnCtxt::Assoc(_) => {
+                // For now, C variable argument lists are unsupported in associated functions.
+                let err = errors::CVariadicAssociatedFunction { span: variadic_param.span };
+                self.dcx().emit_err(err);
+            }
         }
     }
 
@@ -1121,7 +1131,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             MISSING_UNSAFE_ON_EXTERN,
                             item.id,
                             item.span,
-                            errors::MissingUnsafeOnExternLint {
+                            BuiltinLintDiag::MissingUnsafeOnExtern {
                                 suggestion: item.span.shrink_to_lo(),
                             },
                         );
@@ -1256,7 +1266,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 visit::walk_item(self, item);
             }
             ItemKind::TyAlias(
-                ty_alias @ box TyAlias { defaultness, bounds, after_where_clause, ty, .. },
+                ty_alias @ box TyAlias { defaultness, bounds, where_clauses, ty, .. },
             ) => {
                 self.check_defaultness(item.span, *defaultness);
                 if ty.is_none() {
@@ -1271,9 +1281,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
-                } else if after_where_clause.has_where_token {
+                } else if where_clauses.after.has_where_token {
                     self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
-                        span: after_where_clause.span,
+                        span: where_clauses.after.span,
                         help: self.sess.is_nightly_build(),
                     });
                 }
@@ -1303,7 +1313,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 defaultness,
                 ident,
                 generics,
-                after_where_clause,
+                where_clauses,
                 bounds,
                 ty,
                 ..
@@ -1311,7 +1321,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(*ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics, after_where_clause);
+                self.check_foreign_ty_genericless(generics, where_clauses);
                 self.check_foreign_item_ascii_only(*ident);
             }
             ForeignItemKind::Static(box StaticItem { ident, safety, expr, .. }) => {

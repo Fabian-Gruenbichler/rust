@@ -11,7 +11,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::common::*;
-use crate::llvm::Type;
+use crate::type_::Type;
 
 fn uncached_llvm_type<'a, 'tcx>(
     cx: &CodegenCx<'a, 'tcx>,

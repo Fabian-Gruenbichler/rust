@@ -18,13 +18,12 @@ pub(crate) fn check<'tcx>(
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
         let ecx = ConstEvalCtxt::new(cx);
-        let ctxt = expr.span.ctxt();
-        let left_is_local = match ecx.eval_with_source(left, ctxt) {
+        let left_is_local = match ecx.eval_with_source(left) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
             None => true,
         };
-        let right_is_local = match ecx.eval_with_source(right, ctxt) {
+        let right_is_local = match ecx.eval_with_source(right) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
             None => true,
@@ -85,7 +84,7 @@ fn get_lint_and_message(is_local: bool, is_comparing_arrays: bool) -> (&'static 
     }
 }
 
-fn is_allowed(val: &Constant) -> bool {
+fn is_allowed(val: &Constant<'_>) -> bool {
     match val {
         // FIXME(f16_f128): add when equality check is available on all platforms
         &Constant::F32(f) => f == 0.0 || f.is_infinite(),

@@ -1,7 +1,6 @@
 //@ revisions: old generic generic_with_fn
 //@[old]run-pass
 //@[generic_with_fn]run-pass
-//@ ignore-backends: gcc
 #![feature(
     repr_simd,
     core_intrinsics,

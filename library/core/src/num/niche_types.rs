@@ -112,8 +112,7 @@ impl Nanoseconds {
     pub const ZERO: Self = unsafe { Nanoseconds::new_unchecked(0) };
 }
 
-#[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl const Default for Nanoseconds {
+impl Default for Nanoseconds {
     #[inline]
     fn default() -> Self {
         Self::ZERO

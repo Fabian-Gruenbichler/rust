@@ -1,4 +1,3 @@
-use rustc_ast::expand::allocator::{ALLOC_ERROR_HANDLER, global_fn_name};
 use rustc_ast::{
     self as ast, Fn, FnHeader, FnSig, Generics, ItemKind, Safety, Stmt, StmtKind, TyKind,
 };
@@ -56,7 +55,7 @@ pub(crate) fn expand(
 }
 
 // #[rustc_std_internal_symbol]
-// unsafe fn __rust_alloc_error_handler(size: usize, align: usize) -> ! {
+// unsafe fn __rg_oom(size: usize, align: usize) -> ! {
 //     handler(core::alloc::Layout::from_size_align_unchecked(size, align))
 // }
 fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span) -> Stmt {
@@ -85,7 +84,7 @@ fn generate_handler(cx: &ExtCtxt<'_>, handler: Ident, span: Span, sig_span: Span
     let kind = ItemKind::Fn(Box::new(Fn {
         defaultness: ast::Defaultness::Final,
         sig,
-        ident: Ident::from_str_and_span(&global_fn_name(ALLOC_ERROR_HANDLER), span),
+        ident: Ident::from_str_and_span("__rg_oom", span),
         generics: Generics::default(),
         contract: None,
         body,

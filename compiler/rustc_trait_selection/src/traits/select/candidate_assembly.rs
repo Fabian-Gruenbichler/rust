@@ -208,7 +208,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx, alias_bound_kind| {
+                |selcx, bound, idx| {
                     let Some(bound) = bound.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
@@ -230,16 +230,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             bound.map_bound(|pred| pred.trait_ref),
                         ) {
                             Ok(None) => {
-                                candidates
-                                    .vec
-                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
+                                candidates.vec.push(ProjectionCandidate(idx));
                             }
                             Ok(Some(normalized_trait))
                                 if distinct_normalized_bounds.insert(normalized_trait) =>
                             {
-                                candidates
-                                    .vec
-                                    .push(ProjectionCandidate { idx, kind: alias_bound_kind });
+                                candidates.vec.push(ProjectionCandidate(idx));
                             }
                             _ => {}
                         }
@@ -604,7 +600,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
-                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id);
+                let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
                 if !drcx
                     .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
                 {
@@ -673,7 +669,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
-                | ty::Dynamic(_, _)
+                | ty::Dynamic(_, _, _)
                 | ty::Alias(_, _)
                 | ty::Infer(_)
                 | ty::Param(..)
@@ -829,7 +825,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, alias) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //
@@ -995,7 +991,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
-            (&ty::Dynamic(a_data, a_region), &ty::Dynamic(b_data, b_region)) => {
+            (&ty::Dynamic(a_data, a_region, ty::Dyn), &ty::Dynamic(b_data, b_region, ty::Dyn)) => {
                 // Upcast coercions permit several things:
                 //
                 // 1. Dropping auto traits, e.g., `Foo + Send` to `Foo`
@@ -1058,7 +1054,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(_, _)) => {
+            (_, &ty::Dynamic(_, _, ty::Dyn)) => {
                 candidates.vec.push(BuiltinUnsizeCandidate);
             }
 
@@ -1331,7 +1327,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Pat(_, _)
             | ty::FnPtr(..)
             | ty::UnsafeBinder(_)
-            | ty::Dynamic(_, _)
+            | ty::Dynamic(_, _, _)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)

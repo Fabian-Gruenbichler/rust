@@ -10,7 +10,7 @@
 #![allow(rustc::usage_of_type_ir_traits)]
 // tidy-alphabetical-end
 
-pub mod canonical;
+pub mod canonicalizer;
 pub mod coherence;
 pub mod delegate;
 pub mod placeholder;

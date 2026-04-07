@@ -30,13 +30,13 @@ pub fn foo() -> Result<(), ()> {
 impl<T, E> fmt::Display for MyEnum<T, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            //@ has - '//a[@href="#12"]' 'Ok'
+            //@ has - '//a[@href="#12"]' 'Self::Ok'
             Self::Ok(_) => f.write_str("MyEnum::Ok"),
-            //@ has - '//a[@href="#13"]' 'Err'
+            //@ has - '//a[@href="#13"]' 'MyEnum::Err'
             MyEnum::Err(_) => f.write_str("MyEnum::Err"),
-            //@ has - '//a[@href="#14"]' 'Some'
+            //@ has - '//a[@href="#14"]' 'Self::Some'
             Self::Some(_) => f.write_str("MyEnum::Some"),
-            //@ has - '//a[@href="#15"]' 'None'
+            //@ has - '//a[@href="#15"]' 'Self::None'
             Self::None => f.write_str("MyEnum::None"),
         }
     }
@@ -45,7 +45,7 @@ impl<T, E> fmt::Display for MyEnum<T, E> {
 impl X {
     fn p(&self) -> &str {
         match self {
-            //@ has - '//a[@href="#19"]' 'A'
+            //@ has - '//a[@href="#19"]' 'Self::A'
             Self::A => "X::A",
         }
     }

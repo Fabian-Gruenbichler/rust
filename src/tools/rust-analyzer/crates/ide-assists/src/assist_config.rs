@@ -4,12 +4,8 @@
 //! module, and we use to statically check that we only produce snippet
 //! assists if we are allowed to.
 
-use hir::FindPathConfig;
-use ide_db::{
-    SnippetCap,
-    assists::ExprFillDefaultMode,
-    imports::{import_assets::ImportPathConfig, insert_use::InsertUseConfig},
-};
+use hir::ImportPathConfig;
+use ide_db::{SnippetCap, assists::ExprFillDefaultMode, imports::insert_use::InsertUseConfig};
 
 use crate::AssistKind;
 
@@ -35,15 +31,7 @@ impl AssistConfig {
             prefer_no_std: self.prefer_no_std,
             prefer_prelude: self.prefer_prelude,
             prefer_absolute: self.prefer_absolute,
-        }
-    }
-
-    pub fn find_path_config(&self, allow_unstable: bool) -> FindPathConfig {
-        FindPathConfig {
-            prefer_no_std: self.prefer_no_std,
-            prefer_prelude: self.prefer_prelude,
-            prefer_absolute: self.prefer_absolute,
-            allow_unstable,
+            allow_unstable: true,
         }
     }
 }

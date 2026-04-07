@@ -1,6 +1,5 @@
 //@ build-fail
 //@ compile-flags: -Cpasses=unknown-pass
-//@ ignore-backends: gcc
 
 fn main() {}
 

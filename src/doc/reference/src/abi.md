@@ -1,5 +1,5 @@
 r[abi]
-# Application binary interface (ABI)
+# Application Binary Interface (ABI)
 
 r[abi.intro]
 This section documents features that affect the ABI of the compiled output of

@@ -63,7 +63,7 @@ pub trait DepContext: Copy {
         self,
         dep_node: DepNode,
         prev_index: SerializedDepNodeIndex,
-        frame: &MarkFrame<'_>,
+        frame: Option<&MarkFrame<'_>>,
     ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {

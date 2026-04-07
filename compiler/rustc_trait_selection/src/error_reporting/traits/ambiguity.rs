@@ -47,7 +47,8 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             );
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args);
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).unwrap().instantiate(tcx, impl_args);
             let impl_trait_ref =
                 ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
@@ -57,7 +58,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 return false;
             }
 
-            let impl_trait_header = tcx.impl_trait_header(impl_def_id);
+            let impl_trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
             let impl_polarity = impl_trait_header.polarity;
 
             match (impl_polarity, predicate_polarity) {
@@ -82,7 +83,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 });
             ocx.register_obligations(obligations);
 
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.select_where_possible().is_empty()
         })
     };
 
@@ -112,7 +113,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
                 return false;
             }
 
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.select_where_possible().is_empty()
         })
     };
 

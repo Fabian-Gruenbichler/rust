@@ -9,7 +9,6 @@
 //@ run-rustfix
 
 #![allow(unused_variables)]
-#![allow(unused_assignments)]
 
 fn main() {
     let s: Option<u8> = None;

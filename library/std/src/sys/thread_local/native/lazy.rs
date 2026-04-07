@@ -27,11 +27,9 @@ enum State<D> {
 }
 
 #[allow(missing_debug_implementations)]
-#[repr(C)]
 pub struct Storage<T, D> {
-    // This field must be first, for correctness of `#[rustc_align_static]`
-    value: UnsafeCell<MaybeUninit<T>>,
     state: Cell<State<D>>,
+    value: UnsafeCell<MaybeUninit<T>>,
 }
 
 impl<T, D> Storage<T, D>

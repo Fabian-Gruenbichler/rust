@@ -1,4 +1,3 @@
-use crate::marker::Destruct;
 use crate::ops::{Deref, DerefMut, DerefPure};
 use crate::ptr;
 
@@ -250,11 +249,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
     /// [pinned]: crate::pin
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_drop_in_place", issue = "109342")]
-    pub const unsafe fn drop(slot: &mut ManuallyDrop<T>)
-    where
-        T: [const] Destruct,
-    {
+    pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
         // SAFETY: we are dropping the value pointed to by a mutable reference
         // which is guaranteed to be valid for writes.
         // It is up to the caller to make sure that `slot` isn't dropped again.

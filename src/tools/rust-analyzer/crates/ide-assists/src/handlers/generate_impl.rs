@@ -174,7 +174,6 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 
             let make_impl_ = |body| {
                 make::impl_trait(
-                    None,
                     trait_.unsafe_token().is_some(),
                     None,
                     trait_gen_args.clone(),

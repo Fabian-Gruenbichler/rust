@@ -3,7 +3,6 @@
 #![allow(stable_features)]
 
 //@ needs-threads
-//@ ignore-backends: gcc
 
 #![feature(std_panic)]
 #![feature(panic_update_hook)]

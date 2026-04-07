@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 
-#[clippy::msrv = "1.81"]
 fn main() {
     let rstr: &str = "hello";
     let rrstr: &&str = &rstr;
@@ -34,11 +33,4 @@ fn main() {
     //~^ inefficient_to_string
     let _: String = rrrcow.to_string();
     //~^ inefficient_to_string
-}
-
-#[clippy::msrv = "1.82"]
-fn sufficient_msrv() {
-    let rstr: &str = "hello";
-    let rrstr: &&str = &rstr;
-    let _: String = rrstr.to_string();
 }

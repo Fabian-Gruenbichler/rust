@@ -149,8 +149,6 @@ pub struct FixtureWithProjectMeta {
     /// You probably don't want to manually specify this. See LLVM manual for the
     /// syntax, if you must: <https://llvm.org/docs/LangRef.html#data-layout>
     pub target_data_layout: String,
-    /// Specifies the target architecture.
-    pub target_arch: String,
 }
 
 impl FixtureWithProjectMeta {
@@ -180,7 +178,6 @@ impl FixtureWithProjectMeta {
         let mut toolchain = None;
         let mut target_data_layout =
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_owned();
-        let mut target_arch = "x86_64".to_owned();
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
         let mut proc_macro_names = vec![];
@@ -194,12 +191,6 @@ impl FixtureWithProjectMeta {
         if let Some(meta) = fixture.strip_prefix("//- target_data_layout:") {
             let (meta, remain) = meta.split_once('\n').unwrap();
             meta.trim().clone_into(&mut target_data_layout);
-            fixture = remain;
-        }
-
-        if let Some(meta) = fixture.strip_prefix("//- target_arch:") {
-            let (meta, remain) = meta.split_once('\n').unwrap();
-            meta.trim().clone_into(&mut target_arch);
             fixture = remain;
         }
 
@@ -241,14 +232,7 @@ impl FixtureWithProjectMeta {
             }
         }
 
-        Self {
-            fixture: res,
-            mini_core,
-            proc_macro_names,
-            toolchain,
-            target_data_layout,
-            target_arch,
-        }
+        Self { fixture: res, mini_core, proc_macro_names, toolchain, target_data_layout }
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -527,7 +511,6 @@ fn parse_fixture_gets_full_meta() {
         proc_macro_names,
         toolchain,
         target_data_layout: _,
-        target_arch: _,
     } = FixtureWithProjectMeta::parse(
         r#"
 //- toolchain: nightly

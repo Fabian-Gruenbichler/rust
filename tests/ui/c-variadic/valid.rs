@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-backends: gcc
 #![feature(c_variadic)]
 
 // In rust (and C23 and above) `...` can be the only argument.

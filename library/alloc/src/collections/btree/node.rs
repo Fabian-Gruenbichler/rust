@@ -33,7 +33,6 @@
 
 use core::marker::PhantomData;
 use core::mem::{self, MaybeUninit};
-use core::num::NonZero;
 use core::ptr::{self, NonNull};
 use core::slice::SliceIndex;
 
@@ -68,10 +67,6 @@ struct LeafNode<K, V> {
 
 impl<K, V> LeafNode<K, V> {
     /// Initializes a new `LeafNode` in-place.
-    ///
-    /// # Safety
-    ///
-    /// The caller must ensure that `this` points to a (possibly uninitialized) `LeafNode`
     unsafe fn init(this: *mut Self) {
         // As a general policy, we leave fields uninitialized if they can be, as this should
         // be both slightly faster and easier to track in Valgrind.
@@ -84,11 +79,9 @@ impl<K, V> LeafNode<K, V> {
 
     /// Creates a new boxed `LeafNode`.
     fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
-        let mut leaf = Box::new_uninit_in(alloc);
         unsafe {
-            // SAFETY: `leaf` points to a `LeafNode`
+            let mut leaf = Box::new_uninit_in(alloc);
             LeafNode::init(leaf.as_mut_ptr());
-            // SAFETY: `leaf` was just initialized
             leaf.assume_init()
         }
     }
@@ -118,11 +111,10 @@ impl<K, V> InternalNode<K, V> {
     /// initialized and valid edge. This function does not set up
     /// such an edge.
     unsafe fn new<A: Allocator + Clone>(alloc: A) -> Box<Self, A> {
-        let mut node = Box::<Self, _>::new_uninit_in(alloc);
         unsafe {
-            // SAFETY: argument points to the `node.data` `LeafNode`
+            let mut node = Box::<Self, _>::new_uninit_in(alloc);
+            // We only need to initialize the data; the edges are MaybeUninit.
             LeafNode::init(&raw mut (*node.as_mut_ptr()).data);
-            // SAFETY: `node.data` was just initialized and `node.edges` is MaybeUninit.
             node.assume_init()
         }
     }
@@ -144,7 +136,7 @@ type BoxedNode<K, V> = NonNull<LeafNode<K, V>>;
 ///
 /// A reference to a node.
 ///
-/// This type has a number of parameters that control how it acts:
+/// This type has a number of parameters that controls how it acts:
 /// - `BorrowType`: A dummy type that describes the kind of borrow and carries a lifetime.
 ///    - When this is `Immut<'a>`, the `NodeRef` acts roughly like `&'a Node`.
 ///    - When this is `ValMut<'a>`, the `NodeRef` acts roughly like `&'a Node`
@@ -226,28 +218,26 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     }
 
     fn from_new_leaf<A: Allocator + Clone>(leaf: Box<LeafNode<K, V>, A>) -> Self {
-        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
-        let (node, _alloc) = Box::into_non_null_with_allocator(leaf);
-        NodeRef { height: 0, node, _marker: PhantomData }
+        NodeRef { height: 0, node: NonNull::from(Box::leak(leaf)), _marker: PhantomData }
     }
 }
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
-    /// Creates a new internal (height > 0) `NodeRef`
     fn new_internal<A: Allocator + Clone>(child: Root<K, V>, alloc: A) -> Self {
         let mut new_node = unsafe { InternalNode::new(alloc) };
         new_node.edges[0].write(child.node);
-        NodeRef::from_new_internal(new_node, NonZero::new(child.height + 1).unwrap())
+        unsafe { NodeRef::from_new_internal(new_node, child.height + 1) }
     }
 
-    /// Creates a new internal (height > 0) `NodeRef` from an existing internal node
-    fn from_new_internal<A: Allocator + Clone>(
+    /// # Safety
+    /// `height` must not be zero.
+    unsafe fn from_new_internal<A: Allocator + Clone>(
         internal: Box<InternalNode<K, V>, A>,
-        height: NonZero<usize>,
+        height: usize,
     ) -> Self {
-        // The allocator must be dropped, not leaked.  See also `BTreeMap::alloc`.
-        let (node, _alloc) = Box::into_non_null_with_allocator(internal);
-        let mut this = NodeRef { height: height.into(), node: node.cast(), _marker: PhantomData };
+        debug_assert!(height > 0);
+        let node = NonNull::from(Box::leak(internal)).cast();
+        let mut this = NodeRef { height, node, _marker: PhantomData };
         this.borrow_mut().correct_all_childrens_parent_links();
         this
     }
@@ -620,8 +610,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::LeafOrInternal> {
         let top = self.node;
 
         // SAFETY: we asserted to be internal.
-        let mut internal_self = unsafe { self.borrow_mut().cast_to_internal_unchecked() };
-        let internal_node = internal_self.as_internal_mut();
+        let internal_self = unsafe { self.borrow_mut().cast_to_internal_unchecked() };
+        // SAFETY: we borrowed `self` exclusively and its borrow type is exclusive.
+        let internal_node = unsafe { &mut *NodeRef::as_internal_ptr(&internal_self) };
         // SAFETY: the first edge is always initialized.
         self.node = unsafe { internal_node.edges[0].assume_init_read() };
         self.height -= 1;
@@ -1299,8 +1290,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 &mut new_node.edges[..new_len + 1],
             );
 
-            // SAFETY: self is `marker::Internal`, so `self.node.height` is positive
-            let height = NonZero::new_unchecked(self.node.height);
+            let height = self.node.height;
             let right = NodeRef::from_new_internal(new_node, height);
 
             SplitResult { left: self.node, kv, right }

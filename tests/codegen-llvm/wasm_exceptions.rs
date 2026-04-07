@@ -1,9 +1,8 @@
 //@ only-wasm32
-//@ revisions: WASM WASMEXN
-//@ [WASMEXN] compile-flags: -C panic=unwind -Z emscripten-wasm-eh
+//@ compile-flags: -C panic=unwind -Z emscripten-wasm-eh
 
 #![crate_type = "lib"]
-#![feature(core_intrinsics, wasm_exception_handling_intrinsics, link_llvm_intrinsics)]
+#![feature(core_intrinsics, wasm_exception_handling_intrinsics)]
 
 extern "C-unwind" {
     fn may_panic();
@@ -23,8 +22,7 @@ impl Drop for LogOnDrop {
     }
 }
 
-// WASM-LABEL: @test_cleanup() {{.*}}
-// WASMEXN-LABEL: @test_cleanup() {{.*}} @__gxx_wasm_personality_v0
+// CHECK-LABEL: @test_cleanup() {{.*}} @__gxx_wasm_personality_v0
 #[no_mangle]
 pub fn test_cleanup() {
     let _log_on_drop = LogOnDrop;
@@ -32,16 +30,12 @@ pub fn test_cleanup() {
         may_panic();
     }
 
-    // WASMEXN-NOT: call
-    // WASMEXN: invoke void @may_panic()
-    // WASMEXN: %cleanuppad = cleanuppad within none []
-    //
-    // WASM: call void @may_panic()
-    // WASM-NOT: invoke void @may_panic()
+    // CHECK-NOT: call
+    // CHECK: invoke void @may_panic()
+    // CHECK: %cleanuppad = cleanuppad within none []
 }
 
-// WASM-LABEL: @test_rtry() {{.*}}
-// WASMEXN-LABEL: @test_rtry() {{.*}} @__gxx_wasm_personality_v0
+// CHECK-LABEL: @test_rtry() {{.*}} @__gxx_wasm_personality_v0
 #[no_mangle]
 pub fn test_rtry() {
     unsafe {
@@ -57,40 +51,23 @@ pub fn test_rtry() {
         );
     }
 
-    // WASMEXN-NOT: call
-    // WASMEXN: invoke void @may_panic()
-    // WASMEXN: {{.*}} = catchswitch within none [label {{.*}}] unwind to caller
-    // WASMEXN: {{.*}} = catchpad within {{.*}} [ptr null]
-    // WASMEXN: catchret
-
-    // WASM: call void @may_panic()
-    // WASM-NOT: invoke void @may_panic()
-    // WASM-NOT: catchswitch
-    // WASM-NOT: catchpad
-    // WASM-NOT: catchret
+    // CHECK-NOT: call
+    // CHECK: invoke void @may_panic()
+    // CHECK: {{.*}} = catchswitch within none [label {{.*}}] unwind to caller
+    // CHECK: {{.*}} = catchpad within {{.*}} [ptr null]
+    // CHECK: catchret
 }
 
 // Make sure the intrinsic is not inferred as nounwind. This is a regression test for #132416.
-//
-// Note that this test uses the raw `wasm_throw` intrinsic because the one from
-// libstd was built with `-Cpanic=abort` and it's technically not valid to use
-// when this crate is compiled with `-Cpanic=unwind`.
-//
-// WASMEXN-LABEL: @test_intrinsic() {{.*}} @__gxx_wasm_personality_v0
+// CHECK-LABEL: @test_intrinsic() {{.*}} @__gxx_wasm_personality_v0
 #[no_mangle]
-#[cfg(wasmexn)]
 pub fn test_intrinsic() {
     let _log_on_drop = LogOnDrop;
-
-    unsafe extern "C-unwind" {
-        #[link_name = "llvm.wasm.throw"]
-        fn wasm_throw(tag: i32, ptr: *mut u8) -> !;
-    }
     unsafe {
-        wasm_throw(0, core::ptr::null_mut());
+        core::arch::wasm32::throw::<0>(core::ptr::null_mut());
     }
 
-    // WASMEXN-NOT: call
-    // WASMEXN: invoke void @llvm.wasm.throw(i32 noundef 0, ptr noundef null)
-    // WASMEXN: %cleanuppad = cleanuppad within none []
+    // CHECK-NOT: call
+    // CHECK: invoke void @llvm.wasm.throw(i32 noundef 0, ptr noundef null)
+    // CHECK: %cleanuppad = cleanuppad within none []
 }

@@ -2,4 +2,4 @@
 
 fn main() {}
 
-//~? ERROR codegen option `panic` requires either `unwind`, `abort`, or `immediate-abort`
+//~? ERROR codegen option `panic` requires either `unwind` or `abort`

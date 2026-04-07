@@ -89,6 +89,7 @@ fn test(x: bool) {
       //^^^^ expected (), got &'static str
     }
     match x { true => true, false => 0 }
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), got bool
                                    //^ expected bool, got i32
     ()
 }

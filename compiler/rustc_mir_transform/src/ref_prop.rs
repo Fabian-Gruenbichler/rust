@@ -195,10 +195,10 @@ fn compute_replacement<'tcx>(
     //   including DEF. This violates the DEF dominates USE condition, and so is impossible.
     let is_constant_place = |place: Place<'_>| {
         // We only allow `Deref` as the first projection, to avoid surprises.
-        if let Some((&PlaceElem::Deref, rest)) = place.projection.split_first() {
+        if place.projection.first() == Some(&PlaceElem::Deref) {
             // `place == (*some_local).xxx`, it is constant only if `some_local` is constant.
             // We approximate constness using SSAness.
-            ssa.is_ssa(place.local) && rest.iter().all(PlaceElem::is_stable_offset)
+            ssa.is_ssa(place.local) && place.projection[1..].iter().all(PlaceElem::is_stable_offset)
         } else {
             storage_live.has_single_storage(place.local)
                 && place.projection[..].iter().all(PlaceElem::is_stable_offset)
@@ -206,7 +206,7 @@ fn compute_replacement<'tcx>(
     };
 
     let mut can_perform_opt = |target: Place<'tcx>, loc: Location| {
-        if target.is_indirect_first_projection() {
+        if target.projection.first() == Some(&PlaceElem::Deref) {
             // We are creating a reborrow. As `place.local` is a reference, removing the storage
             // statements should not make it much harder for LLVM to optimize.
             storage_to_remove.insert(target.local);
@@ -247,7 +247,8 @@ fn compute_replacement<'tcx>(
             // This is a copy, just use the value we have in store for the previous one.
             // As we are visiting in `assignment_order`, ie. reverse postorder, `rhs` should
             // have been visited before.
-            Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) => {
+            Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+            | Rvalue::CopyForDeref(place) => {
                 if let Some(rhs) = place.as_local()
                     && ssa.is_ssa(rhs)
                 {
@@ -265,7 +266,7 @@ fn compute_replacement<'tcx>(
             Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => {
                 let mut place = *place;
                 // Try to see through `place` in order to collapse reborrow chains.
-                if let Some((&PlaceElem::Deref, rest)) = place.projection.split_first()
+                if place.projection.first() == Some(&PlaceElem::Deref)
                     && let Value::Pointer(target, inner_needs_unique) = targets[place.local]
                     // Only see through immutable reference and pointers, as we do not know yet if
                     // mutable references are fully replaced.
@@ -273,7 +274,7 @@ fn compute_replacement<'tcx>(
                     // Only collapse chain if the pointee is definitely live.
                     && can_perform_opt(target, location)
                 {
-                    place = target.project_deeper(rest, tcx);
+                    place = target.project_deeper(&place.projection[1..], tcx);
                 }
                 assert_ne!(place.local, local);
                 if is_constant_place(place) {
@@ -301,7 +302,6 @@ fn compute_replacement<'tcx>(
     return Replacer {
         tcx,
         targets: finder.targets,
-        remap_var_debug_infos: IndexVec::from_elem(None, body.local_decls()),
         storage_to_remove,
         allowed_replacements,
         any_replacement: false,
@@ -323,7 +323,7 @@ fn compute_replacement<'tcx>(
                 return;
             }
 
-            if !place.is_indirect_first_projection() {
+            if place.projection.first() != Some(&PlaceElem::Deref) {
                 // This is not a dereference, nothing to do.
                 return;
             }
@@ -381,7 +381,6 @@ fn fully_replaceable_locals(ssa: &SsaLocals) -> DenseBitSet<Local> {
 struct Replacer<'tcx> {
     tcx: TyCtxt<'tcx>,
     targets: IndexVec<Local, Value<'tcx>>,
-    remap_var_debug_infos: IndexVec<Local, Option<Local>>,
     storage_to_remove: DenseBitSet<Local>,
     allowed_replacements: FxHashSet<(Local, Location)>,
     any_replacement: bool,
@@ -393,23 +392,19 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
     }
 
     fn visit_var_debug_info(&mut self, debuginfo: &mut VarDebugInfo<'tcx>) {
-        if let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
+        // If the debuginfo is a pointer to another place:
+        // - if it's a reborrow, see through it;
+        // - if it's a direct borrow, increase `debuginfo.references`.
+        while let VarDebugInfoContents::Place(ref mut place) = debuginfo.value
             && place.projection.is_empty()
+            && let Value::Pointer(target, _) = self.targets[place.local]
+            && target.projection.iter().all(|p| p.can_use_in_debuginfo())
         {
-            let mut new_local = place.local;
-
-            // If the debuginfo is a pointer to another place
-            // and it's a reborrow: see through it
-            while let Value::Pointer(target, _) = self.targets[new_local]
-                && let &[PlaceElem::Deref] = &target.projection[..]
-            {
-                new_local = target.local;
-            }
-            if place.local != new_local {
-                self.remap_var_debug_infos[place.local] = Some(new_local);
-                place.local = new_local;
-
+            if let Some((&PlaceElem::Deref, rest)) = target.projection.split_last() {
+                *place = Place::from(target.local).project_deeper(rest, self.tcx);
                 self.any_replacement = true;
+            } else {
+                break;
             }
         }
 
@@ -417,24 +412,11 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
         self.super_var_debug_info(debuginfo);
     }
 
-    fn visit_statement_debuginfo(
-        &mut self,
-        stmt_debuginfo: &mut StmtDebugInfo<'tcx>,
-        location: Location,
-    ) {
-        let local = match stmt_debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => local,
-        };
-        if let Some(target) = self.remap_var_debug_infos[*local] {
-            *local = target;
-            self.any_replacement = true;
-        }
-        self.super_statement_debuginfo(stmt_debuginfo, location);
-    }
-
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
         loop {
-            let Some((&PlaceElem::Deref, rest)) = place.projection.split_first() else { return };
+            if place.projection.first() != Some(&PlaceElem::Deref) {
+                return;
+            }
 
             let Value::Pointer(target, _) = self.targets[place.local] else { return };
 
@@ -450,7 +432,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
                 return;
             }
 
-            *place = target.project_deeper(rest, self.tcx);
+            *place = target.project_deeper(&place.projection[1..], self.tcx);
             self.any_replacement = true;
         }
     }
@@ -460,11 +442,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop(true);
+                stmt.make_nop();
             }
-            _ => {}
+            // Do not remove assignments as they may still be useful for debuginfo.
+            _ => self.super_statement(stmt, loc),
         }
-        // Do not remove assignments as they may still be useful for debuginfo.
-        self.super_statement(stmt, loc);
     }
 }

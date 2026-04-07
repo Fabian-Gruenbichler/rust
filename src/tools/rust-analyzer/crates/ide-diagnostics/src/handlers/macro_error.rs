@@ -144,13 +144,16 @@ macro_rules! concat { () => {} }
     }
 
     #[test]
-    fn register_tool() {
+    fn register_attr_and_tool() {
+        cov_mark::check!(register_attr);
         cov_mark::check!(register_tool);
         check_diagnostics(
             r#"
 #![register_tool(tool)]
+#![register_attr(attr)]
 
 #[tool::path]
+#[attr]
 struct S;
 "#,
         );

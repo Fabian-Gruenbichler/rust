@@ -6,7 +6,6 @@
 #![feature(std_panic)]
 
 //@ needs-threads
-//@ ignore-backends: gcc
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::panic;

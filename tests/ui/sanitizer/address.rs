@@ -6,8 +6,7 @@
 //
 //@ run-fail-or-crash
 //@ error-pattern: AddressSanitizer: stack-buffer-overflow
-//@ error-pattern: 'xs' (line 15) <== Memory access at offset
-//@ ignore-backends: gcc
+//@ error-pattern: 'xs' (line 14) <== Memory access at offset
 
 use std::hint::black_box;
 

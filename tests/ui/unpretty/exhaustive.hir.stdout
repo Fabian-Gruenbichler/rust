@@ -398,8 +398,7 @@ mod expressions {
         let expr;
         format_arguments::new_const(&[]);
         {
-            super let args = (&expr,);
-            super let args = [format_argument::new_display(args.0)];
+            super let args = [format_argument::new_display(&expr)];
             format_arguments::new_v1(&[""], &args)
         };
     }

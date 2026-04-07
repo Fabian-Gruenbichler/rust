@@ -67,7 +67,7 @@ impl DiscoverCommand {
         cmd.args(args);
 
         Ok(DiscoverHandle {
-            _handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone(), None)?,
+            _handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone())?,
             span: info_span!("discover_command").entered(),
         })
     }

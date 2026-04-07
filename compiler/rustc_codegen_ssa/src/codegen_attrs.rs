@@ -19,6 +19,7 @@ use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::SanitizerSet;
 
 use crate::errors;
+use crate::errors::NoMangleNameless;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
@@ -181,10 +182,14 @@ fn process_builtin_attrs(
                     if tcx.opt_item_name(did.to_def_id()).is_some() {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
                     } else {
-                        tcx.dcx().span_delayed_bug(
-                            *attr_span,
-                            "no_mangle should be on a named function",
-                        );
+                        tcx.dcx().emit_err(NoMangleNameless {
+                            span: *attr_span,
+                            definition: format!(
+                                "{} {}",
+                                tcx.def_descr_article(did.to_def_id()),
+                                tcx.def_descr(did.to_def_id())
+                            ),
+                        });
                     }
                 }
                 AttributeKind::Optimize(optimize, _) => codegen_fn_attrs.optimize = *optimize,
@@ -258,19 +263,6 @@ fn process_builtin_attrs(
                 AttributeKind::Used { used_by, .. } => match used_by {
                     UsedBy::Compiler => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_COMPILER,
                     UsedBy::Linker => codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER,
-                    UsedBy::Default => {
-                        let used_form = if tcx.sess.target.os == "illumos" {
-                            // illumos' `ld` doesn't support a section header that would represent
-                            // `#[used(linker)]`, see
-                            // https://github.com/rust-lang/rust/issues/146169. For that target,
-                            // downgrade as if `#[used(compiler)]` was requested and hope for the
-                            // best.
-                            CodegenFnAttrFlags::USED_COMPILER
-                        } else {
-                            CodegenFnAttrFlags::USED_LINKER
-                        };
-                        codegen_fn_attrs.flags |= used_form;
-                    }
                 },
                 AttributeKind::FfiConst(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_CONST
@@ -279,7 +271,7 @@ fn process_builtin_attrs(
                 AttributeKind::StdInternalSymbol(_) => {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL
                 }
-                AttributeKind::Linkage(linkage, span) => {
+                AttributeKind::Linkage(linkage, _) => {
                     let linkage = Some(*linkage);
 
                     if tcx.is_foreign_item(did) {
@@ -287,7 +279,7 @@ fn process_builtin_attrs(
 
                         if tcx.is_mutable_static(did.into()) {
                             let mut diag = tcx.dcx().struct_span_err(
-                                *span,
+                                attr.span(),
                                 "extern mutable statics are not allowed with `#[linkage]`",
                             );
                             diag.note(
@@ -303,12 +295,6 @@ fn process_builtin_attrs(
                 }
                 AttributeKind::Sanitize { span, .. } => {
                     interesting_spans.sanitize = Some(*span);
-                }
-                AttributeKind::ObjcClass { classname, .. } => {
-                    codegen_fn_attrs.objc_class = Some(*classname);
-                }
-                AttributeKind::ObjcSelector { methname, .. } => {
-                    codegen_fn_attrs.objc_selector = Some(*methname);
                 }
                 _ => {}
             }

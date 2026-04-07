@@ -1,7 +1,6 @@
 //@ edition:2018
 //@ aux-build: remove-extern-crate.rs
 //@ run-rustfix
-//@ rustfix-only-machine-applicable
 
 #![warn(rust_2018_idioms)]
 

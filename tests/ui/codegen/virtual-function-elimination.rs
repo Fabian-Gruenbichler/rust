@@ -2,7 +2,6 @@
 //@ compile-flags: -Zvirtual-function-elimination=true -Clto=true
 //@ only-x86_64
 //@ no-prefer-dynamic
-//@ ignore-backends: gcc
 
 // issue #123955
 pub fn test0() {

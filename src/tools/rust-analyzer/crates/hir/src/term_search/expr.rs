@@ -1,6 +1,6 @@
 //! Type tree for term search
 
-use hir_def::FindPathConfig;
+use hir_def::ImportPathConfig;
 use hir_expand::mod_path::ModPath;
 use hir_ty::{
     db::HirDatabase,
@@ -18,7 +18,7 @@ use crate::{
 fn mod_item_path(
     sema_scope: &SemanticsScope<'_>,
     def: &ModuleDef,
-    cfg: FindPathConfig,
+    cfg: ImportPathConfig,
 ) -> Option<ModPath> {
     let db = sema_scope.db;
     let m = sema_scope.module();
@@ -29,7 +29,7 @@ fn mod_item_path(
 fn mod_item_path_str(
     sema_scope: &SemanticsScope<'_>,
     def: &ModuleDef,
-    cfg: FindPathConfig,
+    cfg: ImportPathConfig,
     edition: Edition,
 ) -> Result<String, DisplaySourceCodeError> {
     let path = mod_item_path(sema_scope, def, cfg);
@@ -103,7 +103,7 @@ impl<'db> Expr<'db> {
         &self,
         sema_scope: &SemanticsScope<'db>,
         many_formatter: &mut dyn FnMut(&Type<'db>) -> String,
-        cfg: FindPathConfig,
+        cfg: ImportPathConfig,
         display_target: DisplayTarget,
     ) -> Result<String, DisplaySourceCodeError> {
         let db = sema_scope.db;
@@ -380,7 +380,7 @@ impl<'db> Expr<'db> {
 fn container_name(
     container: AssocItemContainer,
     sema_scope: &SemanticsScope<'_>,
-    cfg: FindPathConfig,
+    cfg: ImportPathConfig,
     edition: Edition,
     display_target: DisplayTarget,
 ) -> Result<String, DisplaySourceCodeError> {

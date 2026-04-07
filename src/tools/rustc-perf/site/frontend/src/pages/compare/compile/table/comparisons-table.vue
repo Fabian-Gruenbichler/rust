@@ -2,7 +2,7 @@
 import {TestCaseComparison} from "../../data";
 import Tooltip from "../../tooltip.vue";
 import {ArtifactDescription} from "../../types";
-import {formatTarget, percentClass} from "../../shared";
+import {percentClass} from "../../shared";
 import {CompileBenchmarkMap, CompileTestCase} from "../common";
 import {computed} from "vue";
 import {testCaseKey} from "../common";
@@ -62,7 +62,6 @@ const unit = computed(() => {
           <th>Profile</th>
           <th>Scenario</th>
           <th v-if="showBackend">Backend</th>
-          <th>Target</th>
           <th>% Change</th>
           <th class="narrow">
             Significance Threshold
@@ -102,9 +101,6 @@ const unit = computed(() => {
               </td>
               <td>{{ comparison.testCase.scenario }}</td>
               <td v-if="showBackend">{{ comparison.testCase.backend }}</td>
-              <td :title="comparison.testCase.target">
-                {{ formatTarget(comparison.testCase.target) }}
-              </td>
               <td>
                 <div class="numeric-aligned">
                   <span v-bind:class="percentClass(comparison.percent)">

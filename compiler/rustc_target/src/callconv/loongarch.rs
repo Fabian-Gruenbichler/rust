@@ -322,7 +322,7 @@ fn classify_arg<'a, Ty, C>(
     }
 
     let total = arg.layout.size;
-    let align = arg.layout.align.bits();
+    let align = arg.layout.align.abi.bits();
 
     // "Scalars wider than 2✕XLEN are passed by reference and are replaced in
     // the argument list with the address."

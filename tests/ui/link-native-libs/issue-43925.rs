@@ -1,6 +1,6 @@
 #[link(name = "foo", cfg("rlib"))]
 //~^ ERROR link cfg is unstable
-//~| ERROR malformed `link` attribute input
+//~| ERROR `cfg` predicate key must be an identifier
 extern "C" {}
 
 fn main() {}

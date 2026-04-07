@@ -59,14 +59,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                after_where_clause,
+                where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    after_where_clause,
+                    *where_clauses,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -127,12 +127,14 @@ impl<'a> State<'a> {
         &mut self,
         ident: Ident,
         generics: &ast::Generics,
-        after_where_clause: &ast::WhereClause,
+        where_clauses: ast::TyAliasWhereClauses,
         bounds: &ast::GenericBounds,
         ty: Option<&ast::Ty>,
         vis: &ast::Visibility,
         defaultness: ast::Defaultness,
     ) {
+        let (before_predicates, after_predicates) =
+            generics.where_clause.predicates.split_at(where_clauses.split);
         let (cb, ib) = self.head("");
         self.print_visibility(vis);
         self.print_defaultness(defaultness);
@@ -143,13 +145,13 @@ impl<'a> State<'a> {
             self.word_nbsp(":");
             self.print_type_bounds(bounds);
         }
-        self.print_where_clause(&generics.where_clause);
+        self.print_where_clause_parts(where_clauses.before.has_where_token, before_predicates);
         if let Some(ty) = ty {
             self.space();
             self.word_space("=");
             self.print_type(ty);
         }
-        self.print_where_clause(&after_where_clause);
+        self.print_where_clause_parts(where_clauses.after.has_where_token, after_predicates);
         self.word(";");
         self.end(ib);
         self.end(cb);
@@ -281,14 +283,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                after_where_clause,
+                where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    after_where_clause,
+                    *where_clauses,
                     bounds,
                     ty.as_deref(),
                     &item.vis,
@@ -583,14 +585,14 @@ impl<'a> State<'a> {
                 defaultness,
                 ident,
                 generics,
-                after_where_clause,
+                where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
                     *ident,
                     generics,
-                    after_where_clause,
+                    *where_clauses,
                     bounds,
                     ty.as_deref(),
                     vis,
@@ -757,7 +759,14 @@ impl<'a> State<'a> {
     }
 
     fn print_where_clause(&mut self, where_clause: &ast::WhereClause) {
-        let ast::WhereClause { has_where_token, ref predicates, span: _ } = *where_clause;
+        self.print_where_clause_parts(where_clause.has_where_token, &where_clause.predicates);
+    }
+
+    fn print_where_clause_parts(
+        &mut self,
+        has_where_token: bool,
+        predicates: &[ast::WherePredicate],
+    ) {
         if predicates.is_empty() && !has_where_token {
             return;
         }

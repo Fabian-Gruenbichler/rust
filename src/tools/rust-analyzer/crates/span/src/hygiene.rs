@@ -67,16 +67,6 @@ const _: () = {
             self.parent.hash(state);
         }
     }
-
-    impl zalsa_::HasJar for SyntaxContext {
-        type Jar = zalsa_struct_::JarImpl<SyntaxContext>;
-        const KIND: zalsa_::JarKind = zalsa_::JarKind::Struct;
-    }
-
-    zalsa_::register_jar! {
-        zalsa_::ErasedJar::erase::<SyntaxContext>()
-    }
-
     /// Key to use during hash lookups. Each field is some type that implements `Lookup<T>`
     /// for the owned type. This permits interning with an `&str` when a `String` is required and so forth.
     #[derive(Hash)]
@@ -108,38 +98,21 @@ const _: () = {
             salsa::plumbing::Location { file: file!(), line: line!() };
         const DEBUG_NAME: &'static str = "SyntaxContextData";
         const REVISIONS: std::num::NonZeroUsize = std::num::NonZeroUsize::MAX;
-        const PERSIST: bool = false;
-
         type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
-
-        fn serialize<S>(_: &Self::Fields<'_>, _: S) -> Result<S::Ok, S::Error>
-        where
-            S: zalsa_::serde::Serializer,
-        {
-            unimplemented!("attempted to serialize value that set `PERSIST` to false")
-        }
-
-        fn deserialize<'de, D>(_: D) -> Result<Self::Fields<'static>, D::Error>
-        where
-            D: zalsa_::serde::Deserializer<'de>,
-        {
-            unimplemented!("attempted to deserialize value that cannot set `PERSIST` to false");
-        }
     }
-
     impl SyntaxContext {
-        pub fn ingredient(zalsa: &zalsa_::Zalsa) -> &zalsa_struct_::IngredientImpl<Self> {
+        pub fn ingredient<Db>(db: &Db) -> &zalsa_struct_::IngredientImpl<Self>
+        where
+            Db: ?Sized + zalsa_::Database,
+        {
             static CACHE: zalsa_::IngredientCache<zalsa_struct_::IngredientImpl<SyntaxContext>> =
                 zalsa_::IngredientCache::new();
-
-            // SAFETY: `lookup_jar_by_type` returns a valid ingredient index, and the only
-            // ingredient created by our jar is the struct ingredient.
-            unsafe {
-                CACHE.get_or_create(zalsa, || {
-                    zalsa.lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
-                })
-            }
+            CACHE.get_or_create(db.zalsa(), || {
+                db.zalsa()
+                    .lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
+                    .get_or_create()
+            })
         }
     }
     impl zalsa_::AsId for SyntaxContext {
@@ -159,14 +132,13 @@ const _: () = {
     impl zalsa_::SalsaStructInDb for SyntaxContext {
         type MemoIngredientMap = salsa::plumbing::MemoIngredientSingletonIndex;
 
-        fn lookup_ingredient_index(aux: &zalsa_::Zalsa) -> salsa::plumbing::IngredientIndices {
-            aux.lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>().into()
-        }
-
-        fn entries(zalsa: &zalsa_::Zalsa) -> impl Iterator<Item = zalsa_::DatabaseKeyIndex> + '_ {
-            let _ingredient_index =
-                zalsa.lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>();
-            <SyntaxContext>::ingredient(zalsa).entries(zalsa).map(|entry| entry.key())
+        fn lookup_or_create_ingredient_index(
+            zalsa: &salsa::plumbing::Zalsa,
+        ) -> salsa::plumbing::IngredientIndices {
+            zalsa
+                .lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
+                .get_or_create()
+                .into()
         }
 
         #[inline]
@@ -175,18 +147,6 @@ const _: () = {
                 Some(<Self as salsa::plumbing::FromId>::from_id(id))
             } else {
                 None
-            }
-        }
-
-        #[inline]
-        unsafe fn memo_table(
-            zalsa: &zalsa_::Zalsa,
-            id: zalsa_::Id,
-            current_revision: zalsa_::Revision,
-        ) -> zalsa_::MemoTableWithTypes<'_> {
-            // SAFETY: Guaranteed by caller.
-            unsafe {
-                zalsa.table().memos::<zalsa_struct_::Value<SyntaxContext>>(id, current_revision)
             }
         }
     }
@@ -224,11 +184,8 @@ const _: () = {
             Edition: zalsa_::interned::HashEqLike<T2>,
             SyntaxContext: zalsa_::interned::HashEqLike<T3>,
         {
-            let (zalsa, zalsa_local) = db.zalsas();
-
-            SyntaxContext::ingredient(zalsa).intern(
-                zalsa,
-                zalsa_local,
+            SyntaxContext::ingredient(db).intern(
+                db.as_dyn_database(),
                 StructKey::<'db>(
                     outer_expn,
                     outer_transparency,
@@ -259,8 +216,7 @@ const _: () = {
             Db: ?Sized + zalsa_::Database,
         {
             let id = self.as_salsa_id()?;
-            let zalsa = db.zalsa();
-            let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+            let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
             fields.outer_expn
         }
 
@@ -269,8 +225,7 @@ const _: () = {
             Db: ?Sized + zalsa_::Database,
         {
             let Some(id) = self.as_salsa_id() else { return Transparency::Opaque };
-            let zalsa = db.zalsa();
-            let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+            let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
             fields.outer_transparency
         }
 
@@ -280,8 +235,7 @@ const _: () = {
         {
             match self.as_salsa_id() {
                 Some(id) => {
-                    let zalsa = db.zalsa();
-                    let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
                     fields.edition
                 }
                 None => Edition::from_u32(SyntaxContext::MAX_ID - self.into_u32()),
@@ -294,8 +248,7 @@ const _: () = {
         {
             match self.as_salsa_id() {
                 Some(id) => {
-                    let zalsa = db.zalsa();
-                    let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
                     fields.parent
                 }
                 None => self,
@@ -309,8 +262,7 @@ const _: () = {
         {
             match self.as_salsa_id() {
                 Some(id) => {
-                    let zalsa = db.zalsa();
-                    let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
                     fields.opaque
                 }
                 None => self,
@@ -324,8 +276,7 @@ const _: () = {
         {
             match self.as_salsa_id() {
                 Some(id) => {
-                    let zalsa = db.zalsa();
-                    let fields = SyntaxContext::ingredient(zalsa).data(zalsa, id);
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
                     fields.opaque_and_semitransparent
                 }
                 None => self,

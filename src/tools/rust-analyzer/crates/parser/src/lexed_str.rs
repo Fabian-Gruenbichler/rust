@@ -149,24 +149,6 @@ impl<'a> Converter<'a> {
         }
     }
 
-    /// Check for likely unterminated string by analyzing STRING token content
-    fn has_likely_unterminated_string(&self) -> bool {
-        let Some(last_idx) = self.res.kind.len().checked_sub(1) else { return false };
-
-        for i in (0..=last_idx).rev().take(5) {
-            if self.res.kind[i] == STRING {
-                let start = self.res.start[i] as usize;
-                let end = self.res.start.get(i + 1).map(|&s| s as usize).unwrap_or(self.offset);
-                let content = &self.res.text[start..end];
-
-                if content.contains('(') && (content.contains("//") || content.contains(";\n")) {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     fn finalize_with_eof(mut self) -> LexedStr<'a> {
         self.res.push(EOF, self.offset);
         self.res
@@ -285,16 +267,7 @@ impl<'a> Converter<'a> {
                 rustc_lexer::TokenKind::Unknown => ERROR,
                 rustc_lexer::TokenKind::UnknownPrefix if token_text == "builtin" => IDENT,
                 rustc_lexer::TokenKind::UnknownPrefix => {
-                    let has_unterminated = self.has_likely_unterminated_string();
-
-                    let error_msg = if has_unterminated {
-                        format!(
-                            "unknown literal prefix `{token_text}` (note: check for unterminated string literal)"
-                        )
-                    } else {
-                        "unknown literal prefix".to_owned()
-                    };
-                    errors.push(error_msg);
+                    errors.push("unknown literal prefix".into());
                     IDENT
                 }
                 rustc_lexer::TokenKind::Eof => EOF,

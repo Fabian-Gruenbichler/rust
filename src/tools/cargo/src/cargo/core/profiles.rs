@@ -561,7 +561,6 @@ fn merge_profile(profile: &mut Profile, toml: &TomlProfile) {
         profile.panic = match panic.as_str() {
             "unwind" => PanicStrategy::Unwind,
             "abort" => PanicStrategy::Abort,
-            "immediate-abort" => PanicStrategy::ImmediateAbort,
             // This should be validated in TomlProfile::validate
             _ => panic!("Unexpected panic setting `{}`", panic),
         };
@@ -873,11 +872,10 @@ impl serde::ser::Serialize for Lto {
 
 /// The `panic` setting.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash, PartialOrd, Ord, serde::Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "lowercase")]
 pub enum PanicStrategy {
     Unwind,
     Abort,
-    ImmediateAbort,
 }
 
 impl fmt::Display for PanicStrategy {
@@ -885,7 +883,6 @@ impl fmt::Display for PanicStrategy {
         match *self {
             PanicStrategy::Unwind => "unwind",
             PanicStrategy::Abort => "abort",
-            PanicStrategy::ImmediateAbort => "immediate-abort",
         }
         .fmt(f)
     }

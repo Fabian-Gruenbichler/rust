@@ -27,13 +27,10 @@ r[lex.keywords.strict.list]
 The following keywords are in all editions:
 
 - `as`
-- `async`
-- `await`
 - `break`
 - `const`
 - `continue`
 - `crate`
-- `dyn`
 - `else`
 - `enum`
 - `extern`
@@ -66,12 +63,11 @@ The following keywords are in all editions:
 - `while`
 
 r[lex.keywords.strict.edition2018]
-> [!EDITION-2018]
-> The following keywords were added in the 2018 edition:
->
-> - `async`
-> - `await`
-> - `dyn`
+The following keywords were added beginning in the 2018 edition.
+
+- `async`
+- `await`
+- `dyn`
 
 r[lex.keywords.reserved]
 ## Reserved keywords
@@ -88,23 +84,23 @@ r[lex.keywords.reserved.list]
 - `box`
 - `do`
 - `final`
-- `gen`
 - `macro`
 - `override`
 - `priv`
-- `try`
 - `typeof`
 - `unsized`
 - `virtual`
 - `yield`
 
 r[lex.keywords.reserved.edition2018]
-> [!EDITION-2018]
-> The `try` keyword was added as a reserved keyword in the 2018 edition.
+The following keywords are reserved beginning in the 2018 edition.
+
+- `try`
 
 r[lex.keywords.reserved.edition2024]
-> [!EDITION-2024]
-> The `gen` keyword was added as a reserved keyword in the 2024 edition.
+The following keywords are reserved beginning in the 2024 edition.
+
+- `gen`
 
 r[lex.keywords.weak]
 ## Weak keywords

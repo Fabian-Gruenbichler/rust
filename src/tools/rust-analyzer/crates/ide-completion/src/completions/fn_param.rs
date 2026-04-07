@@ -2,7 +2,6 @@
 
 use hir::HirDisplay;
 use ide_db::FxHashMap;
-use itertools::Either;
 use syntax::{
     AstNode, Direction, SyntaxKind, TextRange, TextSize, algo,
     ast::{self, HasModuleItem},
@@ -25,8 +24,8 @@ pub(crate) fn complete_fn_param(
     ctx: &CompletionContext<'_>,
     pattern_ctx: &PatternContext,
 ) -> Option<()> {
-    let (ParamContext { param_list, kind, .. }, impl_or_trait) = match pattern_ctx {
-        PatternContext { param_ctx: Some(kind), impl_or_trait, .. } => (kind, impl_or_trait),
+    let (ParamContext { param_list, kind, .. }, impl_) = match pattern_ctx {
+        PatternContext { param_ctx: Some(kind), impl_, .. } => (kind, impl_),
         _ => return None,
     };
 
@@ -46,7 +45,7 @@ pub(crate) fn complete_fn_param(
 
     match kind {
         ParamKind::Function(function) => {
-            fill_fn_params(ctx, function, param_list, impl_or_trait, add_new_item_to_acc);
+            fill_fn_params(ctx, function, param_list, impl_, add_new_item_to_acc);
         }
         ParamKind::Closure(closure) => {
             let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;
@@ -63,7 +62,7 @@ fn fill_fn_params(
     ctx: &CompletionContext<'_>,
     function: &ast::Fn,
     param_list: &ast::ParamList,
-    impl_or_trait: &Option<Either<ast::Impl, ast::Trait>>,
+    impl_: &Option<ast::Impl>,
     mut add_new_item_to_acc: impl FnMut(&str),
 ) {
     let mut file_params = FxHashMap::default();
@@ -108,7 +107,7 @@ fn fill_fn_params(
     }
     remove_duplicated(&mut file_params, param_list.params());
     let self_completion_items = ["self", "&self", "mut self", "&mut self"];
-    if should_add_self_completions(ctx.token.text_range().start(), param_list, impl_or_trait) {
+    if should_add_self_completions(ctx.token.text_range().start(), param_list, impl_) {
         self_completion_items.into_iter().for_each(&mut add_new_item_to_acc);
     }
 
@@ -162,9 +161,9 @@ fn remove_duplicated(
 fn should_add_self_completions(
     cursor: TextSize,
     param_list: &ast::ParamList,
-    impl_or_trait: &Option<Either<ast::Impl, ast::Trait>>,
+    impl_: &Option<ast::Impl>,
 ) -> bool {
-    if impl_or_trait.is_none() || param_list.self_param().is_some() {
+    if impl_.is_none() || param_list.self_param().is_some() {
         return false;
     }
     match param_list.params().next() {

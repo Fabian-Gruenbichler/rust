@@ -242,7 +242,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
-use core::cell::{Cell, CloneFromCell};
+use core::cell::Cell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
 use core::clone::UseCloned;
@@ -277,9 +277,7 @@ use crate::vec::Vec;
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
 // inner types.
-// repr(align(2)) (forcing alignment to at least 2) is required because usize
-// has 1-byte alignment on AVR.
-#[repr(C, align(2))]
+#[repr(C)]
 struct RcInner<T: ?Sized> {
     strong: Cell<usize>,
     weak: Cell<usize>,
@@ -339,10 +337,6 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Rc<U, A>> for
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T> {}
-
-// SAFETY: `Rc::clone` doesn't access any `Cell`s which could contain the `Rc` being cloned.
-#[unstable(feature = "cell_get_cloned", issue = "145329")]
-unsafe impl<T: ?Sized> CloneFromCell for Rc<T> {}
 
 impl<T: ?Sized> Rc<T> {
     #[inline]
@@ -486,6 +480,8 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut five = Rc::<u32>::new_uninit();
@@ -519,6 +515,8 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let zero = Rc::<u32>::new_zeroed();
@@ -529,7 +527,7 @@ impl<T> Rc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed() -> Rc<mem::MaybeUninit<T>> {
         unsafe {
@@ -576,6 +574,7 @@ impl<T> Rc<T> {
     ///
     /// ```
     /// #![feature(allocator_api)]
+    /// #![feature(get_mut_unchecked)]
     ///
     /// use std::rc::Rc;
     ///
@@ -590,6 +589,7 @@ impl<T> Rc<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
@@ -622,6 +622,7 @@ impl<T> Rc<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed() -> Result<Rc<mem::MaybeUninit<T>>, AllocError> {
         unsafe {
             Ok(Rc::from_ptr(Rc::try_allocate_for_layout(
@@ -689,6 +690,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_uninit_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -726,6 +728,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_zeroed_in(alloc: A) -> Rc<mem::MaybeUninit<T>, A> {
         unsafe {
@@ -870,6 +873,7 @@ impl<T, A: Allocator> Rc<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_uninit_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -908,6 +912,7 @@ impl<T, A: Allocator> Rc<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
+    //#[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Rc<mem::MaybeUninit<T>, A>, AllocError> {
         unsafe {
@@ -1017,6 +1022,8 @@ impl<T> Rc<[T]> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
@@ -1047,6 +1054,8 @@ impl<T> Rc<[T]> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(new_zeroed_alloc)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let values = Rc::<[u32]>::new_zeroed_slice(3);
@@ -1057,7 +1066,7 @@ impl<T> Rc<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[stable(feature = "new_zeroed_alloc", since = "1.92.0")]
+    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Rc<[mem::MaybeUninit<T>]> {
         unsafe {
@@ -1120,6 +1129,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Rc<[mem::MaybeUninit<T>], A> {
         unsafe { Rc::from_ptr_in(Rc::allocate_for_slice_in(len, &alloc), alloc) }
@@ -1148,6 +1158,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Rc<[mem::MaybeUninit<T>], A> {
         unsafe {
@@ -1182,6 +1193,8 @@ impl<T, A: Allocator> Rc<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut five = Rc::<u32>::new_uninit();
@@ -1217,6 +1230,8 @@ impl<T, A: Allocator> Rc<[mem::MaybeUninit<T>], A> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(get_mut_unchecked)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
@@ -3016,10 +3031,6 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Weak<U, A>> f
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
-
-// SAFETY: `Weak::clone` doesn't access any `Cell`s which could contain the `Weak` being cloned.
-#[unstable(feature = "cell_get_cloned", issue = "145329")]
-unsafe impl<T: ?Sized> CloneFromCell for Weak<T> {}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.

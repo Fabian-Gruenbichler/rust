@@ -1,22 +1,19 @@
-use std::path::Path;
+use std::io::Write;
+use std::str::from_utf8;
 
-use crate::alphabetical::check_lines;
-use crate::diagnostics::{TidyCtx, TidyFlags};
+use super::*;
 
 #[track_caller]
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
-    let mut check = tidy_ctx.start_check("alphabetical-test");
-    check_lines(&name, lines.lines().enumerate(), &mut check);
-
-    assert_eq!(expected_bad, check.is_bad());
-    let errors = check.get_errors();
-    if expected_bad {
-        assert_eq!(errors.len(), 1);
-        assert_eq!(expected_msg, errors[0]);
-    } else {
-        assert!(errors.is_empty());
-    }
+    let mut actual_msg = Vec::new();
+    let mut actual_bad = false;
+    let mut err = |args: &_| {
+        write!(&mut actual_msg, "{args}")?;
+        Ok(())
+    };
+    check_lines(&name, lines.lines().enumerate(), &mut err, &mut actual_bad);
+    assert_eq!(expected_msg, from_utf8(&actual_msg).unwrap());
+    assert_eq!(expected_bad, actual_bad);
 }
 
 #[track_caller]

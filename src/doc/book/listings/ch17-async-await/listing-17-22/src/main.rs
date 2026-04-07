@@ -1,18 +1,16 @@
 extern crate trpl; // required for mdbook test
 
-// ANCHOR: all
-use trpl::StreamExt;
+use std::{thread, time::Duration};
 
 fn main() {
-    trpl::block_on(async {
-        let values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        // --snip--
-        // ANCHOR_END: all
-        let iter = values.iter().map(|n| n * 2);
-        let mut stream = trpl::stream_from_iter(iter);
-
-        while let Some(value) = stream.next().await {
-            println!("The value was: {value}");
-        }
+    trpl::run(async {
+        // We will call `slow` here later
     });
 }
+
+// ANCHOR: slow
+fn slow(name: &str, ms: u64) {
+    thread::sleep(Duration::from_millis(ms));
+    println!("'{name}' ran for {ms}ms");
+}
+// ANCHOR_END: slow

@@ -19,12 +19,3 @@ impl From<CodegenBackend> for database::CodegenBackend {
         }
     }
 }
-
-impl From<database::CodegenBackend> for CodegenBackend {
-    fn from(value: database::CodegenBackend) -> Self {
-        match value {
-            database::CodegenBackend::Llvm => CodegenBackend::Llvm,
-            database::CodegenBackend::Cranelift => CodegenBackend::Cranelift,
-        }
-    }
-}

@@ -108,7 +108,8 @@
 use rustc_ast::token::{Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DecorateDiagCompat;
+use rustc_errors::MultiSpan;
+use rustc_lint_defs::BuiltinLintDiag;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
@@ -210,7 +211,8 @@ pub(super) fn check_meta_variables(
     guar.map_or(Ok(()), Err)
 }
 
-/// Checks `lhs` as part of the LHS of a macro definition.
+/// Checks `lhs` as part of the LHS of a macro definition, extends `binders` with new binders, and
+/// sets `valid` to false in case of errors.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -243,12 +245,9 @@ fn check_binders(
             // There are 3 possibilities:
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
-                buffer_lint(
-                    psess,
-                    span,
-                    node_id,
-                    errors::DuplicateMatcherBindingLint { span, prev: prev_info.span },
-                );
+                let mut span = MultiSpan::from_span(span);
+                span.push_span_label(prev_info.span, "previous declaration");
+                buffer_lint(psess, span, node_id, BuiltinLintDiag::DuplicateMatcherBinding);
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
                 binders.insert(name, BinderInfo { span, ops: ops.into() });
@@ -305,7 +304,8 @@ fn get_binder_info<'a>(
     binders.get(&name).or_else(|| macros.find_map(|state| state.binders.get(&name)))
 }
 
-/// Checks `rhs` as part of the RHS of a macro definition.
+/// Checks `rhs` as part of the RHS of a macro definition and sets `valid` to false in case of
+/// errors.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -370,7 +370,7 @@ enum NestedMacroState {
 }
 
 /// Checks `tts` as part of the RHS of a macro definition, tries to recognize nested macro
-/// definitions.
+/// definitions, and sets `valid` to false in case of errors.
 ///
 /// Arguments:
 /// - `psess` is used to emit diagnostics and lints
@@ -489,7 +489,8 @@ fn check_nested_occurrences(
     }
 }
 
-/// Checks the body of nested macro, returns where the check stopped.
+/// Checks the body of nested macro, returns where the check stopped, and sets `valid` to false in
+/// case of errors.
 ///
 /// The token trees are checked as long as they look like a list of (LHS) => {RHS} token trees. This
 /// check is a best-effort to detect a macro definition. It returns the position in `tts` where we
@@ -578,7 +579,7 @@ fn check_ops_is_prefix(
             return;
         }
     }
-    buffer_lint(psess, span, node_id, errors::UnknownMacroVariable { name });
+    buffer_lint(psess, span.into(), node_id, BuiltinLintDiag::UnknownMacroVariable(name));
 }
 
 /// Returns whether `binder_ops` is a prefix of `occurrence_ops`.
@@ -603,42 +604,29 @@ fn ops_is_prefix(
     psess: &ParseSess,
     node_id: NodeId,
     span: Span,
-    ident: MacroRulesNormalizedIdent,
+    name: MacroRulesNormalizedIdent,
     binder_ops: &[KleeneToken],
     occurrence_ops: &[KleeneToken],
 ) {
     for (i, binder) in binder_ops.iter().enumerate() {
         if i >= occurrence_ops.len() {
-            buffer_lint(
-                psess,
-                span,
-                node_id,
-                errors::MetaVarStillRepeatingLint { label: binder.span, ident },
-            );
+            let mut span = MultiSpan::from_span(span);
+            span.push_span_label(binder.span, "expected repetition");
+            buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableStillRepeating(name));
             return;
         }
         let occurrence = &occurrence_ops[i];
         if occurrence.op != binder.op {
-            buffer_lint(
-                psess,
-                span,
-                node_id,
-                errors::MetaVariableWrongOperator {
-                    binder: binder.span,
-                    occurrence: occurrence.span,
-                },
-            );
+            let mut span = MultiSpan::from_span(span);
+            span.push_span_label(binder.span, "expected repetition");
+            span.push_span_label(occurrence.span, "conflicting repetition");
+            buffer_lint(psess, span, node_id, BuiltinLintDiag::MetaVariableWrongOperator);
             return;
         }
     }
 }
 
-fn buffer_lint(
-    psess: &ParseSess,
-    span: Span,
-    node_id: NodeId,
-    diag: impl Into<DecorateDiagCompat>,
-) {
+fn buffer_lint(psess: &ParseSess, span: MultiSpan, node_id: NodeId, diag: BuiltinLintDiag) {
     // Macros loaded from other crates have dummy node ids.
     if node_id != DUMMY_NODE_ID {
         psess.buffer_lint(META_VARIABLE_MISUSE, span, node_id, diag);

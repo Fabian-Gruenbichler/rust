@@ -3,6 +3,8 @@
 //! Chalk (in both directions); plus some helper functions for more specialized
 //! conversions.
 
+use chalk_solve::rust_ir;
+
 use hir_def::{LifetimeParamId, TraitId, TypeAliasId, TypeOrConstParamId};
 use salsa::{
     Id,
@@ -49,6 +51,23 @@ impl ToChalk for CallableDefId {
 
     fn from_chalk(db: &dyn HirDatabase, fn_def_id: FnDefId) -> CallableDefId {
         salsa::plumbing::FromIdWithDb::from_id(fn_def_id.0, db.zalsa())
+    }
+}
+
+pub(crate) struct TypeAliasAsValue(pub(crate) TypeAliasId);
+
+impl ToChalk for TypeAliasAsValue {
+    type Chalk = chalk_db::AssociatedTyValueId;
+
+    fn to_chalk(self, _db: &dyn HirDatabase) -> chalk_db::AssociatedTyValueId {
+        rust_ir::AssociatedTyValueId(self.0.as_id())
+    }
+
+    fn from_chalk(
+        _db: &dyn HirDatabase,
+        assoc_ty_value_id: chalk_db::AssociatedTyValueId,
+    ) -> TypeAliasAsValue {
+        TypeAliasAsValue(TypeAliasId::from_id(assoc_ty_value_id.0))
     }
 }
 
@@ -104,10 +123,7 @@ pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
     FromId::from_id(id.0)
 }
 
-pub fn from_placeholder_idx(
-    db: &dyn HirDatabase,
-    idx: PlaceholderIndex,
-) -> (TypeOrConstParamId, u32) {
+pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeOrConstParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
     let interned_id =
@@ -115,32 +131,15 @@ pub fn from_placeholder_idx(
     interned_id.loc(db)
 }
 
-pub fn to_placeholder_idx(
-    db: &dyn HirDatabase,
-    id: TypeOrConstParamId,
-    idx: u32,
-) -> PlaceholderIndex {
-    let interned_id = InternedTypeOrConstParamId::new(db, (id, idx));
+pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> PlaceholderIndex {
+    let interned_id = InternedTypeOrConstParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
         idx: interned_id.as_id().index() as usize,
     }
 }
 
-pub fn to_placeholder_idx_no_index(
-    db: &dyn HirDatabase,
-    id: TypeOrConstParamId,
-) -> PlaceholderIndex {
-    let index = crate::generics::generics(db, id.parent)
-        .type_or_const_param_idx(id)
-        .expect("param not found");
-    to_placeholder_idx(db, id, index as u32)
-}
-
-pub fn lt_from_placeholder_idx(
-    db: &dyn HirDatabase,
-    idx: PlaceholderIndex,
-) -> (LifetimeParamId, u32) {
+pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
     // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
     let interned_id =
@@ -148,12 +147,8 @@ pub fn lt_from_placeholder_idx(
     interned_id.loc(db)
 }
 
-pub fn lt_to_placeholder_idx(
-    db: &dyn HirDatabase,
-    id: LifetimeParamId,
-    idx: u32,
-) -> PlaceholderIndex {
-    let interned_id = InternedLifetimeParamId::new(db, (id, idx));
+pub fn lt_to_placeholder_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> PlaceholderIndex {
+    let interned_id = InternedLifetimeParamId::new(db, id);
     PlaceholderIndex {
         ui: chalk_ir::UniverseIndex::ROOT,
         idx: interned_id.as_id().index() as usize,

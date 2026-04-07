@@ -564,9 +564,8 @@ fn build_work(build_runner: &mut BuildRunner<'_, '_>, unit: &Unit) -> CargoResul
         let timestamp = paths::set_invocation_time(&script_run_dir)?;
         let prefix = format!("[{} {}] ", id.name(), id.version());
         let mut log_messages_in_case_of_panic = Vec::new();
-        let span = tracing::debug_span!("build_script", process = cmd.to_string());
-        let output = span.in_scope(|| {
-            cmd.exec_with_streaming(
+        let output = cmd
+            .exec_with_streaming(
                 &mut |stdout| {
                     if let Some(error) = stdout.strip_prefix(CARGO_ERROR_SYNTAX) {
                         log_messages_in_case_of_panic.push((Severity::Error, error.to_owned()));
@@ -613,8 +612,7 @@ fn build_work(build_runner: &mut BuildRunner<'_, '_>, unit: &Unit) -> CargoResul
                 }
 
                 build_error_context
-            })
-        });
+            });
 
         // If the build failed
         if let Err(error) = output {

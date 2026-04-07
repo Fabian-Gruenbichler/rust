@@ -3,15 +3,17 @@
 //@ needs-llvm-components: aarch64
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
-//@ ignore-backends: gcc
-//@ add-core-stubs
-// FIXME(#147881): *disable* the features again for minicore as otherwise that will fail to build.
-//@ core-stubs-compile-flags: -C target-feature=-pacg,-paca
-#![feature(no_core)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
-extern crate minicore;
-use minicore::*;
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+pub trait Sized: MetaSized {}
 
 // In this test, demonstrate that +paca and +pacg both result in the tied feature error if there
 // isn't something causing an error.

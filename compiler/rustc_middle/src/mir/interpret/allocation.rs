@@ -849,13 +849,8 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
     ///
     /// This is dangerous to use as it can violate internal `Allocation` invariants!
     /// It only exists to support an efficient implementation of `mem_copy_repeatedly`.
-    pub fn provenance_apply_copy(
-        &mut self,
-        copy: ProvenanceCopy<Prov>,
-        range: AllocRange,
-        repeat: u64,
-    ) {
-        self.provenance.apply_copy(copy, range, repeat)
+    pub fn provenance_apply_copy(&mut self, copy: ProvenanceCopy<Prov>) {
+        self.provenance.apply_copy(copy)
     }
 
     /// Applies a previously prepared copy of the init mask.

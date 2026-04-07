@@ -3,7 +3,7 @@
 // lifetime bound.
 
 
-#![allow(dead_code, unused)]
+#![allow(dead_code)]
 
 use std::fmt::Display;
 

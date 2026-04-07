@@ -2,7 +2,6 @@ use libc::{c_int, size_t};
 
 use super::common::*;
 use crate::num::NonZero;
-use crate::process::StdioPipes;
 use crate::sys::pal::fuchsia::*;
 use crate::{fmt, io, mem, ptr};
 

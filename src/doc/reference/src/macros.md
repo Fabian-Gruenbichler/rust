@@ -13,7 +13,7 @@ There are two ways to define new macros:
   attributes using functions that operate on input tokens.
 
 r[macro.invocation]
-## Macro invocation
+## Macro Invocation
 
 r[macro.invocation.syntax]
 ```grammar,macros

@@ -2,7 +2,6 @@
 //@ build-fail
 //@ compile-flags: --target i686-unknown-linux-gnu --crate-type lib
 //@ needs-llvm-components: x86
-//@ ignore-backends: gcc
 #![feature(no_core, lang_items)]
 #![allow(internal_features)]
 #![no_std]

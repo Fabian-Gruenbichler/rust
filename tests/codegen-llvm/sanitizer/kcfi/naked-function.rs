@@ -15,9 +15,8 @@ use minicore::*;
 
 struct Thing;
 trait MyTrait {
-    // NOTE: this test assumes that this trait is dyn-compatible.
     #[unsafe(naked)]
-    extern "C" fn my_naked_function(&self) {
+    extern "C" fn my_naked_function() {
         // the real function is defined
         // CHECK: .globl
         // CHECK-SAME: my_naked_function
@@ -35,13 +34,13 @@ impl MyTrait for Thing {}
 #[unsafe(no_mangle)]
 pub fn main() {
     // Trick the compiler into generating an indirect call.
-    const F: extern "C" fn(&Thing) = Thing::my_naked_function;
+    const F: extern "C" fn() = Thing::my_naked_function;
 
     // main calls the shim function
     // CHECK: call void
     // CHECK-SAME: my_naked_function
     // CHECK-SAME: reify.shim.fnptr
-    (F)(&Thing);
+    (F)();
 }
 
 // CHECK: declare !kcfi_type

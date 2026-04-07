@@ -3,7 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::res::MaybeDef;
+use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
@@ -14,7 +14,6 @@ use rustc_span::{Span, symbol};
 
 /// The essential nodes of a desugared for loop as well as the entire span:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`. Returns `(pat, arg, body, span)`.
-#[derive(Debug)]
 pub struct ForLoop<'tcx> {
     /// `for` loop item
     pub pat: &'tcx Pat<'tcx>,
@@ -213,7 +212,7 @@ pub struct Range<'a> {
 
 impl<'a> Range<'a> {
     /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-    #[expect(clippy::similar_names)]
+    #[allow(clippy::similar_names)]
     pub fn hir(expr: &'a Expr<'_>) -> Option<Range<'a>> {
         match expr.kind {
             ExprKind::Call(path, [arg1, arg2])
@@ -319,7 +318,6 @@ pub struct While<'hir> {
     pub body: &'hir Expr<'hir>,
     /// Span of the loop header
     pub span: Span,
-    pub label: Option<ast::Label>,
 }
 
 impl<'hir> While<'hir> {
@@ -335,18 +333,13 @@ impl<'hir> While<'hir> {
                     }),
                 ..
             },
-            label,
+            _,
             LoopSource::While,
             span,
         ) = expr.kind
             && !has_let_expr(condition)
         {
-            return Some(Self {
-                condition,
-                body,
-                span,
-                label,
-            });
+            return Some(Self { condition, body, span });
         }
         None
     }
@@ -453,7 +446,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
     if let ExprKind::Call(func, args) = expr.kind {
         match func.kind {
             ExprKind::Path(QPath::TypeRelative(ty, name))
-                if cx.typeck_results().node_type(ty.hir_id).is_diag_item(cx, sym::Vec) =>
+                if is_type_diagnostic_item(cx, cx.typeck_results().node_type(ty.hir_id), sym::Vec) =>
             {
                 if name.ident.name == sym::new {
                     return Some(VecInitKind::New);
@@ -461,7 +454,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                     return Some(VecInitKind::Default);
                 } else if name.ident.name == sym::with_capacity {
                     let arg = args.first()?;
-                    return match ConstEvalCtxt::new(cx).eval_local(arg, expr.span.ctxt()) {
+                    return match ConstEvalCtxt::new(cx).eval_simple(arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };
@@ -469,7 +462,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)
-                    && cx.typeck_results().expr_ty(expr).is_diag_item(cx, sym::Vec) =>
+                    && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(expr), sym::Vec) =>
             {
                 return Some(VecInitKind::Default);
             },

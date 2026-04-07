@@ -5,10 +5,6 @@ cfg_select! {
         mod wtf8;
         pub use wtf8::{Buf, Slice};
     }
-    any(target_os = "motor") => {
-        mod utf8;
-        pub use utf8::{Buf, Slice};
-    }
     _ => {
         mod bytes;
         pub use bytes::{Buf, Slice};

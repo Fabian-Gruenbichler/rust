@@ -1,3 +1,4 @@
+use lint::BuiltinLintDiag;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
@@ -351,7 +352,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".intel_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    errors::AvoidIntelSyntax,
+                    BuiltinLintDiag::AvoidUsingIntelSyntax,
                 );
             }
             if template_str.contains(".att_syntax") {
@@ -359,7 +360,7 @@ fn expand_preparsed_asm(
                     lint::builtin::BAD_ASM_STYLE,
                     find_span(".att_syntax"),
                     ecx.current_expansion.lint_node_id,
-                    errors::AvoidAttSyntax,
+                    BuiltinLintDiag::AvoidUsingAttSyntax,
                 );
             }
         }
@@ -368,7 +369,7 @@ fn expand_preparsed_asm(
         if args.options.contains(ast::InlineAsmOptions::RAW) {
             template.push(ast::InlineAsmTemplatePiece::String(template_str.to_string().into()));
             let template_num_lines = 1 + template_str.matches('\n').count();
-            line_spans.extend(std::iter::repeat_n(template_sp, template_num_lines));
+            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
             continue;
         }
 
@@ -523,7 +524,7 @@ fn expand_preparsed_asm(
 
         if parser.line_spans.is_empty() {
             let template_num_lines = 1 + template_str.matches('\n').count();
-            line_spans.extend(std::iter::repeat_n(template_sp, template_num_lines));
+            line_spans.extend(std::iter::repeat(template_sp).take(template_num_lines));
         } else {
             line_spans.extend(
                 parser

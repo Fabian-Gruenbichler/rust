@@ -1,6 +1,6 @@
 use crate::cell::Cell;
 use crate::sync as public;
-use crate::sync::once::OnceExclusiveState;
+use crate::sync::poison::once::ExclusiveState;
 
 pub struct Once {
     state: Cell<State>,
@@ -45,21 +45,21 @@ impl Once {
     }
 
     #[inline]
-    pub(crate) fn state(&mut self) -> OnceExclusiveState {
+    pub(crate) fn state(&mut self) -> ExclusiveState {
         match self.state.get() {
-            State::Incomplete => OnceExclusiveState::Incomplete,
-            State::Poisoned => OnceExclusiveState::Poisoned,
-            State::Complete => OnceExclusiveState::Complete,
+            State::Incomplete => ExclusiveState::Incomplete,
+            State::Poisoned => ExclusiveState::Poisoned,
+            State::Complete => ExclusiveState::Complete,
             _ => unreachable!("invalid Once state"),
         }
     }
 
     #[inline]
-    pub(crate) fn set_state(&mut self, new_state: OnceExclusiveState) {
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
         self.state.set(match new_state {
-            OnceExclusiveState::Incomplete => State::Incomplete,
-            OnceExclusiveState::Poisoned => State::Poisoned,
-            OnceExclusiveState::Complete => State::Complete,
+            ExclusiveState::Incomplete => State::Incomplete,
+            ExclusiveState::Poisoned => State::Poisoned,
+            ExclusiveState::Complete => State::Complete,
         });
     }
 

@@ -84,6 +84,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             StatementKind::ConstEvalCounter
             | StatementKind::Nop
             | StatementKind::Retag { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::SetDiscriminant { .. } => {
                 bug!("Statement not allowed in this MIR phase")
@@ -300,11 +301,21 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             | Rvalue::Cast(_ /*cast_kind*/, operand, _ /*ty*/)
             | Rvalue::ShallowInitBox(operand, _ /*ty*/) => self.consume_operand(location, operand),
 
-            &Rvalue::Discriminant(place) => {
+            &Rvalue::CopyForDeref(place) => {
+                let op = &Operand::Copy(place);
+                self.consume_operand(location, op);
+            }
+
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+                let af = match rvalue {
+                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
+                    Rvalue::Discriminant(..) => None,
+                    _ => unreachable!(),
+                };
                 self.access_place(
                     location,
                     place,
-                    (Shallow(None), Read(ReadKind::Copy)),
+                    (Shallow(af), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                 );
             }
@@ -325,8 +336,6 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
             Rvalue::WrapUnsafeBinder(op, _) => {
                 self.consume_operand(location, op);
             }
-
-            Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in borrowck"),
         }
     }
 

@@ -366,13 +366,6 @@ impl Rustc {
         self
     }
 
-    pub fn split_dwarf_out_dir(&mut self, out_dir: Option<&str>) -> &mut Self {
-        if let Some(out_dir) = out_dir {
-            self.cmd.arg(format!("-Zsplit-dwarf-out-dir={out_dir}"));
-        }
-        self
-    }
-
     /// Pass the `--verbose` flag.
     pub fn verbose(&mut self) -> &mut Self {
         self.cmd.arg("--verbose");

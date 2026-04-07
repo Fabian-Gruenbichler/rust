@@ -76,10 +76,10 @@ fn find_relative_libdir(sysroot: &Path) -> std::borrow::Cow<'static, str> {
 macro_rules! target_spec_enum {
     (
         $( #[$attr:meta] )*
-        pub enum $Name:ident {
+        pub enum $name:ident {
             $(
                 $( #[$variant_attr:meta] )*
-                $Variant:ident = $string:literal,
+                $variant:ident = $string:literal,
             )*
         }
         parse_error_type = $parse_error_type:literal;
@@ -87,20 +87,20 @@ macro_rules! target_spec_enum {
         $( #[$attr] )*
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
         #[derive(schemars::JsonSchema)]
-        pub enum $Name {
+        pub enum $name {
             $(
                 $( #[$variant_attr] )*
                 #[serde(rename = $string)] // for JSON schema generation only
-                $Variant,
+                $variant,
             )*
         }
 
-        impl FromStr for $Name {
+        impl FromStr for $name {
             type Err = String;
 
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Ok(match s {
-                    $( $string => Self::$Variant, )*
+                    $( $string => Self::$variant, )*
                     _ => {
                         let all = [$( concat!("'", $string, "'") ),*].join(", ");
                         return Err(format!("invalid {}: '{s}'. allowed values: {all}", $parse_error_type));
@@ -109,25 +109,24 @@ macro_rules! target_spec_enum {
             }
         }
 
-        impl $Name {
-            pub const ALL: &'static [$Name] = &[ $( $Name::$Variant, )* ];
+        impl $name {
             pub fn desc(&self) -> &'static str {
                 match self {
-                    $( Self::$Variant => $string, )*
+                    $( Self::$variant => $string, )*
                 }
             }
         }
 
-        impl crate::json::ToJson for $Name {
+        impl crate::json::ToJson for $name {
             fn to_json(&self) -> crate::json::Json {
                 self.desc().to_json()
             }
         }
 
-        crate::json::serde_deserialize_from_str!($Name);
+        crate::json::serde_deserialize_from_str!($name);
 
 
-        impl std::fmt::Display for $Name {
+        impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_str(self.desc())
             }

@@ -131,7 +131,7 @@ impl DisallowedPathEnum {
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-#[expect(clippy::type_complexity)]
+#[allow(clippy::type_complexity)]
 pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
     disallowed_paths: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
@@ -697,12 +697,4 @@ unimplemented_serialize! {
 pub enum PubUnderscoreFieldsBehaviour {
     PubliclyExported,
     AllPubFields,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum InherentImplLintScope {
-    Crate,
-    File,
-    Module,
 }

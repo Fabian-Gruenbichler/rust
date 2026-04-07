@@ -1,4 +1,3 @@
-use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 
@@ -75,14 +74,8 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        let span = match ty.kind() {
-            ty::Adt(adt_def, _) => fcx.tcx.def_span(adt_def.did()),
-            _ => fcx.tcx.def_span(fcx.body_id),
-        };
-        let cause = ObligationCause::misc(span, fcx.body_id);
-
         // FIXME: This is not right, even in the old solver...
-        match fcx.tcx.struct_tail_raw(ty, &cause, |ty| ty, || {}).kind() {
+        match fcx.tcx.struct_tail_raw(ty, |ty| ty, || {}).kind() {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
             _ => ExpectHasType(ty),
         }

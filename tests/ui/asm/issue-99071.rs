@@ -2,7 +2,6 @@
 //@ compile-flags: --target thumbv6m-none-eabi
 //@ needs-llvm-components: arm
 //@ needs-asm-support
-//@ ignore-backends: gcc
 
 #![feature(no_core)]
 #![no_core]

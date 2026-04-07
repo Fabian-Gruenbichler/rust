@@ -1,4 +1,5 @@
 //@ compile-flags: -C opt-level=1
+//@ min-llvm-version: 20
 
 // The `derive(PartialOrd)` for a 2-field type doesn't override `lt`/`le`/`gt`/`ge`.
 // This double-checks that the `Option<Ordering>` intermediate values used

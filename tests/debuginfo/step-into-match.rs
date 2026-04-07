@@ -4,7 +4,6 @@
 // On Arm64 Windows, stepping at the end of a function on goes to the callsite, not the instruction
 // after it.
 //@ ignore-aarch64-pc-windows-msvc: Stepping out of functions behaves differently.
-//@ ignore-backends: gcc
 
 // === GDB TESTS ==============================================================
 

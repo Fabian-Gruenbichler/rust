@@ -36,14 +36,14 @@ LL |     let [&bind_ref_mut!(x)] = &mut [0];
    |          |
    |          help: replace this `&` with `&mut`: `&mut`
 
-error: cannot explicitly borrow within an implicitly-borrowing pattern
+error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/mixed-editions.rs:26:21
    |
 LL |     let match_ctor!(ref x) = &[0];
-   |                     ^^^ explicit `ref` binding modifier not allowed when implicitly borrowing
+   |                     ^^^ binding modifier not allowed under `ref` default binding mode
    |
-   = note: for more information, see <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
-help: match on the reference with a reference pattern to avoid implicitly borrowing
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+help: make the implied reference pattern explicit
   --> $DIR/auxiliary/mixed-editions-macros.rs:11:9
    |
 LL |         &[$p]

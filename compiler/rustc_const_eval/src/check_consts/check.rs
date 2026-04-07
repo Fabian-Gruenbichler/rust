@@ -415,7 +415,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             )
         }));
 
-        let errors = ocx.evaluate_obligations_error_on_ambiguity();
+        let errors = ocx.select_all_or_error();
         if errors.is_empty() {
             Some(ConstConditionsHold::Yes)
         } else {
@@ -573,7 +573,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             Rvalue::Use(_)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
-            | Rvalue::Discriminant(..) => {}
+            | Rvalue::Discriminant(..)
+            | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
                 if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
@@ -732,6 +733,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         match statement.kind {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)

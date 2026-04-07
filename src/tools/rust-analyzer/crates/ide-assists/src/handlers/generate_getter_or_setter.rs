@@ -263,7 +263,6 @@ fn generate_getter_from_info(
     let body = make::block_expr([], Some(body));
 
     make::fn_(
-        None,
         strukt.visibility(),
         fn_name,
         None,
@@ -300,7 +299,6 @@ fn generate_setter_from_info(info: &AssistInfo, record_field_info: &RecordFieldI
 
     // Make the setter fn
     make::fn_(
-        None,
         strukt.visibility(),
         fn_name,
         None,

@@ -69,26 +69,35 @@ struct MacroInput {
 /// Ok((fmtstr, parsed arguments))
 /// ```
 fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, MacroInput> {
+    let mut args = FormatArguments::new();
+
     let mut p = ecx.new_parser_from_tts(tts);
 
-    // parse the format string
-    let fmtstr = match p.token.kind {
-        token::Eof => return Err(ecx.dcx().create_err(errors::FormatRequiresString { span: sp })),
+    if p.token == token::Eof {
+        return Err(ecx.dcx().create_err(errors::FormatRequiresString { span: sp }));
+    }
+
+    let first_token = &p.token;
+
+    let fmtstr = if let token::Literal(lit) = first_token.kind
+        && matches!(lit.kind, token::Str | token::StrRaw(_))
+    {
         // This allows us to properly handle cases when the first comma
         // after the format string is mistakenly replaced with any operator,
         // which cause the expression parser to eat too much tokens.
-        token::Literal(token::Lit { kind: token::Str | token::StrRaw(_), .. }) => {
-            p.parse_literal_maybe_minus()?
-        }
+        p.parse_literal_maybe_minus()?
+    } else {
         // Otherwise, we fall back to the expression parser.
-        _ => p.parse_expr()?,
+        p.parse_expr()?
     };
 
-    // parse comma FormatArgument pairs
-    let mut args = FormatArguments::new();
+    // Only allow implicit captures to be used when the argument is a direct literal
+    // instead of a macro expanding to one.
+    let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
+
     let mut first = true;
+
     while p.token != token::Eof {
-        // parse a comma, or else report an error
         if !p.eat(exp!(Comma)) {
             if first {
                 p.clear_expected_token_types();
@@ -111,11 +120,9 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
             }
         }
         first = false;
-        // accept a trailing comma
         if p.token == token::Eof {
             break;
-        }
-        // parse a FormatArgument
+        } // accept trailing commas
         match p.token.ident() {
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
                 p.bump();
@@ -149,10 +156,6 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
             }
         }
     }
-
-    // Only allow implicit captures for direct literals
-    let is_direct_literal = matches!(fmtstr.kind, ExprKind::Lit(_));
-
     Ok(MacroInput { fmtstr, args, is_direct_literal })
 }
 
@@ -765,7 +768,7 @@ fn report_missing_placeholders(
 
     if !found_foreign && invalid_refs.is_empty() {
         // Show example if user didn't use any format specifiers
-        let show_example = !used.contains(&true);
+        let show_example = used.iter().all(|used| !used);
 
         if !show_example {
             if unused.len() > 1 {

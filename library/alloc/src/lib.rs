@@ -64,7 +64,14 @@
     issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
     test(no_crate_inject, attr(allow(unused_variables), deny(warnings)))
 )]
-#![doc(auto_cfg(hide(no_global_oom_handling, no_rc, no_sync, target_has_atomic = "ptr")))]
+#![doc(cfg_hide(
+    not(test),
+    no_global_oom_handling,
+    not(no_global_oom_handling),
+    not(no_rc),
+    not(no_sync),
+    target_has_atomic = "ptr"
+))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![no_std]
@@ -85,7 +92,6 @@
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(not(no_global_oom_handling), feature(string_replace_in_place))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
@@ -97,7 +103,6 @@
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(cast_maybe_uninit)]
-#![feature(cell_get_cloned)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
@@ -190,6 +195,7 @@
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
+#![feature(doc_cfg_hide)]
 // Technically, this is a bug in rustdoc: rustdoc sees the documentation on `#[lang = slice_alloc]`
 // blocks is for `&[T]`, which also has documentation using this feature in `core`, and gets mad
 // that the feature-gate isn't enabled. Ideally, it wouldn't check for the feature gate for docs

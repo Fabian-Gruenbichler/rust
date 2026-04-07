@@ -5,11 +5,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::Path;
 
-use fluent_syntax::ast::Entry;
-use fluent_syntax::parser;
 use regex::Regex;
 
-use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 fn message() -> &'static Regex {
@@ -17,40 +14,42 @@ fn message() -> &'static Regex {
 }
 
 fn is_fluent(path: &Path) -> bool {
-    path.extension().is_some_and(|ext| ext == "ftl")
+    path.extension().is_some_and(|ext| ext == "flt")
 }
 
 fn check_alphabetic(
     filename: &str,
     fluent: &str,
-    check: &mut RunningCheck,
+    bad: &mut bool,
     all_defined_msgs: &mut HashMap<String, String>,
 ) {
-    let Ok(resource) = parser::parse(fluent) else {
-        panic!("Errors encountered while parsing fluent file `{filename}`");
-    };
+    let mut matches = message().captures_iter(fluent).peekable();
+    while let Some(m) = matches.next() {
+        let name = m.get(1).unwrap();
+        if let Some(defined_filename) = all_defined_msgs.get(name.as_str()) {
+            tidy_error!(
+                bad,
+                "{filename}: message `{}` is already defined in {}",
+                name.as_str(),
+                defined_filename,
+            );
+        }
 
-    let mut prev: Option<&str> = None;
+        all_defined_msgs.insert(name.as_str().to_owned(), filename.to_owned());
 
-    for entry in &resource.body {
-        if let Entry::Message(msg) = entry {
-            let name: &str = msg.id.name;
-            if let Some(defined_filename) = all_defined_msgs.get(name) {
-                check.error(format!(
-                    "{filename}: message `{name}` is already defined in {defined_filename}",
-                ));
-            } else {
-                all_defined_msgs.insert(name.to_string(), filename.to_owned());
+        if let Some(next) = matches.peek() {
+            let next = next.get(1).unwrap();
+            if name.as_str() > next.as_str() {
+                tidy_error!(
+                    bad,
+                    "{filename}: message `{}` appears before `{}`, but is alphabetically later than it
+run `./x.py test tidy --bless` to sort the file correctly",
+                    name.as_str(),
+                    next.as_str()
+                );
             }
-            if let Some(prev) = prev
-                && prev > name
-            {
-                check.error(format!(
-                    "{filename}: message `{prev}` appears before `{name}`, but is alphabetically \
-later than it. Run `./x.py test tidy --bless` to sort the file correctly",
-                ));
-            }
-            prev = Some(name);
+        } else {
+            break;
         }
     }
 }
@@ -58,7 +57,7 @@ later than it. Run `./x.py test tidy --bless` to sort the file correctly",
 fn sort_messages(
     filename: &str,
     fluent: &str,
-    check: &mut RunningCheck,
+    bad: &mut bool,
     all_defined_msgs: &mut HashMap<String, String>,
 ) -> String {
     let mut chunks = vec![];
@@ -66,10 +65,12 @@ fn sort_messages(
     for line in fluent.lines() {
         if let Some(name) = message().find(line) {
             if let Some(defined_filename) = all_defined_msgs.get(name.as_str()) {
-                check.error(format!(
-                    "{filename}: message `{}` is already defined in {defined_filename}",
+                tidy_error!(
+                    bad,
+                    "{filename}: message `{}` is already defined in {}",
                     name.as_str(),
-                ));
+                    defined_filename,
+                );
             }
 
             all_defined_msgs.insert(name.as_str().to_owned(), filename.to_owned());
@@ -87,10 +88,7 @@ fn sort_messages(
     out
 }
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("fluent_alphabetical").path(path));
-    let bless = tidy_ctx.is_bless_enabled();
-
+pub fn check(path: &Path, bless: bool, bad: &mut bool) {
     let mut all_defined_msgs = HashMap::new();
     walk(
         path,
@@ -100,7 +98,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 let sorted = sort_messages(
                     ent.path().to_str().unwrap(),
                     contents,
-                    &mut check,
+                    bad,
                     &mut all_defined_msgs,
                 );
                 if sorted != contents {
@@ -112,14 +110,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 check_alphabetic(
                     ent.path().to_str().unwrap(),
                     contents,
-                    &mut check,
+                    bad,
                     &mut all_defined_msgs,
                 );
             }
         },
     );
 
-    assert!(!all_defined_msgs.is_empty());
-
-    crate::fluent_used::check(path, all_defined_msgs, tidy_ctx);
+    crate::fluent_used::check(path, all_defined_msgs, bad);
 }

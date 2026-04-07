@@ -1,5 +1,4 @@
 //@ revisions: ascii unicode
-//@ compile-flags: --diagnostic-width=145
 //@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode
 // ignore-tidy-linelength
 

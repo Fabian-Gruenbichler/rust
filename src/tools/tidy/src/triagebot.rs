@@ -4,10 +4,7 @@ use std::path::Path;
 
 use toml::Value;
 
-use crate::diagnostics::TidyCtx;
-
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("triagebot");
+pub fn check(path: &Path, bad: &mut bool) {
     let triagebot_path = path.join("triagebot.toml");
 
     // This check is mostly to catch broken path filters *within* `triagebot.toml`, and not enforce
@@ -33,14 +30,17 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             let full_path = path.join(clean_path);
 
             if !full_path.exists() {
-                check.error(format!(
-                    "triagebot.toml [mentions.*] contains path '{clean_path}' which doesn't exist"
-                ));
+                tidy_error!(
+                    bad,
+                    "triagebot.toml [mentions.*] contains path '{}' which doesn't exist",
+                    clean_path
+                );
             }
         }
     } else {
-        check.error(
-            "triagebot.toml missing [mentions.*] section, this wrong for rust-lang/rust repo.",
+        tidy_error!(
+            bad,
+            "triagebot.toml missing [mentions.*] section, this wrong for rust-lang/rust repo."
         );
     }
 
@@ -55,13 +55,16 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                 let full_path = path.join(clean_path);
 
                 if !full_path.exists() {
-                    check.error(format!(
-                        "triagebot.toml [assign.owners] contains path '{clean_path}' which doesn't exist"
-                    ));
+                    tidy_error!(
+                        bad,
+                        "triagebot.toml [assign.owners] contains path '{}' which doesn't exist",
+                        clean_path
+                    );
                 }
             }
         } else {
-            check.error(
+            tidy_error!(
+                bad,
                 "triagebot.toml missing [assign.owners] section, this wrong for rust-lang/rust repo."
             );
         }
@@ -83,9 +86,12 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
 
                         // Handle both file and directory paths
                         if !full_path.exists() {
-                            check.error(format!(
-                                "triagebot.toml [autolabel.{label}] contains trigger_files path '{file_str}' which doesn't exist",
-                            ));
+                            tidy_error!(
+                                bad,
+                                "triagebot.toml [autolabel.{}] contains trigger_files path '{}' which doesn't exist",
+                                label,
+                                file_str
+                            );
                         }
                     }
                 }

@@ -88,16 +88,4 @@ fn bar<const F: Foo>() {}
         "#,
         );
     }
-
-    #[test]
-    fn fn_traits() {
-        check_diagnostics(
-            r#"
-//- minicore: fn
-struct WithLifetime<'a>(&'a ());
-
-fn foo<T: Fn(WithLifetime) -> WithLifetime>() {}
-        "#,
-        );
-    }
 }

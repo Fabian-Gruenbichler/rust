@@ -153,18 +153,8 @@ pub mod redundant_imports_issue {
         () => {};
     }
 
-    #[expect(unused_imports)]
+    #[expect(redundant_imports)]
     pub(crate) use empty;
 
     empty!();
-}
-
-pub mod issue15636 {
-    pub mod f {
-        #[deprecated(since = "TBD")]
-        pub mod deprec {}
-    }
-
-    #[allow(deprecated_in_future)]
-    pub use f::deprec;
 }

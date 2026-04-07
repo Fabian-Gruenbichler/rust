@@ -1,6 +1,7 @@
 //! Finds if an expression is an immutable context or a mutable context, which is used in selecting
 //! between `Deref` and `DerefMut` or `Index` and `IndexMut` or similar.
 
+use chalk_ir::{Mutability, cast::Cast};
 use hir_def::{
     hir::{
         Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
@@ -10,19 +11,14 @@ use hir_def::{
 };
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_ast_ir::Mutability;
-use rustc_type_ir::inherent::IntoKind;
 
-use crate::next_solver::infer::traits::{Obligation, ObligationCause};
-use crate::next_solver::{GenericArgs, TraitRef};
 use crate::{
-    Adjust, Adjustment, AutoBorrow, OverloadedDeref,
+    Adjust, Adjustment, AutoBorrow, Interner, OverloadedDeref, TyBuilder, TyKind,
     infer::{Expectation, InferenceContext, expr::ExprIsRead},
-    lower_nextsolver::lower_mutability,
-    next_solver::TyKind,
+    lower::lower_to_chalk_mutability,
 };
 
-impl<'db> InferenceContext<'_, 'db> {
+impl InferenceContext<'_> {
     pub(crate) fn infer_mut_body(&mut self) {
         self.infer_mut_expr(self.body.body_expr, Mutability::Not);
     }
@@ -145,8 +141,8 @@ impl<'db> InferenceContext<'_, 'db> {
                         target,
                     }) = base_adjustments
                     {
-                        if let TyKind::Ref(_, ty, _) = target.kind() {
-                            base_ty = Some(ty);
+                        if let TyKind::Ref(_, _, ty) = target.kind(Interner) {
+                            base_ty = Some(ty.clone());
                         }
                         *mutability = Mutability::Mut;
                     }
@@ -154,24 +150,15 @@ impl<'db> InferenceContext<'_, 'db> {
                     // Apply `IndexMut` obligation for non-assignee expr
                     if let Some(base_ty) = base_ty {
                         let index_ty = if let Some(ty) = self.result.type_of_expr.get(index) {
-                            *ty
+                            ty.clone()
                         } else {
                             self.infer_expr(index, &Expectation::none(), ExprIsRead::Yes)
                         };
-                        let trait_ref = TraitRef::new(
-                            self.interner(),
-                            index_trait.into(),
-                            GenericArgs::new_from_iter(
-                                self.interner(),
-                                [base_ty.into(), index_ty.into()],
-                            ),
-                        );
-                        self.table.register_predicate(Obligation::new(
-                            self.interner(),
-                            ObligationCause::new(),
-                            self.table.trait_env.env,
-                            trait_ref,
-                        ));
+                        let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
+                            .push(base_ty)
+                            .fill(|_| index_ty.clone().cast(Interner))
+                            .build();
+                        self.push_obligation(trait_ref.cast(Interner));
                     }
                 }
                 self.infer_mut_expr(base, mutability);
@@ -186,8 +173,8 @@ impl<'db> InferenceContext<'_, 'db> {
                 {
                     let ty = self.result.type_of_expr.get(*expr);
                     let is_mut_ptr = ty.is_some_and(|ty| {
-                        let ty = self.table.shallow_resolve(*ty);
-                        matches!(ty.kind(), TyKind::RawPtr(_, Mutability::Mut))
+                        let ty = self.table.resolve_ty_shallow(ty);
+                        matches!(ty.kind(Interner), chalk_ir::TyKind::Raw(Mutability::Mut, _))
                     });
                     if is_mut_ptr {
                         mutability = Mutability::Not;
@@ -213,7 +200,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.infer_mut_expr(*expr, Mutability::Not);
             }
             Expr::Ref { expr, rawness: _, mutability } => {
-                let mutability = lower_mutability(*mutability);
+                let mutability = lower_to_chalk_mutability(*mutability);
                 self.infer_mut_expr(*expr, mutability);
             }
             Expr::BinaryOp { lhs, rhs, op: Some(BinaryOp::Assignment { .. }) } => {

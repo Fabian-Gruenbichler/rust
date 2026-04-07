@@ -217,8 +217,7 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_mul_add", issue = "146724")]
-    pub const fn mul_add(self, a: f64, b: f64) -> f64 {
+    pub fn mul_add(self, a: f64, b: f64) -> f64 {
         core::f64::math::mul_add(self, a, b)
     }
 
@@ -339,7 +338,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f64) -> f64 {
-        intrinsics::powf64(self, n)
+        unsafe { intrinsics::powf64(self, n) }
     }
 
     /// Returns the square root of a number.
@@ -396,7 +395,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f64 {
-        intrinsics::expf64(self)
+        unsafe { intrinsics::expf64(self) }
     }
 
     /// Returns `2^(self)`.
@@ -421,7 +420,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f64 {
-        intrinsics::exp2f64(self)
+        unsafe { intrinsics::exp2f64(self) }
     }
 
     /// Returns the natural logarithm of the number.
@@ -456,7 +455,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        intrinsics::logf64(self)
+        unsafe { intrinsics::logf64(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -526,7 +525,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        intrinsics::log2f64(self)
+        unsafe { intrinsics::log2f64(self) }
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -559,7 +558,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        intrinsics::log10f64(self)
+        unsafe { intrinsics::log10f64(self) }
     }
 
     /// The positive difference of two numbers.
@@ -684,7 +683,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f64 {
-        intrinsics::sinf64(self)
+        unsafe { intrinsics::sinf64(self) }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -708,7 +707,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f64 {
-        intrinsics::cosf64(self)
+        unsafe { intrinsics::cosf64(self) }
     }
 
     /// Computes the tangent of a number (in radians).
@@ -827,12 +826,10 @@ impl f64 {
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
     ///
-    ///  | `x`     | `y`     | Piecewise Definition | Range         |
-    ///  |---------|---------|----------------------|---------------|
-    ///  | `>= +0` | `>= +0` | `arctan(y/x)`        | `[+0, +pi/2]` |
-    ///  | `>= +0` | `<= -0` | `arctan(y/x)`        | `[-pi/2, -0]` |
-    ///  | `<= -0` | `>= +0` | `arctan(y/x) + pi`   | `[+pi/2, +pi]`|
-    ///  | `<= -0` | `<= -0` | `arctan(y/x) - pi`   | `[-pi, -pi/2]`|
+    /// * `x = 0`, `y = 0`: `0`
+    /// * `x >= 0`: `arctan(y/x)` -> `[-pi/2, pi/2]`
+    /// * `y >= 0`: `arctan(y/x) + pi` -> `(pi/2, pi]`
+    /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// # Unspecified precision
     ///

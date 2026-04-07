@@ -4,7 +4,6 @@ use std::path::Path;
 
 use fluent_syntax::ast::{Entry, Message, PatternElement};
 
-use crate::diagnostics::{CheckId, RunningCheck, TidyCtx};
 use crate::walk::{filter_dirs, walk};
 
 #[rustfmt::skip]
@@ -35,7 +34,7 @@ fn is_allowed_capitalized_word(msg: &str) -> bool {
     })
 }
 
-fn check_lowercase(filename: &str, contents: &str, check: &mut RunningCheck) {
+fn check_lowercase(filename: &str, contents: &str, bad: &mut bool) {
     let (Ok(parse) | Err((parse, _))) = fluent_syntax::parser::parse(contents);
 
     for entry in &parse.body {
@@ -46,20 +45,20 @@ fn check_lowercase(filename: &str, contents: &str, check: &mut RunningCheck) {
             && value.chars().next().is_some_and(char::is_uppercase)
             && !is_allowed_capitalized_word(value)
         {
-            check.error(format!(
+            tidy_error!(
+                bad,
                 "{filename}: message `{value}` starts with an uppercase letter. Fix it or add it to `ALLOWED_CAPITALIZED_WORDS`"
-            ));
+            );
         }
     }
 }
 
-pub fn check(path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check(CheckId::new("fluent_lowercase").path(path));
+pub fn check(path: &Path, bad: &mut bool) {
     walk(
         path,
         |path, is_dir| filter_dirs(path) || (!is_dir && filter_fluent(path)),
         &mut |ent, contents| {
-            check_lowercase(ent.path().to_str().unwrap(), contents, &mut check);
+            check_lowercase(ent.path().to_str().unwrap(), contents, bad);
         },
     );
 }

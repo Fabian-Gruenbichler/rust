@@ -74,7 +74,9 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> DenseBitSet<Local> {
     let mut fully_moved = DenseBitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
-        let Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) = rvalue else {
+        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+        | Rvalue::CopyForDeref(place)) = rvalue
+        else {
             continue;
         };
 
@@ -83,7 +85,7 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> DenseBitSet<Local> {
             continue;
         }
 
-        if let Rvalue::Use(Operand::Copy(_)) = rvalue {
+        if let Rvalue::Use(Operand::Copy(_)) | Rvalue::CopyForDeref(_) = rvalue {
             fully_moved.remove(rhs);
         }
     }
@@ -136,7 +138,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = stmt.kind
             && self.storage_to_remove.contains(l)
         {
-            stmt.make_nop(true);
+            stmt.make_nop();
             return;
         }
 
@@ -144,10 +146,11 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
         // Do not leave tautological assignments around.
         if let StatementKind::Assign(box (lhs, ref rhs)) = stmt.kind
-            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) = *rhs
+            && let Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)) | Rvalue::CopyForDeref(rhs) =
+                *rhs
             && lhs == rhs
         {
-            stmt.make_nop(true);
+            stmt.make_nop();
         }
     }
 }

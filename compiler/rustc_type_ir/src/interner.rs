@@ -11,7 +11,9 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
-use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
+use crate::solve::{
+    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, inspect,
+};
 use crate::visit::{Flags, TypeVisitable};
 use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
 
@@ -53,7 +55,6 @@ pub trait Interner:
     type CoroutineId: SpecificDefId<Self>;
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
-    type UnevaluatedConstId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -69,10 +70,10 @@ pub trait Interner:
         + Hash
         + Eq
         + TypeFoldable<Self>
-        + SliceLike<Item = (ty::OpaqueTypeKey<Self>, Self::Ty)>;
+        + Deref<Target = PredefinedOpaquesData<Self>>;
     fn mk_predefined_opaques_in_body(
         self,
-        data: &[(ty::OpaqueTypeKey<Self>, Self::Ty)],
+        data: PredefinedOpaquesData<Self>,
     ) -> Self::PredefinedOpaques;
 
     type LocalDefIds: Copy
@@ -184,9 +185,7 @@ pub trait Interner:
         from_entry: impl FnOnce(&CanonicalParamEnvCacheEntry<Self>) -> R,
     ) -> R;
 
-    /// Useful for testing. If a cache entry is replaced, this should
-    /// (in theory) only happen when concurrent.
-    fn assert_evaluation_is_concurrent(&self);
+    fn evaluation_is_concurrent(&self) -> bool;
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -334,18 +333,13 @@ pub trait Interner:
 
     fn is_default_trait(self, def_id: Self::TraitId) -> bool;
 
-    fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
-
     fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
 
     fn as_adt_lang_item(self, def_id: Self::AdtId) -> Option<SolverAdtLangItem>;
 
-    fn associated_type_def_ids(
-        self,
-        def_id: Self::TraitId,
-    ) -> impl IntoIterator<Item = Self::DefId>;
+    fn associated_type_def_ids(self, def_id: Self::DefId) -> impl IntoIterator<Item = Self::DefId>;
 
     fn for_each_relevant_impl(
         self,
@@ -556,7 +550,6 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
     type Result = QueryResult<I>;
-    type AmbiguityInfo = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;
     type Tracked<T: Debug + Clone> = I::Tracked<T>;
@@ -576,7 +569,7 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
         I::with_global_cache(self, f)
     }
-    fn assert_evaluation_is_concurrent(&self) {
-        self.assert_evaluation_is_concurrent()
+    fn evaluation_is_concurrent(&self) -> bool {
+        self.evaluation_is_concurrent()
     }
 }

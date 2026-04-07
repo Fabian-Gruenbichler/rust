@@ -12,7 +12,6 @@
 //@ [by_feature1]build-pass
 //@ [by_feature2]build-pass
 //@ [by_feature3]build-pass
-//@ ignore-backends: gcc
 #![feature(no_core)]
 #![no_core]
 extern crate minicore;

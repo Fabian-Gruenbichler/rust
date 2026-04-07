@@ -152,10 +152,7 @@ declare_lint_pass!(NonShorthandFieldPatterns => [NON_SHORTHAND_FIELD_PATTERNS]);
 
 impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &hir::Pat<'_>) {
-        // The result shouldn't be tainted, otherwise it will cause ICE.
-        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind
-            && cx.typeck_results().tainted_by_errors.is_none()
-        {
+        if let PatKind::Struct(ref qpath, field_pats, _) = pat.kind {
             let variant = cx
                 .typeck_results()
                 .pat_ty(pat)
@@ -313,17 +310,15 @@ impl EarlyLintPass for UnsafeCode {
             }
 
             ast::ItemKind::MacroDef(..) => {
-                if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
-                    AttributeParser::parse_limited(
-                        cx.builder.sess(),
-                        &it.attrs,
-                        sym::allow_internal_unsafe,
-                        it.span,
-                        DUMMY_NODE_ID,
-                        Some(cx.builder.features()),
-                    )
-                {
-                    self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
+                if let Some(attr) = AttributeParser::parse_limited(
+                    cx.builder.sess(),
+                    &it.attrs,
+                    sym::allow_internal_unsafe,
+                    it.span,
+                    DUMMY_NODE_ID,
+                    Some(cx.builder.features()),
+                ) {
+                    self.report_unsafe(cx, attr.span(), BuiltinUnsafe::AllowInternalUnsafe);
                 }
             }
 
@@ -396,7 +391,7 @@ pub struct MissingDoc;
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &hir::Attribute) -> bool {
-    if attr.is_doc_comment().is_some() {
+    if attr.is_doc_comment() {
         return true;
     }
 
@@ -2336,9 +2331,13 @@ declare_lint_pass!(
 impl EarlyLintPass for IncompleteInternalFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
         let features = cx.builder.features();
+        let lang_features =
+            features.enabled_lang_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
+        let lib_features =
+            features.enabled_lib_features().iter().map(|feat| (feat.gate_name, feat.attr_sp));
 
-        features
-            .enabled_features_iter_stable_order()
+        lang_features
+            .chain(lib_features)
             .filter(|(name, _)| features.incomplete(*name) || features.internal(*name))
             .for_each(|(name, span)| {
                 if features.incomplete(name) {
@@ -2959,7 +2958,7 @@ impl<'tcx> LateLintPass<'tcx> for AsmLabels {
 
                         for c in chars {
                             // Inside a template format arg, any character is permitted for the
-                            // purposes of label detection because we assume that it can be
+                            // puproses of label detection because we assume that it can be
                             // replaced with some other valid label string later. `options(raw)`
                             // asm blocks cannot have format args, so they are excluded from this
                             // special case.

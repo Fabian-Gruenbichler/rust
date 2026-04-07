@@ -2,7 +2,6 @@
 //@ ignore-android: FIXME(#10381)
 
 //@ compile-flags:-g
-//@ ignore-backends: gcc
 
 // gdb-command: run
 

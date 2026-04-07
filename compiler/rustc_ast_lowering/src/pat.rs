@@ -143,9 +143,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                     // return inner to be processed in next loop
                     PatKind::Paren(inner) => pattern = inner,
-                    PatKind::MacCall(_) => {
-                        panic!("{pattern:#?} shouldn't exist here")
-                    }
+                    PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
                     PatKind::Err(guar) => break hir::PatKind::Err(*guar),
                 }
             };
@@ -156,7 +154,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_pat_tuple(
         &mut self,
-        pats: &[Pat],
+        pats: &[Box<Pat>],
         ctx: &str,
     ) -> (&'hir [hir::Pat<'hir>], hir::DotDotPos) {
         let mut elems = Vec::with_capacity(pats.len());
@@ -211,7 +209,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[Pat]) -> hir::PatKind<'hir> {
+    fn lower_pat_slice(&mut self, pats: &[Box<Pat>]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;
@@ -462,7 +460,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }),
             ),
-            TyPatKind::NotNull => hir::TyPatKind::NotNull,
             TyPatKind::Or(variants) => {
                 hir::TyPatKind::Or(self.arena.alloc_from_iter(
                     variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),

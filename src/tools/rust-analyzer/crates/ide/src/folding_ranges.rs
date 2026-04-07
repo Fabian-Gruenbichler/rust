@@ -29,6 +29,7 @@ pub enum FoldKind {
     Consts,
     Statics,
     TypeAliases,
+    TraitAliases,
     ExternCrates,
     // endregion: item runs
 }
@@ -144,6 +145,11 @@ pub(crate) fn folding_ranges(file: &SourceFile) -> Vec<Fold> {
                         ast::TypeAlias(alias) => {
                             if let Some(range) = contiguous_range_for_item_group(alias, &mut visited_nodes) {
                                 res.push(Fold { range, kind: FoldKind::TypeAliases })
+                            }
+                        },
+                        ast::TraitAlias(alias) => {
+                            if let Some(range) = contiguous_range_for_item_group(alias, &mut visited_nodes) {
+                                res.push(Fold { range, kind: FoldKind::TraitAliases })
                             }
                         },
                         ast::ExternCrate(extern_crate) => {
@@ -345,6 +351,7 @@ mod tests {
                 FoldKind::ReturnType => "returntype",
                 FoldKind::MatchArm => "matcharm",
                 FoldKind::Function => "function",
+                FoldKind::TraitAliases => "traitaliases",
                 FoldKind::ExternCrates => "externcrates",
             };
             assert_eq!(kind, &attr.unwrap());

@@ -19,29 +19,25 @@ fn check_with_config(
     let (ctx, analysis) = crate::context::CompletionContext::new(&db, position, &config).unwrap();
 
     let mut acc = crate::completions::Completions::default();
-    hir::attach_db(ctx.db, || {
-        if let CompletionAnalysis::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
-            &analysis
-        {
-            crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pat_ctx);
-        }
-        if let CompletionAnalysis::NameRef(name_ref_ctx) = &analysis {
-            match &name_ref_ctx.kind {
-                NameRefKind::Path(path) => {
-                    crate::completions::flyimport::import_on_the_fly_path(&mut acc, &ctx, path);
-                }
-                NameRefKind::DotAccess(dot_access) => {
-                    crate::completions::flyimport::import_on_the_fly_dot(
-                        &mut acc, &ctx, dot_access,
-                    );
-                }
-                NameRefKind::Pattern(pattern) => {
-                    crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pattern);
-                }
-                _ => (),
+    if let CompletionAnalysis::Name(NameContext { kind: NameKind::IdentPat(pat_ctx), .. }) =
+        &analysis
+    {
+        crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pat_ctx);
+    }
+    if let CompletionAnalysis::NameRef(name_ref_ctx) = &analysis {
+        match &name_ref_ctx.kind {
+            NameRefKind::Path(path) => {
+                crate::completions::flyimport::import_on_the_fly_path(&mut acc, &ctx, path);
             }
+            NameRefKind::DotAccess(dot_access) => {
+                crate::completions::flyimport::import_on_the_fly_dot(&mut acc, &ctx, dot_access);
+            }
+            NameRefKind::Pattern(pattern) => {
+                crate::completions::flyimport::import_on_the_fly_pat(&mut acc, &ctx, pattern);
+            }
+            _ => (),
         }
-    });
+    }
 
     expect.assert_eq(&super::render_completion_list(Vec::from(acc)));
 }
@@ -118,7 +114,7 @@ fn main() {
 }
 "#,
         r#"
-use dep::{FirstStruct, some_module::{SecondStruct, ThirdStruct}};
+use dep::{some_module::{SecondStruct, ThirdStruct}, FirstStruct};
 
 fn main() {
     ThirdStruct

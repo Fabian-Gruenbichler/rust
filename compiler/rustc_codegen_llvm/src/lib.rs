@@ -14,7 +14,6 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(macro_derive)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -30,7 +29,7 @@ use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use errors::ParseTargetMachineConfig;
 use llvm_util::target_config;
-use rustc_ast::expand::allocator::AllocatorMethod;
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule};
 use rustc_codegen_ssa::back::write::{
     CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryConfig, TargetMachineFactoryFn,
@@ -46,9 +45,6 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
-use rustc_target::spec::{RelocModel, TlsModel};
-
-use crate::llvm::ToLlvmBool;
 
 mod abi;
 mod allocator;
@@ -68,17 +64,13 @@ mod errors;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
-mod macros;
 mod mono_item;
 mod type_;
 mod type_of;
-mod typetree;
 mod va_arg;
 mod value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
-
-pub(crate) use macros::TryFromU32;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());
@@ -109,13 +101,14 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         tcx: TyCtxt<'tcx>,
         module_name: &str,
-        methods: &[AllocatorMethod],
+        kind: AllocatorKind,
+        alloc_error_handler_kind: AllocatorKind,
     ) -> ModuleLlvm {
         let module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
         let cx =
             SimpleCx::new(module_llvm.llmod(), &module_llvm.llcx, tcx.data_layout.pointer_size());
         unsafe {
-            allocator::codegen(tcx, cx, module_name, methods);
+            allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
         }
         module_llvm
     }
@@ -237,10 +230,6 @@ impl CodegenBackend for LlvmCodegenBackend {
         crate::DEFAULT_LOCALE_RESOURCE
     }
 
-    fn name(&self) -> &'static str {
-        "llvm"
-    }
-
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
     }
@@ -255,7 +244,16 @@ impl CodegenBackend for LlvmCodegenBackend {
         match req.kind {
             PrintKind::RelocationModels => {
                 writeln!(out, "Available relocation models:").unwrap();
-                for name in RelocModel::ALL.iter().map(RelocModel::desc).chain(["default"]) {
+                for name in &[
+                    "static",
+                    "pic",
+                    "pie",
+                    "dynamic-no-pic",
+                    "ropi",
+                    "rwpi",
+                    "ropi-rwpi",
+                    "default",
+                ] {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
@@ -269,7 +267,9 @@ impl CodegenBackend for LlvmCodegenBackend {
             }
             PrintKind::TlsModels => {
                 writeln!(out, "Available TLS models:").unwrap();
-                for name in TlsModel::ALL.iter().map(TlsModel::desc) {
+                for name in
+                    &["global-dynamic", "local-dynamic", "initial-exec", "local-exec", "emulated"]
+                {
                     writeln!(out, "    {name}").unwrap();
                 }
                 writeln!(out).unwrap();
@@ -359,14 +359,7 @@ impl CodegenBackend for LlvmCodegenBackend {
 
         // Run the linker on any artifacts that resulted from the LLVM run.
         // This should produce either a finished executable or library.
-        link_binary(
-            sess,
-            &LlvmArchiveBuilderBuilder,
-            codegen_results,
-            metadata,
-            outputs,
-            self.name(),
-        );
+        link_binary(sess, &LlvmArchiveBuilderBuilder, codegen_results, metadata, outputs);
     }
 }
 
@@ -385,8 +378,7 @@ unsafe impl Sync for ModuleLlvm {}
 impl ModuleLlvm {
     fn new(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
+            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -398,8 +390,7 @@ impl ModuleLlvm {
 
     fn new_metadata(tcx: TyCtxt<'_>, mod_name: &str) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, tcx.sess.fewer_names().to_llvm_bool());
+            let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
             ModuleLlvm {
                 llmod_raw,
@@ -430,8 +421,7 @@ impl ModuleLlvm {
         dcx: DiagCtxtHandle<'_>,
     ) -> Self {
         unsafe {
-            let llcx = llvm::LLVMContextCreate();
-            llvm::LLVMContextSetDiscardValueNames(llcx, cgcx.fewer_names.to_llvm_bool());
+            let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
             let llmod_raw = back::lto::parse_module(llcx, name, buffer, dcx);
             let tm = ModuleLlvm::tm_from_cgcx(cgcx, name.to_str().unwrap(), dcx);
 

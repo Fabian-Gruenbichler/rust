@@ -16,7 +16,7 @@ help: try adding parentheses to match on a tuple...
    |
 LL |         (Some(_),)
    |         +        +
-help: ...or a vertical bar to match on alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
 LL -         Some(_),
 LL +         Some(_) |
@@ -36,10 +36,13 @@ LL |
 LL |
 LL ~         _) => {}
    |
-help: ...or a vertical bar to match on alternatives
+help: ...or a vertical bar to match on multiple alternatives
    |
-LL -         Some(_),
-LL +         Some(_) |
+LL ~         Some(_) |
+LL +
+LL +
+LL +
+LL ~         _ => {}
    |
 
 error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`

@@ -3,7 +3,6 @@
 //@ run-pass
 //@ compile-flags: -Cpanic=abort
 //@ edition: 2024
-//@ ignore-backends: gcc
 
 #![allow(incomplete_features)]
 #![feature(raw_dylib_elf)]

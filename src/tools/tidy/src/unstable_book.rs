@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::diagnostics::{RunningCheck, TidyCtx};
 use crate::features::{CollectedFeatures, Features, Status};
 
 pub const PATH_STR: &str = "doc/unstable-book";
@@ -76,18 +75,19 @@ fn collect_unstable_book_lib_features_section_file_names(base_src_path: &Path) -
 }
 
 /// Would switching underscores for dashes work?
-fn maybe_suggest_dashes(names: &BTreeSet<String>, feature_name: &str, check: &mut RunningCheck) {
+fn maybe_suggest_dashes(names: &BTreeSet<String>, feature_name: &str, bad: &mut bool) {
     let with_dashes = feature_name.replace('_', "-");
     if names.contains(&with_dashes) {
-        check.error(format!(
-            "the file `{feature_name}.md` contains underscores; use dashes instead: `{with_dashes}.md`",
-        ));
+        tidy_error!(
+            bad,
+            "the file `{}.md` contains underscores; use dashes instead: `{}.md`",
+            feature_name,
+            with_dashes,
+        );
     }
 }
 
-pub fn check(path: &Path, features: CollectedFeatures, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx.start_check("unstable_book");
-
+pub fn check(path: &Path, features: CollectedFeatures, bad: &mut bool) {
     let lang_features = features.lang;
     let lib_features = features
         .lib
@@ -108,22 +108,26 @@ pub fn check(path: &Path, features: CollectedFeatures, tidy_ctx: TidyCtx) {
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_lib_features_section_file_names - &unstable_lib_feature_names
     {
-        check.error(format!(
-            "The Unstable Book has a 'library feature' section '{feature_name}' which doesn't \
-                         correspond to an unstable library feature"
-        ));
-        maybe_suggest_dashes(&unstable_lib_feature_names, &feature_name, &mut check);
+        tidy_error!(
+            bad,
+            "The Unstable Book has a 'library feature' section '{}' which doesn't \
+                         correspond to an unstable library feature",
+            feature_name
+        );
+        maybe_suggest_dashes(&unstable_lib_feature_names, &feature_name, bad);
     }
 
     // Check for Unstable Book sections that don't have a corresponding unstable feature.
     for feature_name in
         &unstable_book_lang_features_section_file_names - &unstable_lang_feature_names
     {
-        check.error(format!(
-            "The Unstable Book has a 'language feature' section '{feature_name}' which doesn't \
-                     correspond to an unstable language feature"
-        ));
-        maybe_suggest_dashes(&unstable_lang_feature_names, &feature_name, &mut check);
+        tidy_error!(
+            bad,
+            "The Unstable Book has a 'language feature' section '{}' which doesn't \
+                     correspond to an unstable language feature",
+            feature_name
+        );
+        maybe_suggest_dashes(&unstable_lang_feature_names, &feature_name, bad);
     }
 
     // List unstable features that don't have Unstable Book sections.

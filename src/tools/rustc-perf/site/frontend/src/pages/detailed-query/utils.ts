@@ -198,7 +198,7 @@ export function createDownloadLinksData(selector: Selector | null): {
 
   const localCommands = {
     base: state.base_commit
-      ? `cargo run --release --bin collector profile_local cachegrind
+      ? `./target/release/collector profile_local cachegrind
                     +${state.base_commit} --exact-match ${benchName(
           state.benchmark
         )} --profiles
@@ -206,7 +206,7 @@ export function createDownloadLinksData(selector: Selector | null): {
           state.scenario
         )}`
       : "",
-    new: `cargo run --release --bin collector profile_local cachegrind
+    new: `./target/release/collector profile_local cachegrind
                 +${state.commit} --exact-match ${benchName(
       state.benchmark
     )} --profiles
@@ -214,7 +214,7 @@ export function createDownloadLinksData(selector: Selector | null): {
       state.scenario
     )}`,
     diff: state.base_commit
-      ? `cargo run --release --bin collector profile_local cachegrind
+      ? `./target/release/collector profile_local cachegrind
                 +${state.base_commit} --rustc2 +${
           state.commit
         } --exact-match ${benchName(state.benchmark)} --profiles

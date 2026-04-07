@@ -86,7 +86,7 @@ pub(crate) fn goto_implementation(
 fn impls_for_ty(sema: &Semantics<'_, RootDatabase>, ty: hir::Type<'_>) -> Vec<NavigationTarget> {
     Impl::all_for_type(sema.db, ty)
         .into_iter()
-        .filter_map(|imp| imp.try_to_nav(sema))
+        .filter_map(|imp| imp.try_to_nav(sema.db))
         .flatten()
         .collect()
 }
@@ -97,7 +97,7 @@ fn impls_for_trait(
 ) -> Vec<NavigationTarget> {
     Impl::all_for_trait(sema.db, trait_)
         .into_iter()
-        .filter_map(|imp| imp.try_to_nav(sema))
+        .filter_map(|imp| imp.try_to_nav(sema.db))
         .flatten()
         .collect()
 }
@@ -114,7 +114,7 @@ fn impls_for_trait_item(
                 let itm_name = itm.name(sema.db)?;
                 (itm_name == fun_name).then_some(*itm)
             })?;
-            item.try_to_nav(sema)
+            item.try_to_nav(sema.db)
         })
         .flatten()
         .collect()
@@ -234,7 +234,6 @@ impl crate::T for crate::Foo {}
         );
     }
 
-    // FIXME(next-solver): it would be nice to be able to also point to `&Foo`
     #[test]
     fn goto_implementation_all_impls() {
         check(
@@ -247,6 +246,7 @@ impl Foo {}
 impl T for Foo {}
          //^^^
 impl T for &Foo {}
+         //^^^^
 "#,
         );
     }

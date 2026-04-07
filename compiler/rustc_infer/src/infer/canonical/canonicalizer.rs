@@ -303,6 +303,8 @@ struct Canonicalizer<'cx, 'tcx> {
     sub_root_lookup_table: SsoHashMap<ty::TyVid, usize>,
     canonicalize_mode: &'cx dyn CanonicalizeMode,
     needs_canonical_flags: TypeFlags,
+
+    binder_index: ty::DebruijnIndex,
 }
 
 impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
@@ -310,12 +312,24 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
         self.tcx
     }
 
+    fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        self.binder_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.binder_index.shift_out(1);
+        t
+    }
+
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r.kind() {
-            ty::ReBound(ty::BoundVarIndexKind::Bound(_), ..) => r,
-
-            ty::ReBound(ty::BoundVarIndexKind::Canonical, _) => {
-                bug!("canonicalized bound var found during canonicalization");
+            ty::ReBound(index, ..) => {
+                if index >= self.binder_index {
+                    bug!("escaping late-bound region during canonicalization");
+                } else {
+                    r
+                }
             }
 
             ty::ReStatic
@@ -389,10 +403,12 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 self.canonicalize_ty_var(CanonicalVarKind::PlaceholderTy(placeholder), t)
             }
 
-            ty::Bound(ty::BoundVarIndexKind::Bound(_), _) => t,
-
-            ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
-                bug!("canonicalized bound var found during canonicalization");
+            ty::Bound(debruijn, _) => {
+                if debruijn >= self.binder_index {
+                    bug!("escaping bound type during canonicalization")
+                } else {
+                    t
+                }
             }
 
             ty::Closure(..)
@@ -463,11 +479,12 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Bound(_), _) => {
-                return ct;
-            }
-            ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, _) => {
-                bug!("canonicalized bound var found during canonicalization");
+            ty::ConstKind::Bound(debruijn, _) => {
+                if debruijn >= self.binder_index {
+                    bug!("escaping bound const during canonicalization")
+                } else {
+                    return ct;
+                }
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 return self
@@ -552,6 +569,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             query_state,
             indices: FxHashMap::default(),
             sub_root_lookup_table: Default::default(),
+            binder_index: ty::INNERMOST,
         };
         if canonicalizer.query_state.var_values.spilled() {
             canonicalizer.indices = canonicalizer
@@ -733,7 +751,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(var_kind, r.into());
-        ty::Region::new_canonical_bound(self.cx(), var)
+        let br = ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon };
+        ty::Region::new_bound(self.cx(), self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -747,7 +766,8 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> Ty<'tcx> {
         debug_assert!(!self.infcx.is_some_and(|infcx| ty_var != infcx.shallow_resolve(ty_var)));
         let var = self.canonical_var(var_kind, ty_var.into());
-        Ty::new_canonical_bound(self.tcx, var)
+        let bt = ty::BoundTy { var, kind: ty::BoundTyKind::Anon };
+        Ty::new_bound(self.tcx, self.binder_index, bt)
     }
 
     /// Given a type variable `const_var` of the given kind, first check
@@ -763,6 +783,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             !self.infcx.is_some_and(|infcx| ct_var != infcx.shallow_resolve_const(ct_var))
         );
         let var = self.canonical_var(var_kind, ct_var.into());
-        ty::Const::new_canonical_bound(self.tcx, var)
+        let bc = ty::BoundConst { var };
+        ty::Const::new_bound(self.tcx, self.binder_index, bc)
     }
 }

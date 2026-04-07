@@ -18,6 +18,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
+use rustc_target::spec::PanicStrategy;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -25,9 +26,11 @@ use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::context::CodegenCx;
 use crate::errors::AutoDiffWithoutEnable;
-use crate::llvm::{self, Metadata, Type, Value};
+use crate::llvm::{self, Metadata};
+use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
+use crate::value::Value;
 
 fn call_simple_intrinsic<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
@@ -295,7 +298,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let align = if name == sym::unaligned_volatile_load {
                     1
                 } else {
-                    result.layout.align.bytes() as u32
+                    result.layout.align.abi.bytes() as u32
                 };
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
@@ -671,7 +674,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
     catch_func: &'ll Value,
     dest: PlaceRef<'tcx, &'ll Value>,
 ) {
-    if !bx.sess().panic_strategy().unwinds() {
+    if bx.sess().panic_strategy() == PanicStrategy::Abort {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
         bx.call(try_func_ty, None, None, try_func, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
@@ -1045,7 +1048,7 @@ fn codegen_emcc_try<'ll, 'tcx>(
         // create an alloca and pass a pointer to that.
         let ptr_size = bx.tcx().data_layout.pointer_size();
         let ptr_align = bx.tcx().data_layout.pointer_align().abi;
-        let i8_align = bx.tcx().data_layout.i8_align;
+        let i8_align = bx.tcx().data_layout.i8_align.abi;
         // Required in order for there to be no padding between the fields.
         assert!(i8_align <= ptr_align);
         let catch_data = bx.alloca(2 * ptr_size, ptr_align);
@@ -1205,13 +1208,9 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     adjust_activity_to_abi(
         tcx,
-        fn_source,
-        TypingEnv::fully_monomorphized(),
+        fn_source.ty(tcx, TypingEnv::fully_monomorphized()),
         &mut diff_attrs.input_activity,
     );
-
-    let fnc_tree =
-        rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
 
     // Build body
     generate_enzyme_call(
@@ -1223,7 +1222,6 @@ fn codegen_autodiff<'ll, 'tcx>(
         &val_arr,
         diff_attrs.clone(),
         result,
-        fnc_tree,
     );
 }
 
@@ -1324,8 +1322,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         };
     }
-
-    let llvm_version = crate::llvm_util::get_version();
 
     /// Converts a vector mask, where each element has a bit width equal to the data elements it is used with,
     /// down to an i1 based mask that can be used by llvm intrinsics.
@@ -1810,7 +1806,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(in_elem).bytes();
+        let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
@@ -1821,23 +1817,11 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[1].immediate(), alignment, mask, args[0].immediate()]
-        } else {
-            &[args[1].immediate(), mask, args[0].immediate()]
-        };
-
-        let call =
-            bx.call_intrinsic("llvm.masked.gather", &[llvm_elem_vec_ty, llvm_pointer_vec_ty], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(0),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
-        return Ok(call);
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.gather",
+            &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
+            &[args[1].immediate(), alignment, mask, args[0].immediate()],
+        ));
     }
 
     if name == sym::simd_masked_load {
@@ -1905,30 +1889,18 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-
-            &[args[1].immediate(), alignment, mask, args[2].immediate()]
-        } else {
-            &[args[1].immediate(), mask, args[2].immediate()]
-        };
-
-        let call = bx.call_intrinsic("llvm.masked.load", &[llvm_elem_vec_ty, llvm_pointer], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(0),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
-        return Ok(call);
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.load",
+            &[llvm_elem_vec_ty, llvm_pointer],
+            &[args[1].immediate(), alignment, mask, args[2].immediate()],
+        ));
     }
 
     if name == sym::simd_masked_store {
@@ -1990,29 +1962,18 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(values_elem).bytes();
+        let alignment = bx.const_i32(bx.align_of(values_elem).bytes() as i32);
 
         let llvm_pointer = bx.type_ptr();
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, values_elem, values_len);
 
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[2].immediate(), args[1].immediate(), alignment, mask]
-        } else {
-            &[args[2].immediate(), args[1].immediate(), mask]
-        };
-
-        let call = bx.call_intrinsic("llvm.masked.store", &[llvm_elem_vec_ty, llvm_pointer], args);
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(1),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
-        return Ok(call);
+        return Ok(bx.call_intrinsic(
+            "llvm.masked.store",
+            &[llvm_elem_vec_ty, llvm_pointer],
+            &[args[2].immediate(), args[1].immediate(), alignment, mask],
+        ));
     }
 
     if name == sym::simd_scatter {
@@ -2077,7 +2038,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         );
 
         // Alignment of T, must be a constant integer value:
-        let alignment = bx.align_of(in_elem).bytes();
+        let alignment = bx.const_i32(bx.align_of(in_elem).bytes() as i32);
 
         // Truncate the mask vector to a vector of i1s:
         let mask = vector_mask_to_bitmask(bx, args[2].immediate(), mask_elem_bitwidth, in_len);
@@ -2087,25 +2048,12 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
 
         // Type of the vector of elements:
         let llvm_elem_vec_ty = llvm_vector_ty(bx, element_ty0, in_len);
-        let args: &[&'ll Value] = if llvm_version < (22, 0, 0) {
-            let alignment = bx.const_i32(alignment as i32);
-            &[args[0].immediate(), args[1].immediate(), alignment, mask]
-        } else {
-            &[args[0].immediate(), args[1].immediate(), mask]
-        };
-        let call = bx.call_intrinsic(
+
+        return Ok(bx.call_intrinsic(
             "llvm.masked.scatter",
             &[llvm_elem_vec_ty, llvm_pointer_vec_ty],
-            args,
-        );
-        if llvm_version >= (22, 0, 0) {
-            crate::attributes::apply_to_callsite(
-                call,
-                crate::llvm::AttributePlace::Argument(1),
-                &[crate::llvm::CreateAlignmentAttr(bx.llcx, alignment)],
-            )
-        }
-        return Ok(call);
+            &[args[0].immediate(), args[1].immediate(), alignment, mask],
+        ));
     }
 
     macro_rules! arith_red {

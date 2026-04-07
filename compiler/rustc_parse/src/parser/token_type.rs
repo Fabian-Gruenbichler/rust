@@ -139,7 +139,6 @@ pub enum TokenType {
     SymNomem,
     SymNoreturn,
     SymNostack,
-    SymNull,
     SymOptions,
     SymOut,
     SymPreservesFlags,
@@ -274,7 +273,6 @@ impl TokenType {
             SymNomem,
             SymNoreturn,
             SymNostack,
-            SymNull,
             SymOptions,
             SymOut,
             SymPreservesFlags,
@@ -350,7 +348,6 @@ impl TokenType {
             TokenType::SymNomem => Some(sym::nomem),
             TokenType::SymNoreturn => Some(sym::noreturn),
             TokenType::SymNostack => Some(sym::nostack),
-            TokenType::SymNull => Some(sym::null),
             TokenType::SymOptions => Some(sym::options),
             TokenType::SymOut => Some(sym::out),
             TokenType::SymPreservesFlags => Some(sym::preserves_flags),
@@ -565,7 +562,6 @@ macro_rules! exp {
     (Nomem)          => { exp!(@sym, nomem,           SymNomem) };
     (Noreturn)       => { exp!(@sym, noreturn,        SymNoreturn) };
     (Nostack)        => { exp!(@sym, nostack,         SymNostack) };
-    (Null)           => { exp!(@sym, null,            SymNull) };
     (Options)        => { exp!(@sym, options,         SymOptions) };
     (Out)            => { exp!(@sym, out,             SymOut) };
     (PreservesFlags) => { exp!(@sym, preserves_flags, SymPreservesFlags) };

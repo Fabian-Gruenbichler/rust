@@ -27,9 +27,7 @@ BACKTICK -> U+0060
 
 LF -> U+000A
 
-Production ->
-    ( Comment LF )*
-    `@root`? Name ` ->` Expression
+Production -> `@root`? Name ` ->` Expression
 
 Name -> <Alphanumeric or `_`>+
 
@@ -57,7 +55,6 @@ Expr1 ->
       Unicode
     | NonTerminal
     | Break
-    | Comment
     | Terminal
     | Charset
     | Prose
@@ -69,8 +66,6 @@ Unicode -> `U+` [`A`-`Z` `0`-`9`]4..4
 NonTerminal -> Name
 
 Break -> LF ` `+
-
-Comment -> `//` ~[LF]+
 
 Terminal -> BACKTICK ~[LF]+ BACKTICK
 
@@ -101,7 +96,6 @@ The general format is a series of productions separated by blank lines. The expr
 | Unicode | U+0060 | A single unicode character. |
 | NonTerminal | FunctionParameters | A reference to another production by name. |
 | Break | | This is used internally by the renderer to detect line breaks and indentation. |
-| Comment | // Single line comment. | A comment extending to the end of the line. |
 | Terminal | \`example\` | This is a sequence of exact characters, surrounded by backticks |
 | Charset | [ \`A\`-\`Z\` \`0\`-\`9\` \`_\` ] | A choice from a set of characters, space separated. There are three different forms. |
 | CharacterRange | [ \`A\`-\`Z\` ] | A range of characters, each character should be in backticks.

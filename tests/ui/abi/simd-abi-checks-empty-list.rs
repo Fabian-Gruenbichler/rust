@@ -4,7 +4,6 @@
 //@ needs-llvm-components: sparc
 //@ compile-flags: --target=sparc-unknown-none-elf --crate-type=rlib
 //@ build-fail
-//@ ignore-backends: gcc
 #![no_core]
 #![feature(no_core, repr_simd)]
 #![allow(improper_ctypes_definitions)]

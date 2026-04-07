@@ -1,6 +1,7 @@
 //! A bunch of methods and structures more or less related to resolving macros and
 //! interface provided by `Resolver` to macro expander.
 
+use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
@@ -39,9 +40,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, CacheCell, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent,
-    MacroData, ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope,
-    PathResult, ResolutionError, Resolver, ScopeSet, Segment, Used,
+    BindingKey, CmResolver, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
+    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -78,7 +79,7 @@ pub(crate) enum MacroRulesScope<'ra> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'ra> = &'ra CacheCell<MacroRulesScope<'ra>>;
+pub(crate) type MacroRulesScopeRef<'ra> = &'ra Cell<MacroRulesScope<'ra>>;
 
 /// Macro namespace is separated into two sub-namespaces, one for bang macros and
 /// one for attribute-like macros (attributes, derives).
@@ -188,7 +189,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
-        parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
+        parent_scope.module.unexpanded_invocations.borrow_mut().remove(&expansion);
         if let Some(unexpanded_invocations) =
             self.impl_unexpanded_invocations.get_mut(&self.invocation_parent(expansion))
         {
@@ -774,7 +775,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
 
             if trace {
-                self.multi_segment_macro_resolutions.borrow_mut(&self).push((
+                // FIXME: Should be an output of Speculative Resolution.
+                self.multi_segment_macro_resolutions.borrow_mut().push((
                     path,
                     path_span,
                     kind,
@@ -801,7 +803,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
 
             if trace {
-                self.single_segment_macro_resolutions.borrow_mut(&self).push((
+                // FIXME: Should be an output of Speculative Resolution.
+                self.single_segment_macro_resolutions.borrow_mut().push((
                     path[0].ident,
                     kind,
                     *parent_scope,
@@ -867,7 +870,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let macro_resolutions = self.multi_segment_macro_resolutions.take(self);
+        // FIXME: Should be an output of Speculative Resolution.
+        let macro_resolutions = self.multi_segment_macro_resolutions.take();
         for (mut path, path_span, kind, parent_scope, initial_res, ns) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path {
@@ -944,7 +948,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        let macro_resolutions = self.single_segment_macro_resolutions.take(self);
+        // FIXME: Should be an output of Speculative Resolution.
+        let macro_resolutions = self.single_segment_macro_resolutions.take();
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
             match self.cm().resolve_ident_in_scope_set(
                 ident,
@@ -974,7 +979,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             LEGACY_DERIVE_HELPERS,
                             node_id,
                             ident.span,
-                            errors::LegacyDeriveHelpers { span: binding.span },
+                            BuiltinLintDiag::LegacyDeriveHelpers(binding.span),
                         );
                     }
                 }

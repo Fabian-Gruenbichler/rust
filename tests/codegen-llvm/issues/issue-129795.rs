@@ -1,4 +1,5 @@
 //@ compile-flags: -Copt-level=3
+//@ min-llvm-version: 20
 #![crate_type = "lib"]
 
 // Ensure that a modulo operation with an operand that is known to be

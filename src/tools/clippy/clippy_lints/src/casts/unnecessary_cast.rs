@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet_opt};
 use clippy_utils::visitors::{Visitable, for_each_expr_without_closures};
-use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -168,11 +167,11 @@ pub(super) fn check<'tcx>(
                 sym::assert_ne_macro,
                 sym::debug_assert_ne_macro,
             ];
-            matches!(expr.span.ctxt().outer_expn_data().macro_def_id, Some(def_id) if
+            matches!(expr.span.ctxt().outer_expn_data().macro_def_id, Some(def_id) if 
                 cx.tcx.get_diagnostic_name(def_id).is_some_and(|sym| ALLOWED_MACROS.contains(&sym)))
         }
 
-        if let Some(id) = cast_expr.res_local_id()
+        if let Some(id) = path_to_local(cast_expr)
             && !cx.tcx.hir_span(id).eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.

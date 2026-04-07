@@ -9,7 +9,7 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
-use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{
     self as ty, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
@@ -23,9 +23,13 @@ use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, OpaqueTypesJank, ParamEnvSource, QueryResult,
-    has_no_inference_or_external_constraints,
+    MaybeCause, NoSolution, ParamEnvSource, QueryResult, has_no_inference_or_external_constraints,
 };
+
+enum AliasBoundKind {
+    SelfBounds,
+    NonSelfBounds,
+}
 
 /// A candidate is a possible way to prove a goal.
 ///
@@ -82,7 +86,7 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::probe_and_match_goal_against_assumption(ecx, source, goal, assumption, |ecx| {
             let cx = ecx.cx();
-            let ty::Dynamic(bounds, _) = goal.predicate.self_ty().kind() else {
+            let ty::Dynamic(bounds, _, _) = goal.predicate.self_ty().kind() else {
                 panic!("expected object type in `probe_and_consider_object_bound_candidate`");
             };
             match structural_traits::predicates_for_object_candidate(
@@ -446,7 +450,7 @@ where
                         matches!(
                             c.source,
                             CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound(_)
+                                | CandidateSource::AliasBound
                         ) && has_no_inference_or_external_constraints(c.result)
                     })
                 {
@@ -468,12 +472,9 @@ where
         // fails to reach a fixpoint but ends up getting an error after
         // running for some additional step.
         //
-        // FIXME(@lcnr): While I believe an error here to be possible, we
-        // currently don't have any test which actually triggers it. @lqd
-        // created a minimization for an ICE in typenum, but that one no
-        // longer fails here. cc trait-system-refactor-initiative#105.
+        // cc trait-system-refactor-initiative#105
         let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-        let certainty = Certainty::Maybe { cause, opaque_types_jank: OpaqueTypesJank::AllGood };
+        let certainty = Certainty::Maybe(cause);
         self.probe_trait_candidate(source)
             .enter(|this| this.evaluate_added_goals_and_make_canonical_response(certainty))
     }
@@ -706,7 +707,7 @@ where
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 {
                     candidates.push(Candidate {
-                        source: CandidateSource::AliasBound(consider_self_bounds),
+                        source: CandidateSource::AliasBound,
                         result,
                         head_usages: CandidateHeadUsages::default(),
                     });
@@ -730,7 +731,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound(consider_self_bounds),
+                        CandidateSource::AliasBound,
                         goal,
                         assumption,
                         [],
@@ -745,7 +746,7 @@ where
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
-                        CandidateSource::AliasBound(consider_self_bounds),
+                        CandidateSource::AliasBound,
                         goal,
                         assumption,
                         [],
@@ -973,21 +974,11 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let self_ty = goal.predicate.self_ty();
-        // We only use this hack during HIR typeck.
-        let opaque_types = match self.typing_mode() {
-            TypingMode::Analysis { .. } => self.opaques_with_sub_unified_hidden_type(self_ty),
-            TypingMode::Coherence
-            | TypingMode::Borrowck { .. }
-            | TypingMode::PostBorrowckAnalysis { .. }
-            | TypingMode::PostAnalysis => vec![],
-        };
-
-        if opaque_types.is_empty() {
-            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
-            return;
-        }
-
-        for &alias_ty in &opaque_types {
+        // If the self type is sub unified with any opaque type, we
+        // also look at blanket impls for it.
+        let mut assemble_blanket_impls = false;
+        for alias_ty in self.opaques_with_sub_unified_hidden_type(self_ty) {
+            assemble_blanket_impls = true;
             debug!("self ty is sub unified with {alias_ty:?}");
 
             struct ReplaceOpaque<I: Interner> {
@@ -1025,7 +1016,7 @@ where
                     item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
                 candidates.extend(G::probe_and_match_goal_against_assumption(
                     self,
-                    CandidateSource::AliasBound(AliasBoundKind::SelfBounds),
+                    CandidateSource::AliasBound,
                     goal,
                     assumption,
                     |ecx| {
@@ -1037,11 +1028,10 @@ where
             }
         }
 
-        // If the self type is sub unified with any opaque type, we also look at blanket
-        // impls for it.
+        // We also need to consider blanket impls for not-yet-defined opaque types.
         //
         // See tests/ui/impl-trait/non-defining-uses/use-blanket-impl.rs for an example.
-        if assemble_from.should_assemble_impl_candidates() {
+        if assemble_blanket_impls && assemble_from.should_assemble_impl_candidates() {
             let cx = self.cx();
             cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
                 // For every `default impl`, there's always a non-default `impl`
@@ -1072,15 +1062,7 @@ where
         }
 
         if candidates.is_empty() {
-            let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-            let certainty = Certainty::Maybe {
-                cause: MaybeCause::Ambiguity,
-                opaque_types_jank: OpaqueTypesJank::ErrorIfRigidSelfTy,
-            };
-            candidates
-                .extend(self.probe_trait_candidate(source).enter(|this| {
-                    this.evaluate_added_goals_and_make_canonical_response(certainty)
-                }));
+            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
         }
     }
 

@@ -27,11 +27,10 @@ use triomphe::Arc;
 
 use crate::{
     AdtId, AssocItemId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, ExternBlockLoc,
-    ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, FxIndexMap, ImplLoc, Intern,
-    ItemContainerId, LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
-    ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId,
-    UseLoc,
+    ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId,
+    LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
+    MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
+    StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
     attr::Attrs,
     db::DefDatabase,
     item_scope::{GlobId, ImportId, ImportOrExternCrate, PerNsGlobImports},
@@ -70,7 +69,7 @@ pub(super) fn collect_defs(
 
     // populate external prelude and dependency list
     let mut deps =
-        FxIndexMap::with_capacity_and_hasher(krate.dependencies.len(), Default::default());
+        FxHashMap::with_capacity_and_hasher(krate.dependencies.len(), Default::default());
     for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
 
@@ -221,7 +220,7 @@ struct DefCollector<'db> {
     /// Set only in case of blocks.
     crate_local_def_map: Option<&'db LocalDefMap>,
     // The dependencies of the current crate, including optional deps like `test`.
-    deps: FxIndexMap<Name, BuiltDependency>,
+    deps: FxHashMap<Name, BuiltDependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
     unresolved_imports: Vec<ImportDirective>,
     indeterminate_imports: Vec<(ImportDirective, PerNs)>,
@@ -298,6 +297,12 @@ impl<'db> DefCollector<'db> {
                         );
                     crate_data.unstable_features.extend(features);
                 }
+                () if *attr_name == sym::register_attr => {
+                    if let Some(ident) = attr.single_ident_value() {
+                        crate_data.registered_attrs.push(ident.sym.clone());
+                        cov_mark::hit!(register_attr);
+                    }
+                }
                 () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_tools.push(ident.sym.clone());
@@ -327,9 +332,7 @@ impl<'db> DefCollector<'db> {
                 let skip = dep.is_sysroot()
                     && match dep.crate_id.data(self.db).origin {
                         CrateOrigin::Lang(LangCrateOrigin::Core) => crate_data.no_core,
-                        CrateOrigin::Lang(LangCrateOrigin::Std) => {
-                            crate_data.no_core || crate_data.no_std
-                        }
+                        CrateOrigin::Lang(LangCrateOrigin::Std) => crate_data.no_std,
                         _ => false,
                     };
                 if skip {
@@ -1951,6 +1954,20 @@ impl ModCollector<'_, '_> {
                         false,
                     );
                 }
+                ModItemId::TraitAlias(id) => {
+                    let it = &self.item_tree[id];
+
+                    let vis = resolve_vis(def_map, local_def_map, &self.item_tree[it.visibility]);
+                    update_def(
+                        self.def_collector,
+                        TraitAliasLoc { container: module, id: InFile::new(self.file_id(), id) }
+                            .intern(db)
+                            .into(),
+                        &it.name,
+                        vis,
+                        false,
+                    );
+                }
                 ModItemId::TypeAlias(id) => {
                     let it = &self.item_tree[id];
 
@@ -2547,7 +2564,7 @@ mod tests {
             def_map,
             local_def_map: LocalDefMap::default(),
             crate_local_def_map: None,
-            deps: FxIndexMap::default(),
+            deps: FxHashMap::default(),
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             indeterminate_imports: Vec::new(),

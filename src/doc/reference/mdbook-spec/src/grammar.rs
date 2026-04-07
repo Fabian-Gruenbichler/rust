@@ -22,8 +22,6 @@ pub struct Grammar {
 #[derive(Debug)]
 pub struct Production {
     name: String,
-    /// Comments and breaks that precede the production name.
-    comments: Vec<Expression>,
     /// Category is from the markdown lang string, and defines how it is
     /// grouped and organized on the summary page.
     category: String,
@@ -72,8 +70,6 @@ enum ExpressionKind {
     ///
     /// Used by the renderer to help format and structure the grammar.
     Break(usize),
-    /// `// Single line comment.`
-    Comment(String),
     /// ``[`A`-`Z` `_` LF]``
     Charset(Vec<Characters>),
     /// ``~[` ` LF]``
@@ -139,7 +135,6 @@ impl Expression {
             ExpressionKind::Terminal(_)
             | ExpressionKind::Prose(_)
             | ExpressionKind::Break(_)
-            | ExpressionKind::Comment(_)
             | ExpressionKind::Unicode(_) => {}
             ExpressionKind::Charset(set) => {
                 for ch in set {

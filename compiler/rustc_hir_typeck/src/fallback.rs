@@ -495,7 +495,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         .expect("expected diverging var to be unconstrained");
                 }
 
-                ocx.try_evaluate_obligations()
+                ocx.select_where_possible()
             })
         };
 

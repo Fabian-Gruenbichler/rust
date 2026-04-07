@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::diagnostics::{CheckId, TidyCtx};
 use crate::iter_header::*;
 use crate::walk::*;
 
@@ -22,10 +21,7 @@ const IGNORES: &[&str] = &[
 const EXTENSIONS: &[&str] = &["stdout", "stderr"];
 const SPECIAL_TEST: &str = "tests/ui/command/need-crate-arg-ignore-tidy.x.rs";
 
-pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
-    let mut check = tidy_ctx
-        .start_check(CheckId::new("tests_revision_unpaired_stdout_stderr").path(tests_path));
-
+pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
     // Recurse over subdirectories under `tests/`
     walk_dir(tests_path.as_ref(), filter, &mut |entry| {
         // We are inspecting a folder. Collect the paths to interesting files `.rs`, `.stderr`,
@@ -126,11 +122,12 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
                 [] | [_] => return,
                 [_, _] if !expected_revisions.is_empty() => {
                     // Found unrevisioned output files for a revisioned test.
-                    check.error(format!(
+                    tidy_error!(
+                        bad,
                         "found unrevisioned output file `{}` for a revisioned test `{}`",
                         sibling.display(),
                         test_path.display(),
-                    ));
+                    );
                 }
                 [_, _] => return,
                 [_, found_revision, .., extension] => {
@@ -141,12 +138,13 @@ pub fn check(tests_path: &Path, tidy_ctx: TidyCtx) {
                     {
                         // Found some unexpected revision-esque component that is not a known
                         // compare-mode or expected revision.
-                        check.error(format!(
+                        tidy_error!(
+                            bad,
                             "found output file `{}` for unexpected revision `{}` of test `{}`",
                             sibling.display(),
                             found_revision,
                             test_path.display()
-                        ));
+                        );
                     }
                 }
             }

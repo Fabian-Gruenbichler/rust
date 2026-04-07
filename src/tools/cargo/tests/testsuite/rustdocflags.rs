@@ -115,8 +115,7 @@ fn rustdocflags_misspelled() {
     p.cargo("doc")
         .env("RUSTDOC_FLAGS", "foo")
         .with_stderr_data(str![[r#"
-[WARNING] ignoring environment variable `RUSTDOC_FLAGS`
-[NOTE] rustdoc flags are passed via `RUSTDOCFLAGS`
+[WARNING] Cargo does not read `RUSTDOC_FLAGS` environment variable. Did you mean `RUSTDOCFLAGS`?
 ...
 "#]])
         .run();

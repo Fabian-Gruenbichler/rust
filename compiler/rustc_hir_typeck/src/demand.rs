@@ -792,9 +792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(_, lhs, rhs), .. }),
                 Some(TypeError::Sorts(ExpectedFound { expected, .. })),
             ) if rhs.hir_id == expr.hir_id
-                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected)
-                // let expressions being marked as `bool` is confusing (see issue #147665)
-                && !matches!(lhs.kind, hir::ExprKind::Let(..)) =>
+                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
             {
                 err.span_label(lhs.span, format!("expected because this is `{expected}`"));
             }

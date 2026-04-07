@@ -28,11 +28,7 @@ pub(crate) fn complete_record_pattern_fields(
                     record_pat.record_pat_field_list().and_then(|fl| fl.fields().next()).is_some();
 
                 match were_fields_specified {
-                    false => un
-                        .fields(ctx.db)
-                        .into_iter()
-                        .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
-                        .collect(),
+                    false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
                     true => return,
                 }
             }
@@ -60,11 +56,7 @@ pub(crate) fn complete_record_expr_fields(
                 record_expr.record_expr_field_list().and_then(|fl| fl.fields().next()).is_some();
 
             match were_fields_specified {
-                false => un
-                    .fields(ctx.db)
-                    .into_iter()
-                    .map(|f| (f, f.ty(ctx.db).to_type(ctx.db)))
-                    .collect(),
+                false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
                 true => return,
             }
         }
@@ -135,7 +127,10 @@ fn complete_fields(
                 receiver: None,
                 receiver_ty: None,
                 kind: DotAccessKind::Field { receiver_is_ambiguous_float_literal: false },
-                ctx: DotAccessExprCtx { in_block_expr: false, in_breakable: None },
+                ctx: DotAccessExprCtx {
+                    in_block_expr: false,
+                    in_breakable: crate::context::BreakableKind::None,
+                },
             },
             None,
             field,

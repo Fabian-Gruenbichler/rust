@@ -3,7 +3,7 @@
 // valid.
 
 
-#![allow(dead_code, unused)]
+#![allow(dead_code)]
 
 trait Test {
     fn foo(&self) { }

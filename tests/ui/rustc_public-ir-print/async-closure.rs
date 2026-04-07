@@ -1,6 +1,6 @@
 //@ compile-flags: -Z unpretty=stable-mir --crate-type lib -C panic=abort -Zmir-opt-level=0
 //@ check-pass
-//@ only-64bit
+//@ only-x86_64
 //@ edition: 2024
 //@ needs-unwind unwind edges are different with panic=abort
 

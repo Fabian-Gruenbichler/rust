@@ -78,6 +78,7 @@ where
             "",
             None,
             &USING_INTERNAL_FEATURES,
+            Default::default(),
         );
         let cfg = parse_cfg(sess.dcx(), matches.opt_strs("cfg"));
         let cfg = build_configuration(&sess, cfg);
@@ -764,15 +765,14 @@ fn test_unstable_options_tracking_hash() {
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(assume_incomplete_release, true);
-    tracked!(autodiff, vec![AutoDiff::Enable, AutoDiff::NoTT]);
+    tracked!(autodiff, vec![AutoDiff::Enable]);
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(
         branch_protection,
         Some(BranchProtection {
             bti: true,
-            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
-            gcs: true,
+            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B })
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));

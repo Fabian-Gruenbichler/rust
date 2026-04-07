@@ -268,8 +268,8 @@ impl AsInner<imp::Process> for Child {
     }
 }
 
-impl FromInner<(imp::Process, StdioPipes)> for Child {
-    fn from_inner((handle, io): (imp::Process, StdioPipes)) -> Child {
+impl FromInner<(imp::Process, imp::StdioPipes)> for Child {
+    fn from_inner((handle, io): (imp::Process, imp::StdioPipes)) -> Child {
         Child {
             handle,
             stdin: io.stdin.map(ChildStdin::from_inner),
@@ -294,15 +294,6 @@ impl fmt::Debug for Child {
             .field("stderr", &self.stderr)
             .finish_non_exhaustive()
     }
-}
-
-/// The pipes connected to a spawned process.
-///
-/// Used to pass pipe handles between this module and [`imp`].
-pub(crate) struct StdioPipes {
-    pub stdin: Option<AnonPipe>,
-    pub stdout: Option<AnonPipe>,
-    pub stderr: Option<AnonPipe>,
 }
 
 /// A handle to a child process's standard input (stdin).
@@ -541,7 +532,6 @@ impl fmt::Debug for ChildStderr {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// # if cfg!(not(all(target_vendor = "apple", not(target_os = "macos")))) {
 /// use std::process::Command;
 ///
 /// let output = if cfg!(target_os = "windows") {
@@ -558,7 +548,6 @@ impl fmt::Debug for ChildStderr {
 /// };
 ///
 /// let hello = output.stdout;
-/// # }
 /// ```
 ///
 /// `Command` can be reused to spawn multiple processes. The builder methods
@@ -1359,7 +1348,7 @@ impl Output {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android")))] {
     /// use std::process::Command;
     /// assert!(Command::new("false").output().unwrap().exit_ok().is_err());
     /// # }
@@ -1706,7 +1695,7 @@ impl From<io::Stdout> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1735,7 +1724,7 @@ impl From<io::Stderr> for Stdio {
     /// # Ok(())
     /// # }
     /// #
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// #     test().unwrap();
     /// # }
     /// ```
@@ -1811,7 +1800,7 @@ impl ExitStatus {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # if cfg!(all(unix, not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(unix) {
     /// use std::process::Command;
     ///
     /// let status = Command::new("ls")
@@ -1918,7 +1907,7 @@ impl crate::sealed::Sealed for ExitStatusError {}
 ///
 /// ```
 /// #![feature(exit_status_error)]
-/// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+/// # if cfg!(all(unix, not(target_os = "android"))) {
 /// use std::process::{Command, ExitStatusError};
 ///
 /// fn run(cmd: &str) -> Result<(), ExitStatusError> {
@@ -1961,7 +1950,7 @@ impl ExitStatusError {
     ///
     /// ```
     /// #![feature(exit_status_error)]
-    /// # #[cfg(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos")))))] {
+    /// # #[cfg(all(unix, not(target_os = "android")))] {
     /// use std::process::Command;
     ///
     /// let bad = Command::new("false").status().unwrap().exit_ok().unwrap_err();
@@ -1986,7 +1975,7 @@ impl ExitStatusError {
     /// ```
     /// #![feature(exit_status_error)]
     ///
-    /// # if cfg!(all(unix, not(target_os = "android"), not(all(target_vendor = "apple", not(target_os = "macos"))))) {
+    /// # if cfg!(all(unix, not(target_os = "android"))) {
     /// use std::num::NonZero;
     /// use std::process::Command;
     ///

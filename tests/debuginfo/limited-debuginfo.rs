@@ -2,7 +2,6 @@
 
 //@ compile-flags:-C debuginfo=1
 //@ disable-gdb-pretty-printers
-//@ ignore-backends: gcc
 
 // Make sure functions have proper names
 // gdb-command:info functions
