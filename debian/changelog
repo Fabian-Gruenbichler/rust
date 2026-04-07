@@ -1,3 +1,9 @@
+rustc (1.92.0+dfsg1-2~bpo13+1) trixie-backports; urgency=medium
+
+  * Rebuild for trixie-backports.
+
+ -- Fabian Grünbichler <debian@fabian.gruenbichler.email>  Tue, 07 Apr 2026 18:52:08 +0200
+
 rustc (1.92.0+dfsg1-2) unstable; urgency=high
 
   * backport tar CVE-2026-33055/CVE-2026-33056 fixes
