@@ -818,6 +818,7 @@ Files-Excluded:
  vendor/socket2-0.5.8
  vendor/socket2-0.5.9
  vendor/spmc-0.3.0
+ vendor/sqlite-wasm-rs-0.5.1
  vendor/stable_deref_trait-1.2.0
  vendor/string_cache-0.8.7
  vendor/string_cache_codegen-0.5.2

@@ -45,3 +45,4 @@ build/bootstrap-ignore-x.py-shell-completion-diff.patch
 build/bootstrap-disarm-llvm-config-test-that-requires-git.patch
 build/disable-bootstrap-tests-that-don-t-work-from-tarball-sour.patch
 behaviour/x32-set-panic-strategy-to-aborting.patch
+prune/d-0024-remove-sqlite-wasm-rs.patch
