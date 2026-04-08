@@ -256,7 +256,7 @@ index 5ce8f6f..6ac1557 100644
  To use this feature locally, you typically will use the `RUSTFLAGS` environment
  variable to specify flags to the compiler through Cargo. For example to compile
 diff --git a/src/doc/reference/src/procedural-macros.md b/src/doc/reference/src/procedural-macros.md
-index 4395e3d..56833d4 100644
+index 4395e3d..20e65de 100644
 --- a/src/doc/reference/src/procedural-macros.md
 +++ b/src/doc/reference/src/procedural-macros.md
 @@ -405,7 +405,7 @@ Note that neither declarative nor procedural macros support doc comment tokens
@@ -264,7 +264,7 @@ index 4395e3d..56833d4 100644
  
  [Attribute macros]: #the-proc_macro_attribute-attribute
 -[Cargo's build scripts]: ../cargo/reference/build-scripts.html
-+[Cargo's build scripts]: ../../../cargo/reference/build-scripts.html
++[Cargo's build scripts]: ../../../cargo/book/reference/build-scripts.html
  [Derive macros]: macro.proc.derive
  [Function-like macros]: #the-proc_macro-attribute
  [`$crate`]: macro.decl.hygiene.crate
