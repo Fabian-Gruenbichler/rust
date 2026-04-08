@@ -41,7 +41,7 @@ index 67c7a9d..e273c4b 100644
    "src/tools/run-make-support",
    "src/tools/rust-installer",
 diff --git a/src/bootstrap/bootstrap.py b/src/bootstrap/bootstrap.py
-index 4dd465e..b101e77 100644
+index 2e16f2c..824911e 100644
 --- a/src/bootstrap/bootstrap.py
 +++ b/src/bootstrap/bootstrap.py
 @@ -1156,10 +1156,6 @@ class RustBuild(object):
@@ -75,10 +75,10 @@ index 36a740c..4684c2d 100644
      .into_iter()
      .map(|(path, submodules)| (builder.src.join(path), submodules))
 diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
-index 093a754..01f5a1e 100644
+index dda0b40..e8002c1 100644
 --- a/src/bootstrap/src/core/builder/cargo.rs
 +++ b/src/bootstrap/src/core/builder/cargo.rs
-@@ -1319,10 +1319,7 @@ impl Builder<'_> {
+@@ -1351,10 +1351,7 @@ impl Builder<'_> {
              }
          }
  
@@ -91,7 +91,7 @@ index 093a754..01f5a1e 100644
          }
  
 diff --git a/src/bootstrap/src/core/builder/mod.rs b/src/bootstrap/src/core/builder/mod.rs
-index 961d0cd..7a72691 100644
+index f63b8e0..141588e 100644
 --- a/src/bootstrap/src/core/builder/mod.rs
 +++ b/src/bootstrap/src/core/builder/mod.rs
 @@ -779,8 +779,6 @@ impl<'a> Builder<'a> {
@@ -156,7 +156,7 @@ index 961d0cd..7a72691 100644
                  doc::EmbeddedBook,
                  doc::EditionGuide,
                  doc::StyleGuide,
-@@ -975,7 +957,6 @@ impl<'a> Builder<'a> {
+@@ -976,7 +958,6 @@ impl<'a> Builder<'a> {
                  dist::RustAnalyzer,
                  dist::Rustfmt,
                  dist::Clippy,
@@ -164,7 +164,7 @@ index 961d0cd..7a72691 100644
                  dist::LlvmTools,
                  dist::LlvmBitcodeLinker,
                  dist::RustDev,
-@@ -1002,7 +983,6 @@ impl<'a> Builder<'a> {
+@@ -1006,7 +987,6 @@ impl<'a> Builder<'a> {
                  install::RustAnalyzer,
                  install::Rustfmt,
                  install::Clippy,
@@ -172,7 +172,7 @@ index 961d0cd..7a72691 100644
                  install::LlvmTools,
                  install::Src,
                  install::RustcCodegenCranelift,
-@@ -1012,7 +992,6 @@ impl<'a> Builder<'a> {
+@@ -1016,7 +996,6 @@ impl<'a> Builder<'a> {
                  run::BuildManifest,
                  run::BumpStage0,
                  run::ReplaceVersionPlaceholder,
