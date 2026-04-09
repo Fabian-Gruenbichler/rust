@@ -7,6 +7,8 @@ Files-Excluded:
  src/llvm-project
 # Pre-generated docs
  src/tools/rustfmt/docs
+# unclear license
+ src/doc/rustc-dev-guide/src/debuginfo/CodeView.pdf
 # Fonts already in Debian, covered by d-0003-mdbook-strip-embedded-libs.patch
  vendor/mdbook-*/front-end/css/highlight.css
  vendor/mdbook-*/front-end/fonts
