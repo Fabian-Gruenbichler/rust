@@ -1,0 +1,102 @@
+From: =?utf-8?q?Fabian_Gr=C3=BCnbichler?= <f.gruenbichler@proxmox.com>
+Date: Thu, 9 Apr 2026 14:33:10 +0200
+Subject: d-0026-font-awesome-as-a-crate: generate SVG data from packaged font
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+based on upstream's build.rs, which uses a bundled copy of the font that is
+stripped when publishing.
+
+
+Signed-off-by: Fabian Grünbichler <f.gruenbichler@proxmox.com>
+---
+ vendor/font-awesome-as-a-crate-0.3.0/build.rs | 79 +++++++++++++++++++++++++++
+ 1 file changed, 79 insertions(+)
+ create mode 100644 vendor/font-awesome-as-a-crate-0.3.0/build.rs
+
+diff --git a/vendor/font-awesome-as-a-crate-0.3.0/build.rs b/vendor/font-awesome-as-a-crate-0.3.0/build.rs
+new file mode 100644
+index 0000000..75d09e9
+--- /dev/null
++++ b/vendor/font-awesome-as-a-crate-0.3.0/build.rs
+@@ -0,0 +1,79 @@
++use std::{
++    env,
++    fs::{read_dir, File},
++    io::{Read, Write},
++    path::Path,
++};
++
++fn main() {
++    println!("cargo:rustc-cfg=font_awesome_out_dir");
++    write_fontawesome_sprite();
++}
++
++fn write_fontawesome_sprite() {
++    let dest_path = Path::new(&env::var("OUT_DIR").unwrap()).join("fontawesome.rs");
++    let mut dest_file = File::create(&dest_path).unwrap();
++    dest_file
++        .write_all(b"const fn fontawesome_svg(dir:&str,file:&str)->&'static str{match(dir.as_bytes(),file.as_bytes()){")
++        .expect("fontawesome fn write");
++    for dirname in &["brands", "regular", "solid"] {
++        let dir = read_dir(
++            Path::new("/usr/share/nodejs/@fortawesome").join(format!("free-{dirname}-svg-icons")),
++        )
++        .expect("fontawesome directory exists");
++        let mut data = String::new();
++        let mut name = String::new();
++        let mut svg_data = String::new();
++        for file in dir {
++            let file = file.expect("fontawesome directory access");
++            data.clear();
++            name.clear();
++            svg_data.clear();
++            let filename = file
++                .file_name()
++                .into_string()
++                .expect("fontawesome filenames are unicode");
++            if !filename.ends_with(".js") {
++                continue;
++            }
++            let mut file = File::open(file.path()).expect("fontawesome file access");
++            data.clear();
++            file.read_to_string(&mut data)
++                .expect("fontawesome file read");
++            for line in data.lines() {
++                if let Some(name_value) = line
++                    .strip_prefix("var iconName = '")
++                    .and_then(|rest| rest.strip_suffix("';"))
++                {
++                    name = name_value.to_string();
++                }
++                if let Some(svg_value) = line
++                    .strip_prefix("var svgPathData = '")
++                    .and_then(|rest| rest.strip_suffix("';"))
++                {
++                    svg_data = svg_value.to_string();
++                }
++            }
++            if name.is_empty() {
++                continue;
++            }
++            if svg_data.is_empty() {
++                panic!("encountered invalid fontawesome data in {}", filename);
++            }
++            // if this assert goes off, add more hashes here and in the format! below
++            assert!(
++                !svg_data.contains("###"),
++                "file {} breaks raw string",
++                filename
++            );
++            dest_file
++                .write_all(
++                    format!(r####"(b"{dirname}",b"{name}")=>r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="{svg_data}"/></svg>"#,"####).as_bytes(),
++                )
++                .expect("write fontawesome file");
++        }
++    }
++    dest_file
++        .write_all(b"_=>\"\"}}")
++        .expect("fontawesome fn write");
++}
